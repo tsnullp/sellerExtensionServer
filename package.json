@@ -3,15 +3,13 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "directories": {
-    "lib": "lib"
-  },
   "scripts": {
     "start": "nodemon index.js --exec babel-node",
     "start2": "node index.js --exec babel-node",
     "start1": "cross-env NODE_PATH=src NODE_ENV=development nodemon src/index.js --exec babel-node",
     "serve": "NODE_PATH=src NODE_ENV=production babel  src/ -d dist/ && pm2 start ecosystem.config.js --env production"
   },
+  "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
