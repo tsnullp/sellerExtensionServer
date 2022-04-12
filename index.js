@@ -12,6 +12,11 @@ const mongoose = require("mongoose")
 const ObjectId = mongoose.Types.ObjectId
 
 
+setInterval(function() {
+  console.log("setInterval")
+  http.get("https://sellerextention.herokuapp.com/")
+}, 600000)
+
 database()
 
 const PORT = process.env.PORT || 3000
