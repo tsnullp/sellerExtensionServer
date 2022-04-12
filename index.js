@@ -179,6 +179,139 @@ app.post("/amazon/isRegister", async(req, res) => {
   
 })
 
+app.post("/amazon/isRegisters", async(req, res) => {
+  
+  try {
+    const {user, items} = req.body
+    
+    const userInfo = await User.findOne(
+      {
+        email: user
+      }
+    )
+    if(!userInfo){
+      res.json([])
+      return
+    }
+
+    let response = []
+
+    if(items && Array.isArray(items)){
+
+      const asinArr = items.map(item => AmazonAsin(item.detailUrl))
+      const product = await Product.aggregate([
+        {
+          $match: {
+            userID: ObjectId(userInfo._id),
+            "options.key": {$in: asinArr},
+            isDelete: false
+          }
+        },
+        {
+          $project: {
+            "options.key": 1
+          }
+        },
+        { $unwind : "$options" }
+      ])
+
+      const tempProducts = await TempProduct.aggregate([
+        {
+          $match: {
+            userID: ObjectId(userInfo._id),
+            good_id: {$in: asinArr},
+          }
+        },
+        {
+          $project: {
+            good_id: 1,
+            options: 1
+          }
+        }
+      ])
+
+      const tempCollections = await AmazonCollection.aggregate([
+        {
+          $match: {
+            userID: ObjectId(userInfo._id),
+            asin: {$in: asinArr},
+          }
+        },
+        {
+          $project: {
+            good_id: 1,
+            options: 1
+          }
+        }
+      ])
+
+   
+       // 0: 실패, 1: 등록됨, 2: 수집요청, 3: 수집대기
+      for(const detailUrl of items){
+        const asin = AmazonAsin(detailUrl)  
+        if(!asin) {
+          continue
+        }
+        if(product.filter(pItem => pItem.options.key === asin).length > 0){
+          // 등록됨
+          response.push(
+            {
+              registerType: 1,
+              detailUrl
+            }
+          )
+        } else {
+          const temp = tempProducts.filter(tItem => tItem.good_id === asin)
+          if(temp.length > 0){
+            const tempProduct = temp[0]
+            if(tempProduct.options.length > 0){
+              // 수집완료
+              response.push({
+                registerType: 4,
+                detailUrl
+              })
+            } else {
+              // 수집실패
+              response.push({
+                registerType: 5,
+                detailUrl
+              })
+            }
+          } else {
+            const tempColl = tempCollections.filter(tItem => tItem.asin === asin)
+            if(tempColl.length > 0){
+              // 수집대기
+              response.push({
+                registerType: 3,
+                detailUrl
+              })
+            } else {
+              // 아무것도 아님
+              response.push({
+                registerType: 2,
+                detailUrl
+              })
+            }
+          }
+          
+        }
+        
+      }
+      
+      res.json(response)
+      return
+    } else {
+      res.json([])
+      return
+    }
+    
+  } catch(e){
+    console.log("/amazon/isRegisters", e)
+  } 
+  
+  
+})
+
 app.post("/amazon/registerItem", async(req, res) => {
   
   try {
