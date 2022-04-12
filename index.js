@@ -14,7 +14,7 @@ const ObjectId = mongoose.Types.ObjectId
 
 setInterval(function() {
   console.log("setInterval")
-  http.get("https://sellerextention.herokuapp.com/")
+  http.get("https://sellerextention.herokuapp.com")
 }, 600000)
 
 database()
@@ -88,7 +88,6 @@ app.post("/amazon/isRegister", async(req, res) => {
     const {detailUrl, user} = req.body
     
     const asin = AmazonAsin(detailUrl)  
-  
     // 0: 실패, 1: 등록됨, 2: 수집요청전, 3: 수집요청후, 4: 수집완료, 5t 수집실패
     if(!asin || !user) {
       res.json({
