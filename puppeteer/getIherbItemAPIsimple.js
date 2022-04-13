@@ -123,7 +123,14 @@ const start = async ({ url, title, userID }) => {
           ObjItem.good_id = korResponse.id
           ObjItem.price = Number(engResponse.listPrice.replace("₩", "").replace(/,/gi, "")) || 0
           ObjItem.salePrice = Number(engResponse.discountPrice.replace("₩", "").replace(/,/gi, "")) || 0
-          ObjItem.mainImages = [`https://cloudinary.images-iherb.com/image/upload/f_auto,q_auto:eco/images/${engResponse.partNumber.split("-")[0]}/${engResponse.partNumber.replace("-", "").toLowerCase()}/v/${engResponse.primaryImageIndex}.jpg`.replace("f_auto,q_auto:eco/", "")]
+          ObjItem.mainImages = 
+          engResponse.imageIndices.map(item => {
+            return `https://cloudinary.images-iherb.com/image/upload/f_auto,q_auto:eco/images/${engResponse.partNumber.split("-")[0]}/${engResponse.partNumber.replace("-", "").toLowerCase()}/l/${item}.jpg`.replace("f_auto,q_auto:eco/", "")
+          })
+          
+          // [`https://cloudinary.images-iherb.com/image/upload/f_auto,q_auto:eco/images/${engResponse.partNumber.split("-")[0]}/${engResponse.partNumber.replace("-", "").toLowerCase()}/v/${engResponse.primaryImageIndex}.jpg`.replace("f_auto,q_auto:eco/", "")]
+
+
           ObjItem.content =  engResponse.show360 && engResponse.imageIndices360 && engResponse.imageIndices360.length > 0? 
             engResponse.imageIndices360.map(item => {
               return `https://cloudinary.images-iherb.com/image/upload/f_auto,q_auto:eco/images/${engResponse.partNumber.split("-")[0]}/${engResponse.partNumber.replace("-", "").toLowerCase()}/l/${item}.jpg`.replace("f_auto,q_auto:eco/", "")
