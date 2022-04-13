@@ -2,7 +2,6 @@
 const Brand = require("../models/Brand")
 const { AmazonAsin, regExp_test } = require("../lib/userFunc")
 const {iHerbDetail} = require("../api/iHerb")
-const tesseract = require("node-tesseract-ocr")
 
 const start = async ({ url, title, userID }) => {
   const ObjItem = {
@@ -232,22 +231,6 @@ const start = async ({ url, title, userID }) => {
           // ObjItem.disclaimer = `저희는 고객님이 수령 제품과 100% 동일한 사진을 사이트에 반영하기 위해 노력을 하고 있습니다. 하지만, 제품 제조사가 포장 혹은 성분을 업데이트하는 경우 사이트의 정보 업데이트까지 시간이 소요될 수 있습니다. 제품의 포장은 다를 수 있지만, 제품의 신선도는 저희가 보장해드립니다. 적절한 제품 사용을 위해 제품 포장에 기입된 내용을 기준으로 사용하시길 권장해드립니다.`
           // 영양 성분 정보
           ObjItem.supplementFacts = korResponse.supplementFacts
-
-
-          for(const item of engResponse.imageIndices.map(item => {
-            return `https://cloudinary.images-iherb.com/image/upload/f_auto,q_auto:eco/images/${engResponse.partNumber.split("-")[0]}/${engResponse.partNumber.replace("-", "").toLowerCase()}/l/${item}.jpg`.replace("f_auto,q_auto:eco/", "")
-          })){
-            try{
-              const text = await tesseract.recognize(item)
-              console.log("tesseract", text)
-              engSentence += `${text} `
-            }catch(e) {
-              console.log("recognize", item)
-              console.log("recognize", e)
-            }
-            
-          }
-
 
 
           for(const item of prohibitList){

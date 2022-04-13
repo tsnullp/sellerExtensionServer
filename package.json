@@ -28,7 +28,6 @@
     "mongoose": "^5.9.25",
     "node-base64-image": "^2.0.3",
     "node-cron": "^3.0.0",
-    "node-tesseract-ocr": "^2.2.1",
     "nodejs-base64-converter": "^1.0.5",
     "nodemon": "^2.0.4",
     "pm2": "^4.4.0",
