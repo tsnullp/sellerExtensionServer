@@ -121,8 +121,8 @@ const start = async ({ url, title, userID }) => {
           ObjItem.titleArray = titleArr
           ObjItem.korTitleArray = korTitleArr
           ObjItem.good_id = korResponse.id
-          ObjItem.price = Number(engResponse.listPrice.replace("₩", "").replace(/,/gi, ""))
-          ObjItem.salePrice = Number(engResponse.discountPrice.replace("₩", "").replace(/,/gi, ""))
+          ObjItem.price = Number(engResponse.listPrice.replace("₩", "").replace(/,/gi, "")) || 0
+          ObjItem.salePrice = Number(engResponse.discountPrice.replace("₩", "").replace(/,/gi, "")) || 0
           ObjItem.mainImages = [`https://cloudinary.images-iherb.com/image/upload/f_auto,q_auto:eco/images/${engResponse.partNumber.split("-")[0]}/${engResponse.partNumber.replace("-", "").toLowerCase()}/v/${engResponse.primaryImageIndex}.jpg`.replace("f_auto,q_auto:eco/", "")]
           ObjItem.content =  engResponse.show360 && engResponse.imageIndices360 && engResponse.imageIndices360.length > 0? 
             engResponse.imageIndices360.map(item => {
@@ -150,8 +150,8 @@ const start = async ({ url, title, userID }) => {
             {
               key: korResponse.id,
               propPath: `1:${korResponse.id}`,
-              price: Number(korResponse.discountPrice.replace("₩", "").replace(/,/gi, "")),
-              promotion_price: Number(korResponse.listPrice.replace("₩", "").replace(/,/gi, "")),
+              price: Number(korResponse.discountPrice.replace("₩", "").replace(/,/gi, "")) || 0,
+              promotion_price: Number(korResponse.listPrice.replace("₩", "").replace(/,/gi, "")) || 0,
               stock: korResponse.stockStatusV2 === 0 ? 1000 : 0,
               image: `https://cloudinary.images-iherb.com/image/upload/f_auto,q_auto:eco/images/${engResponse.partNumber.split("-")[0]}/${engResponse.partNumber.replace("-", "").toLowerCase()}/y/${engResponse.primaryImageIndex}.jpg`.replace("f_auto,q_auto:eco/", ""),
               disabled: korResponse.id ? false : true,
