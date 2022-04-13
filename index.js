@@ -200,13 +200,22 @@ app.post("/amazon/isRegisters", async(req, res) => {
 
     if(items && Array.isArray(items)){
 
-      const asinArr = items.map(item => AmazonAsin(item.detailUrl))
+      const asinArr = items.map(item => AmazonAsin(item))
+      
       const product = await Product.aggregate([
         {
           $match: {
             userID: ObjectId(userInfo._id),
             "options.key": {$in: asinArr},
-            isDelete: false
+            isDelete: false,
+            $or: [
+              {
+                "basic.url": { $regex: `.*amazon.com.*`}
+              },
+              {
+                "basic.url": { $regex: `.*iherb.com.*`}
+              }
+            ]
           }
         },
         {
@@ -216,7 +225,7 @@ app.post("/amazon/isRegisters", async(req, res) => {
         },
         { $unwind : "$options" }
       ])
-
+      console.log("product", product.length)
       const tempProducts = await TempProduct.aggregate([
         {
           $match: {
@@ -254,7 +263,10 @@ app.post("/amazon/isRegisters", async(req, res) => {
         if(!asin) {
           continue
         }
-        if(product.filter(pItem => pItem.options.key === asin).length > 0){
+        if(product.filter(pItem => {
+      
+          return pItem.options.key === asin
+        }).length > 0){
           // 등록됨
           response.push(
             {
@@ -299,7 +311,7 @@ app.post("/amazon/isRegisters", async(req, res) => {
         }
         
       }
-    
+
       res.json(response)
       return
     } else {
@@ -575,7 +587,6 @@ app.post("/amazon/collectionItems", async(req, res) => {
   
     setTimeout(async () => {
       for(const item of products){
-        
         const product = await Product.findOne(
           {
             userID: ObjectId(userInfo._id),
