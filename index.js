@@ -9,6 +9,8 @@ const AmazonCollection = require("./models/AmazonCollection")
 const TempProduct = require("./models/TempProduct")
 const Product = require("./models/Product")
 const {iHerbCode} = require("./api/iHerb")
+const findAmazonDetailAPIsimple = require("./puppeteer/getAmazonItemAPIsimple")
+const findIherbDetailAPIsimple = require("./puppeteer/getIherbItemAPIsimple")
 const mongoose = require("mongoose")
 const ObjectId = mongoose.Types.ObjectId
 
@@ -297,7 +299,7 @@ app.post("/amazon/isRegisters", async(req, res) => {
         }
         
       }
-      
+    
       res.json(response)
       return
     } else {
