@@ -654,15 +654,15 @@ app.post("/amazon/collectionItems", async(req, res) => {
               if(!asin){
                 continue
               }
-              const host = item.detailUrl.replace(asin, "")
+              const host = item.detailUrl.replace(`/${asin}`, "/")
               const response = await iHerbCode({url: item.detailUrl})
               for(const pid of response){
-                console.log("pid", pid)
                 let detailItem = await findIherbDetailAPIsimple({
                   url: `${host}${pid}`,
                   userID: ObjectId(userInfo._id)
                 })
                 if(detailItem){
+                  console.log("detailITEm", detailItem)
                   await TempProduct.findOneAndUpdate(
                     {
                       userID: ObjectId(userInfo._id),
@@ -714,6 +714,7 @@ app.post("/amazon/collectionItems", async(req, res) => {
           
         }
       }
+
     }, 1000)
     res.json({
       message: "success"

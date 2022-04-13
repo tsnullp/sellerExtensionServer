@@ -29,16 +29,23 @@ const start = async ({ url, title, userID }) => {
         try {
          
           const asin = AmazonAsin(url)
-
+          console.log("---->", asin)
           const korResponse = await iHerbDetail({asin, isUSA: false})
           const engResponse = await iHerbDetail({asin, isUSA: true})
         
           ObjItem.title = `${engResponse.displayName} ${engResponse.brandName}`
           ObjItem.korTitle = `${regExp_test(korResponse.displayName.replace(/,/gi, ""))} ${regExp_test(korResponse.brandName)}`
-          ObjItem.keyword = [
-            ...korResponse.productRanks.map(item => regExp_test(item.categoryDisplayName)),
-            regExp_test(engResponse.brandName), regExp_test(korResponse.brandName)
-          ]
+          ObjItem.keyword = []
+          if(korResponse.productRanks && Array.isArray(korResponse.productRanks)) {
+            ObjItem.keyword.push(...korResponse.productRanks.map(item => regExp_test(item.categoryDisplayName)))
+          }
+          ObjItem.keyword.push(
+            regExp_test(engResponse.brandName)
+          )
+          ObjItem.keyword.push(
+            regExp_test(korResponse.brandName)
+          )
+         
           let brandList = await Brand.find(
             {
               brand: { $ne: null }
@@ -120,14 +127,14 @@ const start = async ({ url, title, userID }) => {
           ObjItem.manufacture = engResponse.brandName
           ObjItem.titleArray = titleArr
           ObjItem.korTitleArray = korTitleArr
-          ObjItem.good_id = korResponse.id
-          ObjItem.price = Number(engResponse.listPrice.replace("₩", "").replace(/,/gi, "")) || 0
-          ObjItem.salePrice = Number(engResponse.discountPrice.replace("₩", "").replace(/,/gi, "")) || 0
+          ObjItem.good_id = korResponse.id.toString()
+          ObjItem.price = Number(engResponse.listPrice.replace("₩", "").replace("$", "").replace(/,/gi, "")) || 0
+          ObjItem.salePrice = Number(engResponse.discountPrice.replace("₩", "").replace("$", "").replace(/,/gi, "")) || 0
           ObjItem.mainImages = 
           engResponse.imageIndices.map(item => {
             return `https://cloudinary.images-iherb.com/image/upload/f_auto,q_auto:eco/images/${engResponse.partNumber.split("-")[0]}/${engResponse.partNumber.replace("-", "").toLowerCase()}/l/${item}.jpg`.replace("f_auto,q_auto:eco/", "")
           })
-          
+
           // [`https://cloudinary.images-iherb.com/image/upload/f_auto,q_auto:eco/images/${engResponse.partNumber.split("-")[0]}/${engResponse.partNumber.replace("-", "").toLowerCase()}/v/${engResponse.primaryImageIndex}.jpg`.replace("f_auto,q_auto:eco/", "")]
 
 
@@ -145,7 +152,7 @@ const start = async ({ url, title, userID }) => {
               korTypeName: "종류",
               values: [
                 {
-                  vid: korResponse.id,
+                  vid: korResponse.id.toString(),
                   name: engResponse.packageQuantity ? engResponse.packageQuantity : "단일상품",
                   korValueName: korResponse.packageQuantity ? korResponse.packageQuantity : "단일상품",
                   image: `https://cloudinary.images-iherb.com/image/upload/f_auto,q_auto:eco/images/${engResponse.partNumber.split("-")[0]}/${engResponse.partNumber.replace("-", "").toLowerCase()}/y/${engResponse.primaryImageIndex}.jpg`.replace("f_auto,q_auto:eco/", "")
@@ -155,10 +162,10 @@ const start = async ({ url, title, userID }) => {
           ]
           ObjItem.options = [
             {
-              key: korResponse.id,
+              key: korResponse.id.toString(),
               propPath: `1:${korResponse.id}`,
-              price: Number(korResponse.discountPrice.replace("₩", "").replace(/,/gi, "")) || 0,
-              promotion_price: Number(korResponse.listPrice.replace("₩", "").replace(/,/gi, "")) || 0,
+              price: Number(korResponse.discountPrice.replace("₩", "").replace("$", "").replace(/,/gi, "")) || 0,
+              promotion_price: Number(korResponse.listPrice.replace("₩", "").replace("$", "").replace(/,/gi, "")) || 0,
               stock: korResponse.stockStatusV2 === 0 ? 1000 : 0,
               image: `https://cloudinary.images-iherb.com/image/upload/f_auto,q_auto:eco/images/${engResponse.partNumber.split("-")[0]}/${engResponse.partNumber.replace("-", "").toLowerCase()}/y/${engResponse.primaryImageIndex}.jpg`.replace("f_auto,q_auto:eco/", ""),
               disabled: korResponse.id ? false : true,
