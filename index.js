@@ -11,6 +11,7 @@ const Product = require("./models/Product")
 const {iHerbCode} = require("./api/iHerb")
 const findAmazonDetailAPIsimple = require("./puppeteer/getAmazonItemAPIsimple")
 const findIherbDetailAPIsimple = require("./puppeteer/getIherbItemAPIsimple")
+const findAliExpressDetailAPIsimple = require("./puppeteer/getAliExpressItemAPisimple")
 const mongoose = require("mongoose")
 const ObjectId = mongoose.Types.ObjectId
 
@@ -839,4 +840,22 @@ app.post("/amazon/allRegisterItem", async(req, res) => {
   } 
   
   
+})
+
+app.post("/amazon/aliText", async(req, res) => {
+  try {
+    const {url} = req.body
+    let detailItem = await findAliExpressDetailAPIsimple({
+      url,
+      userID: ObjectId("5f1947bd682563be2d22f008")
+    })
+    console.log("detailItem", detailItem)
+    res.json({
+      message: "success"
+    })
+  }catch(e){
+    res.json({
+      message: "fail"
+    })
+  }
 })
