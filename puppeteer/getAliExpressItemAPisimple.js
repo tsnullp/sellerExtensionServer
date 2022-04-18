@@ -35,24 +35,25 @@ const start = async ({url, title, userID}) => {
           let shipPrice = 0
           let deliverDate = null
           let purchaseLimitNumMax = 0
-
+          let deliverCompany = null
           if(shippingModule && 
             shippingModule.freightCalculateInfo && 
             shippingModule.freightCalculateInfo.freight &&
             shippingModule.freightCalculateInfo.freight.freightAmount) {
               shipPrice = Number(shippingModule.freightCalculateInfo.freight.freightAmount.value)
               deliverDate = shippingModule.freightCalculateInfo.freight.deliveryDateDisplay
-              console.log("여기 안타냐?")
+              deliverCompany = shippingModule.freightCalculateInfo.freight.company
+     
             }
 
           if(quantityModule && quantityModule.purchaseLimitNumMax){
             purchaseLimitNumMax = quantityModule.purchaseLimitNumMax
           }
-          console.log("shipPrice", shipPrice)
-          console.log("deliverDate", deliverDate)
-          console.log("purchaseLimitNumMax", purchaseLimitNumMax)
+
           ObjItem.shipPrice = shipPrice
           ObjItem.deliverDate = deliverDate
+          ObjItem.deliverCompany = deliverCompany
+          
           ObjItem.purchaseLimitNumMax = purchaseLimitNumMax
 
           if(!title || title.length === 0){

@@ -251,14 +251,13 @@ app.post("/amazon/isRegisters", async(req, res) => {
         },
         {
           $project: {
-            good_id: 1,
-            options: 1
+            asin: 1
           }
         }
       ])
 
    
-       // 0: 실패, 1: 등록됨, 2: 수집요청, 3: 수집대기
+       // 0: 실패, 1: 등록됨, 2: 수집요청, 3: 수집대기, 4: 수집완려, 5: 수집실패, 6: 삭제
       for(const detailUrl of items){
         const asin = AmazonAsin(detailUrl)  
         if(!asin) {
@@ -280,11 +279,20 @@ app.post("/amazon/isRegisters", async(req, res) => {
           if(temp.length > 0){
             const tempProduct = temp[0]
             if(tempProduct.options.length > 0){
-              // 수집완료
-              response.push({
-                registerType: 4,
-                detailUrl
-              })
+              if(tempProducts.isDelete === true) {
+                // 삭제
+                response.push({
+                  registerType: 6,
+                  detailUrl
+                })
+              } else {
+                // 수집완료
+                response.push({
+                  registerType: 4,
+                  detailUrl
+                })
+              }
+              
             } else {
               // 수집실패
               response.push({
@@ -293,6 +301,7 @@ app.post("/amazon/isRegisters", async(req, res) => {
               })
             }
           } else {
+           
             const tempColl = tempCollections.filter(tItem => tItem.asin === asin)
             if(tempColl.length > 0){
               // 수집대기
@@ -300,12 +309,14 @@ app.post("/amazon/isRegisters", async(req, res) => {
                 registerType: 3,
                 detailUrl
               })
+             
             } else {
               // 아무것도 아님
               response.push({
                 registerType: 2,
                 detailUrl
               })
+             
             }
           }
           
@@ -331,7 +342,7 @@ app.post("/amazon/registerItem", async(req, res) => {
   
   try {
     const {detailUrl, user, image, title} = req.body
-    
+
     const asin = AmazonAsin(detailUrl)
 
     // 0: 실패, 1: 등록됨, 2: 수집요청, 3: 수집대기
@@ -397,6 +408,7 @@ app.post("/amazon/registerItem", async(req, res) => {
               detailUrl,
               title,
               image,
+              isDelete: false,
               lastUpdate: moment().toDate()
             }
           },
@@ -415,10 +427,12 @@ app.post("/amazon/registerItem", async(req, res) => {
         {
           userID: ObjectId(userInfo._id),
           asin,
+          isDelete: false
         }
       )
 
       if(tempCollection){
+
         await AmazonCollection.remove({
           userID: ObjectId(userInfo._id),
           asin,
@@ -490,6 +504,7 @@ app.post("/amazon/getCollectionItem", async(req, res) => {
     const products = await AmazonCollection.find(
       {
         userID: ObjectId(userInfo._id),
+        isDelete: false
       }
     )
     let asinArr=products.map(item => item.asin)
@@ -583,6 +598,7 @@ app.post("/amazon/collectionItems", async(req, res) => {
     const products = await AmazonCollection.find(
       {
         userID: ObjectId(userInfo._id),
+        isDelete: false
       }
     )
   
@@ -706,6 +722,52 @@ app.post("/amazon/collectionItems", async(req, res) => {
                     }
                   )
                 }
+              }
+            } else if(item.detailUrl.includes("aliexpress.com")){
+              // 알리익스프레스  
+              console.log("item.detailUrl", item.detailUrl)
+              let detailItem = await findAliExpressDetailAPIsimple({
+                url: item.detailUrl,
+                userID: ObjectId(userInfo._id)
+              })
+              if(detailItem){
+                console.log("detailITEm", detailItem)
+                await TempProduct.findOneAndUpdate(
+                  {
+                    userID: ObjectId(userInfo._id),
+                    good_id: detailItem.good_id
+                  },
+                  {
+                    $set: {
+                      userID: ObjectId(userInfo._id),
+                      good_id: detailItem.good_id,
+                      brand: detailItem.brand,
+                      manufacture: detailItem.manufacture,
+                      title: detailItem.title,
+                      keyword: detailItem.keyword,
+                      mainImages: detailItem.mainImages,
+                      price: detailItem.price,
+                      salePrice: detailItem.salePrice,
+                      content: detailItem.content,
+                      shipPrice: detailItem.shipPrice,  // 배송비
+                      deliverDate: detailItem.deliverDate,  // 배송일
+                      purchaseLimitNumMax: detailItem.purchaseLimitNumMax,  // 구매수량
+                      deliverCompany: detailItem.deliverDate,
+                      options: detailItem.options,
+                      detailUrl: detailItem.detailUrl,
+                      isPrime: detailItem.isPrime,
+                      korTitle: detailItem.korTitle,
+                      titleArray: detailItem.titleArray,
+                      korTitleArray: detailItem.korTitleArray,
+                      prop: detailItem.prop,
+                      lastUpdate: moment().toDate()
+                    }
+                  },
+                  {
+                    upsert: true,
+                    new: true
+                  }
+                )
               }
             }
             

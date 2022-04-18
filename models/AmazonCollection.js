@@ -9,6 +9,10 @@ const AmazonCollectionSchema = mongoose.Schema({
   detailUrl: String,
   title: String,
   image: String,
+  isDelete: {
+    type: Boolean,
+    default: false
+  },
   lastUpdate: {
     type: Date,
     default: () => moment().toDate()

@@ -21,6 +21,10 @@ const TempProductSchema = mongoose.Schema({
   warnings: String, // 주의사항
   disclaimer: String, // 면책사항
   supplementFacts: String, // 영양 성분 정보
+  shipPrice: Number,  // 배송비
+  deliverDate: Number,  // 배송일
+  purchaseLimitNumMax: Number,  // 구매수량
+  deliverCompany: String,  // 배송회사
   options: [{
     key: String,
     propPath: String,
