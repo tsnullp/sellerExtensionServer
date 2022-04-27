@@ -27,7 +27,7 @@ const {
 
 setInterval(function () {
   console.log("setInterval")
-  http.get("https://sellerextention.herokuapp.com")
+  http.get("https://sellerextension.herokuapp.com/")
 }, 600000)
 
 database()
