@@ -3,6 +3,7 @@ const http = require("https")
 const database = require("./database")
 const { AmazonAsin, sleep, regExp_test } = require("./lib/userFunc")
 const bodyParser = require("body-parser")
+const cors = require("cors")
 const moment = require("moment")
 const User = require("./models/User")
 const Market = require("./models/Market")
@@ -34,7 +35,7 @@ database()
 
 const PORT = process.env.PORT || 3000
 const app = express()
-
+app.use(cors())
 app.use(bodyParser.json())
 
 app.use(bodyParser.urlencoded({ extended: true }))
