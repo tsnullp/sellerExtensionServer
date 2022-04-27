@@ -189,7 +189,6 @@ app.post("/amazon/isRegister", async (req, res) => {
 app.post("/amazon/isRegisters", async (req, res) => {
   try {
     const { user, items } = req.body
-    console.log("user, items", user, items)
     const userInfo = await User.findOne({
       email: user,
     })
