@@ -33,7 +33,7 @@ setInterval(function () {
 
 database()
 
-const PORT = process.env.PORT || 3000
+const PORT = process.env.PORT || 3300
 const app = express()
 app.use(cors())
 app.use(bodyParser.json())
@@ -42,6 +42,35 @@ app.use(bodyParser.urlencoded({ extended: true }))
 app.get("/", (req, res) => res.send("Hello World!!"))
 
 app.listen(PORT, () => console.log(`Example app listening at http://localhost:${PORT}`))
+
+app.post("/taobao/cookie", async (req, res) => {
+  try {
+    const { nick, cookie } = req.body
+    await Cookie.findOneAndUpdate(
+      {
+        name: nick,
+      },
+      {
+        $set: {
+          name: nick,
+          cookie,
+          lastUpdate: moment().toDate(),
+        },
+      },
+      {
+        upsert: true,
+      }
+    )
+    res.json({
+      message: "success",
+    })
+  } catch (e) {
+    console.log("/taobao/cookie", e)
+    res.json({
+      message: "fail",
+    })
+  }
+})
 
 // 로그인
 app.post("/seller/login", async (req, res) => {
@@ -910,7 +939,7 @@ const IherbPriceSync = async () => {
   const products = await Product.aggregate([
     {
       $match: {
-        userID: ObjectId("5f1947bd682563be2d22f008"),
+        // userID: ObjectId("5f1947bd682563be2d22f008"),
         // "options.key": {$in: asinArr},
         isDelete: false,
         $or: [
