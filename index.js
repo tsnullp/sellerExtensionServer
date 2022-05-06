@@ -46,6 +46,13 @@ app.listen(PORT, () => console.log(`Example app listening at http://localhost:${
 app.post("/taobao/cookie", async (req, res) => {
   try {
     const { nick, cookie } = req.body
+    console.log("nick", nick)
+    if (!nick || nick.length === 0) {
+      res.json({
+        message: "fail",
+      })
+      return
+    }
     await Cookie.findOneAndUpdate(
       {
         name: nick,
