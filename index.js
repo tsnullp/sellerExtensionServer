@@ -25,6 +25,18 @@ const {
   CoupnagUPDATE_PRODUCT_PRICE_BY_ITEM,
   CoupnagUPDATE_PARTIAL_PRODUCT,
 } = require("./api/Market")
+const cron = require("node-cron")
+
+cron.schedule("0 15 * * *", () => {
+  try {
+    console.log("schedule")
+    IherbPriceSync()
+  } catch (e) {
+    console.log("schedule", e.message)
+  }
+
+  // CoupangStatusSearch()
+})
 
 setInterval(function () {
   console.log("setInterval")
@@ -1150,8 +1162,6 @@ const IherbPriceSync = async () => {
   console.timeEnd("IHERBPRICESYNC")
   console.log("끝----")
 }
-
-// IherbPriceSync()
 
 const getIherbSalePrice = (price, marginInfo) => {
   let weightPrice = 0
