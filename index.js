@@ -268,7 +268,7 @@ app.post("/amazon/isRegisters", async (req, res) => {
       const asinArr = items.map((item) => AmazonAsin(item))
 
       let product = null
-      if (items[0].detailUrl.includes("taobao.com") || items[0].detailUrl.includes("tmall.com")) {
+      if (items[0].includes("taobao.com") || items[0].includes("tmall.com")) {
         product = await Product.aggregate([
           {
             $match: {
@@ -350,10 +350,7 @@ app.post("/amazon/isRegisters", async (req, res) => {
         }
         if (
           product.filter((pItem) => {
-            if (
-              items[0].detailUrl.includes("taobao.com") ||
-              items[0].detailUrl.includes("tmall.com")
-            ) {
+            if (items[0].includes("taobao.com") || items[0].includes("tmall.com")) {
               return pItem.basic.good_id === asin
             } else {
               return pItem.options.key === asin
