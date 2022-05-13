@@ -7,6 +7,7 @@ const {
 } = require("../api/Taobao")
 const { AmazonAsin } = require("../lib/userFunc")
 const { korTranslate } = require("./translate")
+const { getMainKeyword } = require("./keywordSourcing")
 
 const start = async ({ url, cnTitle, userID, orginalTitle }) => {
   const ObjItem = {
@@ -47,6 +48,12 @@ const start = async ({ url, cnTitle, userID, orginalTitle }) => {
           } else {
             ObjItem.title = cnTitle
             ObjItem.korTitle = await korTranslate(cnTitle)
+          }
+
+          ObjItem.mainKeyword = await getMainKeyword(ObjItem.korTitle)
+
+          if (ObjItem.mainKeyword.length === 0) {
+            ObjItem.mainKeyword = await getMainKeyword(ObjItem.korTitle, true)
           }
 
           ObjItem.options = options

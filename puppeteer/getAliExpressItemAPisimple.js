@@ -5,7 +5,7 @@ const cheerio = require("cheerio")
 const { GetAliProduct, GetDetailHtml } = require("../api/AliExpress")
 const { regExp_test } = require("../lib/userFunc")
 const { korTranslate } = require("./translate")
-const { getMainKeyword } = require("../puppeteer/keywordSourcing")
+const { getMainKeyword } = require("./keywordSourcing")
 const _ = require("lodash")
 
 const start = async ({ url, title, userID }) => {
