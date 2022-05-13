@@ -15,6 +15,7 @@ const Cookie = require("./models/Cookie")
 const { iHerbCode } = require("./api/iHerb")
 const findAmazonDetailAPIsimple = require("./puppeteer/getAmazonItemAPIsimple")
 const { findIherbDetailAPI, findIherbDetailSimple } = require("./puppeteer/getIherbItemAPIsimple")
+const findTaobaoDetailAPIsimple = require("./puppeteer/getTaobaoItemAPIsimple")
 const findAliExpressDetailAPIsimple = require("./puppeteer/getAliExpressItemAPisimple")
 const updateCafe24 = require("./puppeteer/updateCafe24")
 const mongoose = require("mongoose")
@@ -27,7 +28,9 @@ const {
 } = require("./api/Market")
 const cron = require("node-cron")
 
-cron.schedule("0 15 * * *", () => {
+// jtsjna@gmail.com
+
+cron.schedule("0 0,15 * * *", () => {
   try {
     console.log("schedule")
     IherbPriceSync()
@@ -47,6 +50,9 @@ database()
 
 const PORT = process.env.PORT || 3300
 const app = express()
+app.use(express.json({ limit: "50mb" }))
+app.use(express.urlencoded({ limit: "50mb", extended: false }))
+
 app.use(cors())
 app.use(bodyParser.json())
 
@@ -168,11 +174,21 @@ app.post("/amazon/isRegister", async (req, res) => {
       return
     }
 
-    const product = await Product.findOne({
-      userID: ObjectId(userInfo._id),
-      "options.key": asin,
-      isDelete: false,
-    })
+    let product = null
+    if (detailUrl.includes("taobao.com") || detailUrl.includes("tmall.com")) {
+      product = await Product.findOne({
+        userID: ObjectId(userInfo._id),
+        "basic.good_id": asin,
+        isDelete: false,
+      })
+    } else {
+      product = await Product.findOne({
+        userID: ObjectId(userInfo._id),
+        "options.key": asin,
+        isDelete: false,
+      })
+    }
+
     if (product) {
       res.json({
         registerType: 1,
@@ -237,6 +253,7 @@ app.post("/amazon/isRegister", async (req, res) => {
 app.post("/amazon/isRegisters", async (req, res) => {
   try {
     const { user, items } = req.body
+
     const userInfo = await User.findOne({
       email: user,
     })
@@ -247,35 +264,53 @@ app.post("/amazon/isRegisters", async (req, res) => {
 
     let response = []
 
-    if (items && Array.isArray(items)) {
+    if (items && Array.isArray(items) && items.length > 0) {
       const asinArr = items.map((item) => AmazonAsin(item))
 
-      const product = await Product.aggregate([
-        {
-          $match: {
-            userID: ObjectId(userInfo._id),
-            "options.key": { $in: asinArr },
-            isDelete: false,
-            $or: [
-              {
-                "basic.url": { $regex: `.*amazon.com.*` },
-              },
-              {
-                "basic.url": { $regex: `.*iherb.com.*` },
-              },
-              {
-                "basic.url": { $regex: `.*aliexpress.com/.*` },
-              },
-            ],
+      let product = null
+      if (items[0].detailUrl.includes("taobao.com") || items[0].detailUrl.includes("tmall.com")) {
+        product = await Product.aggregate([
+          {
+            $match: {
+              userID: ObjectId(userInfo._id),
+              "basic.good_id": { $in: asinArr },
+              isDelete: false,
+            },
           },
-        },
-        {
-          $project: {
-            "options.key": 1,
+          {
+            $project: {
+              "basic.good_id": 1,
+            },
           },
-        },
-        { $unwind: "$options" },
-      ])
+        ])
+      } else {
+        product = await Product.aggregate([
+          {
+            $match: {
+              userID: ObjectId(userInfo._id),
+              "options.key": { $in: asinArr },
+              isDelete: false,
+              $or: [
+                {
+                  "basic.url": { $regex: `.*amazon.com.*` },
+                },
+                {
+                  "basic.url": { $regex: `.*iherb.com.*` },
+                },
+                {
+                  "basic.url": { $regex: `.*aliexpress.com/.*` },
+                },
+              ],
+            },
+          },
+          {
+            $project: {
+              "options.key": 1,
+            },
+          },
+          { $unwind: "$options" },
+        ])
+      }
 
       const tempProducts = await TempProduct.aggregate([
         {
@@ -315,7 +350,15 @@ app.post("/amazon/isRegisters", async (req, res) => {
         }
         if (
           product.filter((pItem) => {
-            return pItem.options.key === asin
+            if (
+              items[0].detailUrl.includes("taobao.com") ||
+              items[0].detailUrl.includes("tmall.com")
+            ) {
+              return pItem.basic.good_id === asin
+            } else {
+              return pItem.options.key === asin
+            }
+            return false
           }).length > 0
         ) {
           // 등록됨
@@ -382,7 +425,6 @@ app.post("/amazon/isRegisters", async (req, res) => {
 app.post("/amazon/registerItem", async (req, res) => {
   try {
     const { detailUrl, user, image, title } = req.body
-
     const asin = AmazonAsin(detailUrl)
 
     // 0: 실패, 1: 등록됨, 2: 수집요청, 3: 수집대기
@@ -616,11 +658,21 @@ app.post("/amazon/collectionItems", async (req, res) => {
     setTimeout(async () => {
       try {
         for (const item of products) {
-          const product = await Product.findOne({
-            userID: ObjectId(userInfo._id),
-            "options.key": item.asin,
-            isDelete: false,
-          })
+          let product = null
+          if (item.detailUrl.includes("taobao.com") || item.detailUrl.includes("tmall.com")) {
+            product = await Product.findOne({
+              userID: ObjectId(userInfo._id),
+              "basic.good_id": item.asin,
+              isDelete: false,
+            })
+          } else {
+            product = await Product.findOne({
+              userID: ObjectId(userInfo._id),
+              "options.key": item.asin,
+              isDelete: false,
+            })
+          }
+
           if (!product) {
             const tempProduct = await TempProduct.findOne({
               userID: ObjectId(userInfo._id),
@@ -771,6 +823,57 @@ app.post("/amazon/collectionItems", async (req, res) => {
                         deliverCompany: detailItem.deliverCompany,
                         options: detailItem.options,
                         detailUrl: detailItem.detailUrl,
+                        isPrime: detailItem.isPrime,
+                        korTitle: detailItem.korTitle,
+                        titleArray: detailItem.titleArray,
+                        korTitleArray: detailItem.korTitleArray,
+                        prop: detailItem.prop,
+                        lastUpdate: moment().toDate(),
+                      },
+                    },
+                    {
+                      upsert: true,
+                      new: true,
+                    }
+                  )
+                }
+              } else if (
+                item.detailUrl.includes("taobao.com") ||
+                item.detailUrl.includes("tmall.com")
+              ) {
+                // 타오바오
+                console.log("item.detailUrl", item.detailUrl)
+                let detailItem = await findTaobaoDetailAPIsimple({
+                  url: item.detailUrl,
+                  userID: ObjectId(userInfo._id),
+                })
+
+                if (detailItem && detailItem.options && detailItem.options.length > 0) {
+                  await TempProduct.findOneAndUpdate(
+                    {
+                      userID: ObjectId(userInfo._id),
+                      good_id: detailItem.good_id,
+                    },
+                    {
+                      $set: {
+                        userID: ObjectId(userInfo._id),
+                        good_id: detailItem.good_id,
+                        brand: detailItem.brand,
+                        manufacture: detailItem.manufacture,
+                        title: detailItem.title,
+                        keyword: detailItem.keyword,
+                        mainKeyword: detailItem.mainKeyword,
+                        spec: detailItem.spec,
+                        mainImages: detailItem.mainImages,
+                        price: detailItem.price,
+                        salePrice: detailItem.salePrice,
+                        content: detailItem.content,
+                        shipPrice: detailItem.shipPrice, // 배송비
+                        deliverDate: detailItem.deliverDate, // 배송일
+                        purchaseLimitNumMax: detailItem.purchaseLimitNumMax, // 구매수량
+                        deliverCompany: detailItem.deliverCompany,
+                        options: detailItem.options,
+                        detailUrl: item.detailUrl,
                         isPrime: detailItem.isPrime,
                         korTitle: detailItem.korTitle,
                         titleArray: detailItem.titleArray,
