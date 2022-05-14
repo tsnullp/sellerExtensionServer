@@ -423,7 +423,9 @@ app.post("/amazon/registerItem", async (req, res) => {
   try {
     const { detailUrl, user, image, title } = req.body
     const asin = AmazonAsin(detailUrl)
-
+    console.log("detailUrl", detailUrl)
+    console.log("image", image)
+    console.log("title", title)
     // 0: 실패, 1: 등록됨, 2: 수집요청, 3: 수집대기
     if (!asin || !user || !image || !title || !detailUrl) {
       res.json({
