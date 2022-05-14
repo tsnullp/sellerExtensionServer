@@ -37,72 +37,76 @@ const getMainKeyword = async (keyword, only = false) => {
       userID: "5f0d5ff36fc75ec20d54c40b",
       productName: title,
     })
-
-    const myCategory = category.data.predictedCategoryName
-    let result = []
-    if (only) {
-      result = [...titleArr]
-    } else {
-      result = [
-        ...getPermutations(titleArr, 2).map((item) => item.join(" ")),
-        regExp_test(myCategory),
-      ]
-    }
-
-    let myKeyword = []
-
-    const promiseArray = result.map((item) => {
-      return new Promise(async (resolve, reject) => {
-        try {
-          const category = await CategoryPredict({
-            userID: "5f0d5ff36fc75ec20d54c40b",
-            productName: item,
-          })
-          // const category = await searchNaverKeyword({title: item, endSearch: false})
-          if (category.data.predictedCategoryName === myCategory) {
-            // console.log("category", productKeyword, " -- ",  category.data.predictedCategoryName)
-            myKeyword.push(item)
-          }
-          resolve()
-        } catch (e) {
-          reject(e)
-        }
-      })
-    })
-    await Promise.all(promiseArray)
-
-    let mainKeywordArray = []
-
-    for (const items of DimensionArray(myKeyword, 5)) {
-      const response = await NaverKeywordRel({ keyword: items.join(",") })
-
-      if (response) {
-        for (const item of items) {
-          const keywordObj = _.find(response.keywordList, { relKeyword: item.replace(/ /gi, "") })
-          if (keywordObj) {
-            mainKeywordArray.push({
-              ...keywordObj,
-              monthlyPcQcCnt: Number(keywordObj.monthlyPcQcCnt.toString().replace("< ", "")),
-              monthlyMobileQcCnt: Number(
-                keywordObj.monthlyMobileQcCnt.toString().replace("< ", "")
-              ),
-            })
-          }
-        }
+    if (category && category.data && category.data.predictedCategoryName) {
+      const myCategory = category.data.predictedCategoryName
+      let result = []
+      if (only) {
+        result = [...titleArr]
+      } else {
+        result = [
+          ...getPermutations(titleArr, 2).map((item) => item.join(" ")),
+          regExp_test(myCategory),
+        ]
       }
-      await sleep(200)
-    }
 
-    let mainKeyword = ""
-    mainKeywordArray = mainKeywordArray.sort(
-      (a, b) => b.monthlyPcQcCnt + b.monthlyMobileQcCnt - (a.monthlyPcQcCnt + a.monthlyMobileQcCnt)
-    )
-    if (mainKeywordArray.length > 0) {
-      mainKeyword = mainKeywordArray[0].relKeyword
-    }
+      let myKeyword = []
 
-    // await getNaverTitle({keyword: mainKeyword})
-    return mainKeyword
+      const promiseArray = result.map((item) => {
+        return new Promise(async (resolve, reject) => {
+          try {
+            const category = await CategoryPredict({
+              userID: "5f0d5ff36fc75ec20d54c40b",
+              productName: item,
+            })
+            // const category = await searchNaverKeyword({title: item, endSearch: false})
+            if (category.data.predictedCategoryName === myCategory) {
+              // console.log("category", productKeyword, " -- ",  category.data.predictedCategoryName)
+              myKeyword.push(item)
+            }
+            resolve()
+          } catch (e) {
+            reject(e)
+          }
+        })
+      })
+      await Promise.all(promiseArray)
+
+      let mainKeywordArray = []
+
+      for (const items of DimensionArray(myKeyword, 5)) {
+        const response = await NaverKeywordRel({ keyword: items.join(",") })
+
+        if (response) {
+          for (const item of items) {
+            const keywordObj = _.find(response.keywordList, { relKeyword: item.replace(/ /gi, "") })
+            if (keywordObj) {
+              mainKeywordArray.push({
+                ...keywordObj,
+                monthlyPcQcCnt: Number(keywordObj.monthlyPcQcCnt.toString().replace("< ", "")),
+                monthlyMobileQcCnt: Number(
+                  keywordObj.monthlyMobileQcCnt.toString().replace("< ", "")
+                ),
+              })
+            }
+          }
+        }
+        await sleep(200)
+      }
+
+      let mainKeyword = ""
+      mainKeywordArray = mainKeywordArray.sort(
+        (a, b) =>
+          b.monthlyPcQcCnt + b.monthlyMobileQcCnt - (a.monthlyPcQcCnt + a.monthlyMobileQcCnt)
+      )
+      if (mainKeywordArray.length > 0) {
+        mainKeyword = mainKeywordArray[0].relKeyword
+      }
+
+      // await getNaverTitle({keyword: mainKeyword})
+      return mainKeyword
+    } else {
+      return ""
+    }
   } catch (e) {
     console.log("getMainKeyword", e)
   }

@@ -104,156 +104,107 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
     console.log("getOptionsV2 시작")
     const response = await ItemSKUV2({ item_id: itemId })
 
-    if (response.skus) {
+    if (response && response.skus) {
       console.log("getOptionsV2 끝", response.skus.length)
-    } else {
-      console.log("getOptionsV2 실패")
-    }
-    const { title, sku_props, skus, main_imgs } = response
 
-    // tempMainImags.push(
-    //   item.pic.includes("https:") ? item.pic : `https:${item.pic}`
-    // )
+      const { title, sku_props, skus, main_imgs } = response
 
-    tempTitle = title
-    tempMainImages = main_imgs
+      // tempMainImags.push(
+      //   item.pic.includes("https:") ? item.pic : `https:${item.pic}`
+      // )
 
-    if (sku_props && sku_props.length > 0) {
-      let ii = 0
-      for (const item of sku_props) {
-        item.korTypeName = await korTranslate(item.prop_name.trim())
+      tempTitle = title
+      tempMainImages = main_imgs
 
-        try {
-          let valueNamesArr = []
+      if (sku_props && sku_props.length > 0) {
+        let ii = 0
+        for (const item of sku_props) {
+          item.korTypeName = await korTranslate(item.prop_name.trim())
 
-          for (const value of item.values) {
-            valueNamesArr.push(value.name.replace(/#/gi, "").trim())
-          }
+          try {
+            let valueNamesArr = []
 
-          const tempValueKor = await korTranslate(valueNamesArr.join("#"))
-          const tempValueKorArr = tempValueKor.split("#")
+            for (const value of item.values) {
+              valueNamesArr.push(value.name.replace(/#/gi, "").trim())
+            }
 
-          let i = 0
-          for (const value of item.values) {
-            value.korValueName = tempValueKorArr[i].trim()
+            const tempValueKor = await korTranslate(valueNamesArr.join("#"))
+            const tempValueKorArr = tempValueKor.split("#")
 
-            if (value.imageUrl) {
-              const imageUrl = value.imageUrl.replace("https:", "").replace("http:", "")
-              value.image = imageUrl.includes("http")
-                ? imageUrl
-                : imageUrl
-                ? `https:${imageUrl}`
-                : tempMainImages[0]
-              tempOptionImages.push({
-                vid: value.vid,
-                name: value.name,
-                korName: value.korValueName,
-                image: imageUrl.includes("http")
+            let i = 0
+            for (const value of item.values) {
+              value.korValueName = tempValueKorArr[i].trim()
+
+              if (value.imageUrl) {
+                const imageUrl = value.imageUrl.replace("https:", "").replace("http:", "")
+                value.image = imageUrl.includes("http")
                   ? imageUrl
                   : imageUrl
                   ? `https:${imageUrl}`
-                  : tempMainImages[0],
-              })
-            } else {
-              if (ii === 0) {
-                value.image = tempMainImages && tempMainImages.length > 0 ? tempMainImages[0] : null
+                  : tempMainImages[0]
+                tempOptionImages.push({
+                  vid: value.vid,
+                  name: value.name,
+                  korName: value.korValueName,
+                  image: imageUrl.includes("http")
+                    ? imageUrl
+                    : imageUrl
+                    ? `https:${imageUrl}`
+                    : tempMainImages[0],
+                })
+              } else {
+                if (ii === 0) {
+                  value.image =
+                    tempMainImages && tempMainImages.length > 0 ? tempMainImages[0] : null
+                }
               }
+              i++
             }
-            i++
-          }
-        } catch (e) {
-          console.log("번역 오류")
+          } catch (e) {
+            console.log("번역 오류")
 
-          tempOptionImages = []
-          for (const value of item.values) {
-            value.korValueName = await korTranslate(value.name)
+            tempOptionImages = []
+            for (const value of item.values) {
+              value.korValueName = await korTranslate(value.name)
 
-            if (value.imageUrl) {
-              const imageUrl = value.imageUrl.replace("https:", "").replace("http:", "")
-              value.image = imageUrl.includes("http")
-                ? imageUrl
-                : imageUrl
-                ? `https:${imageUrl}`
-                : tempMainImages[0]
-              tempOptionImages.push({
-                vid: value.vid,
-                name: value.name,
-                korName: value.korValueName,
-                image: imageUrl.includes("http")
+              if (value.imageUrl) {
+                const imageUrl = value.imageUrl.replace("https:", "").replace("http:", "")
+                value.image = imageUrl.includes("http")
                   ? imageUrl
                   : imageUrl
                   ? `https:${imageUrl}`
-                  : tempMainImages[0],
-              })
-            } else {
-              if (ii === 0) {
-                value.image = tempMainImages && tempMainImages.length > 0 ? tempMainImages[0] : null
+                  : tempMainImages[0]
+                tempOptionImages.push({
+                  vid: value.vid,
+                  name: value.name,
+                  korName: value.korValueName,
+                  image: imageUrl.includes("http")
+                    ? imageUrl
+                    : imageUrl
+                    ? `https:${imageUrl}`
+                    : tempMainImages[0],
+                })
+              } else {
+                if (ii === 0) {
+                  value.image =
+                    tempMainImages && tempMainImages.length > 0 ? tempMainImages[0] : null
+                }
               }
             }
           }
+          ii++
+          // console.log("ITEM__", item)
         }
-        ii++
-        // console.log("ITEM__", item)
-      }
-      console.log("번역 끝")
-      if (sku_props.length === 1) {
-        for (const pItem of sku_props[0].values) {
-          const propPath = `${sku_props[0].pid}:${pItem.vid}`
-          let skuId = null
-          let price,
-            promotion_price,
-            quantity = 0
-
-          const filterSku = skus
-            .filter((item) => item.props_ids === propPath)
-            .filter((item) => Number(item.stock) > 0)
-          if (filterSku.length > 0) {
-            skuId = filterSku[0].skuid
-            price = filterSku[0].sale_price
-            promotion_price = filterSku[0].sale_price
-            quantity = filterSku[0].stock
-
-            let imageUrl = null
-            if (pItem.imageUrl) {
-              imageUrl = pItem.imageUrl.replace("https:", "").replace("http:", "")
-            } else {
-              imageUrl = main_imgs[0]
-            }
-
-            tempOption.push({
-              key: skuId,
-              propPath,
-              price: price ? price : 0,
-              promotion_price: promotion_price ? promotion_price : 0,
-              stock: quantity ? quantity : 0,
-              image: imageUrl && imageUrl.includes("http") ? imageUrl : `https:${imageUrl}`,
-              attributes: [
-                {
-                  typeName: sku_props[0].name,
-                  attributeTypeName: sku_props[0].korTypeName,
-                  valueName: pItem.name,
-                  attributeValueName: pItem.korValueName,
-                },
-              ],
-              disabled: skuId ? false : true,
-              active: skuId ? true : false,
-              value: pItem.name,
-              korValue: pItem.korValueName,
-            })
-          }
-        }
-      } else if (sku_props.length === 2) {
-        for (const pItem of sku_props[0].values) {
-          for (const vItem of sku_props[1].values) {
-            let propPath = `${sku_props[0].pid}:${pItem.vid};${sku_props[1].pid}:${vItem.vid}`
-
-            // console.log("propPath", propPath)
+        console.log("번역 끝")
+        if (sku_props.length === 1) {
+          for (const pItem of sku_props[0].values) {
+            const propPath = `${sku_props[0].pid}:${pItem.vid}`
             let skuId = null
             let price,
               promotion_price,
               quantity = 0
-            // console.log("skus", skus)
-            let filterSku = skus
+
+            const filterSku = skus
               .filter((item) => item.props_ids === propPath)
               .filter((item) => Number(item.stock) > 0)
             if (filterSku.length > 0) {
@@ -261,23 +212,13 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
               price = filterSku[0].sale_price
               promotion_price = filterSku[0].sale_price
               quantity = filterSku[0].stock
-            } else {
-              propPath = `${sku_props[1].pid}:${vItem.vid};${sku_props[0].pid}:${pItem.vid}`
-              filterSku = skus.filter((item) => item.props_ids === propPath)
-              if (filterSku.length > 0) {
-                skuId = filterSku[0].skuid
-                price = filterSku[0].sale_price
-                promotion_price = filterSku[0].sale_price
-                quantity = filterSku[0].stock
-              }
-            }
 
-            if (filterSku.length > 0) {
-              let imageUrl = pItem.imageUrl
-                ? pItem.imageUrl.replace("https:", "").replace("http:", "")
-                : vItem.imageUrl
-                ? vItem.imageUrl.replace("https:", "").replace("http:", "")
-                : null
+              let imageUrl = null
+              if (pItem.imageUrl) {
+                imageUrl = pItem.imageUrl.replace("https:", "").replace("http:", "")
+              } else {
+                imageUrl = main_imgs[0]
+              }
 
               tempOption.push({
                 key: skuId,
@@ -285,7 +226,7 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
                 price: price ? price : 0,
                 promotion_price: promotion_price ? promotion_price : 0,
                 stock: quantity ? quantity : 0,
-                image: imageUrl && imageUrl.includes("https") ? imageUrl : `https:${imageUrl}`,
+                image: imageUrl && imageUrl.includes("http") ? imageUrl : `https:${imageUrl}`,
                 attributes: [
                   {
                     typeName: sku_props[0].name,
@@ -293,32 +234,25 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
                     valueName: pItem.name,
                     attributeValueName: pItem.korValueName,
                   },
-                  {
-                    typeName: sku_props[1].name,
-                    attributeTypeName: sku_props[1].korTypeName,
-                    valueName: vItem.name,
-                    attributeValueName: vItem.korValueName,
-                  },
                 ],
                 disabled: skuId ? false : true,
                 active: skuId ? true : false,
-                korValue: `${pItem.korValueName} ${vItem.korValueName}`,
+                value: pItem.name,
+                korValue: pItem.korValueName,
               })
             }
           }
-        }
-      } else if (sku_props.length === 3) {
-        //https://detail.tmall.com/item.htm?id=613191480612
-        for (const pItem of sku_props[0].values) {
-          for (const vItem of sku_props[1].values) {
-            for (const v2Item of sku_props[2].values) {
-              let propPath = `${sku_props[2].pid}:${v2Item.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[0].pid}:${pItem.vid}`
+        } else if (sku_props.length === 2) {
+          for (const pItem of sku_props[0].values) {
+            for (const vItem of sku_props[1].values) {
+              let propPath = `${sku_props[0].pid}:${pItem.vid};${sku_props[1].pid}:${vItem.vid}`
 
+              // console.log("propPath", propPath)
               let skuId = null
               let price,
                 promotion_price,
                 quantity = 0
-
+              // console.log("skus", skus)
               let filterSku = skus
                 .filter((item) => item.props_ids === propPath)
                 .filter((item) => Number(item.stock) > 0)
@@ -326,15 +260,15 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
                 skuId = filterSku[0].skuid
                 price = filterSku[0].sale_price
                 promotion_price = filterSku[0].sale_price
-                quantity = filterSku[0].quantity
+                quantity = filterSku[0].stock
               } else {
-                propPath = `${sku_props[0].pid}:${pItem.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[2].pid}:${v2Item.vid}`
+                propPath = `${sku_props[1].pid}:${vItem.vid};${sku_props[0].pid}:${pItem.vid}`
                 filterSku = skus.filter((item) => item.props_ids === propPath)
                 if (filterSku.length > 0) {
                   skuId = filterSku[0].skuid
                   price = filterSku[0].sale_price
                   promotion_price = filterSku[0].sale_price
-                  quantity = filterSku[0].quantity
+                  quantity = filterSku[0].stock
                 }
               }
 
@@ -343,7 +277,7 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
                   ? pItem.imageUrl.replace("https:", "").replace("http:", "")
                   : vItem.imageUrl
                   ? vItem.imageUrl.replace("https:", "").replace("http:", "")
-                  : v2Item.imageUrl.replace("https:", "")
+                  : null
 
                 tempOption.push({
                   key: skuId,
@@ -365,158 +299,227 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
                       valueName: vItem.name,
                       attributeValueName: vItem.korValueName,
                     },
-                    {
-                      typeName: sku_props[2].name,
-                      attributeTypeName: sku_props[2].korTypeName,
-                      valueName: v2Item.name,
-                      attributeValueName: v2Item.korValueName,
-                    },
                   ],
                   disabled: skuId ? false : true,
                   active: skuId ? true : false,
-                  korValue: `${pItem.korValueName} ${vItem.korValueName} ${v2Item.korValueName}`,
+                  korValue: `${pItem.korValueName} ${vItem.korValueName}`,
                 })
               }
             }
           }
+        } else if (sku_props.length === 3) {
+          //https://detail.tmall.com/item.htm?id=613191480612
+          for (const pItem of sku_props[0].values) {
+            for (const vItem of sku_props[1].values) {
+              for (const v2Item of sku_props[2].values) {
+                let propPath = `${sku_props[2].pid}:${v2Item.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[0].pid}:${pItem.vid}`
+
+                let skuId = null
+                let price,
+                  promotion_price,
+                  quantity = 0
+
+                let filterSku = skus
+                  .filter((item) => item.props_ids === propPath)
+                  .filter((item) => Number(item.stock) > 0)
+                if (filterSku.length > 0) {
+                  skuId = filterSku[0].skuid
+                  price = filterSku[0].sale_price
+                  promotion_price = filterSku[0].sale_price
+                  quantity = filterSku[0].quantity
+                } else {
+                  propPath = `${sku_props[0].pid}:${pItem.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[2].pid}:${v2Item.vid}`
+                  filterSku = skus.filter((item) => item.props_ids === propPath)
+                  if (filterSku.length > 0) {
+                    skuId = filterSku[0].skuid
+                    price = filterSku[0].sale_price
+                    promotion_price = filterSku[0].sale_price
+                    quantity = filterSku[0].quantity
+                  }
+                }
+
+                if (filterSku.length > 0) {
+                  let imageUrl = pItem.imageUrl
+                    ? pItem.imageUrl.replace("https:", "").replace("http:", "")
+                    : vItem.imageUrl
+                    ? vItem.imageUrl.replace("https:", "").replace("http:", "")
+                    : v2Item.imageUrl.replace("https:", "")
+
+                  tempOption.push({
+                    key: skuId,
+                    propPath,
+                    price: price ? price : 0,
+                    promotion_price: promotion_price ? promotion_price : 0,
+                    stock: quantity ? quantity : 0,
+                    image: imageUrl && imageUrl.includes("https") ? imageUrl : `https:${imageUrl}`,
+                    attributes: [
+                      {
+                        typeName: sku_props[0].name,
+                        attributeTypeName: sku_props[0].korTypeName,
+                        valueName: pItem.name,
+                        attributeValueName: pItem.korValueName,
+                      },
+                      {
+                        typeName: sku_props[1].name,
+                        attributeTypeName: sku_props[1].korTypeName,
+                        valueName: vItem.name,
+                        attributeValueName: vItem.korValueName,
+                      },
+                      {
+                        typeName: sku_props[2].name,
+                        attributeTypeName: sku_props[2].korTypeName,
+                        valueName: v2Item.name,
+                        attributeValueName: v2Item.korValueName,
+                      },
+                    ],
+                    disabled: skuId ? false : true,
+                    active: skuId ? true : false,
+                    korValue: `${pItem.korValueName} ${vItem.korValueName} ${v2Item.korValueName}`,
+                  })
+                }
+              }
+            }
+          }
         }
+
+        // for(const item of sku_props){
+        //   console.log("sku_props", item)
+        // }
+
+        tempProp = sku_props
+
+        // for(const sku of sku_base.skus){
+
+        //   const propPath = sku.propPath.substring(1, sku.propPath.length -1)
+        //   const propPathArr = propPath.split(";")
+        //   let value = ``
+        //   let korValue = ``
+        //   let image = null
+        //   for(const path of propPathArr){
+        //     if(path.split(":").length === 2){
+        //       const pid = path.split(":")[0]
+        //       const vid = path.split(":")[1]
+        //       const propsValue = response.prop.filter(item => item.pid === pid)[0].values.filter(item => item.vid === vid)[0]
+        //       value += `${propsValue.name} `
+        //       korValue += `${propsValue.korValue} `
+        //       if(propsValue.image){
+        //         image = `https:${propsValue.image}`
+        //       }
+        //     }
+        //   }
+
+        //   tempOption.push({
+        //     key: sku.skuId,
+        //     value: value.trim(),
+        //     korValue: korValue.length > 0 ? korValue.trim() : "단일상품",
+        //     image: image ? image : `https:${response.item.pic}`,
+        //     price: skus[sku.skuId].promotion_price ? skus[sku.skuId].promotion_price :skus[sku.skuId].price,
+        //     stock: skus[sku.skuId].quantity,
+        //     disabled: false,
+        //     active: true
+        //   })
+
+        // }
+      } else {
+        for (const item of skus.filter((item) => Number(item.stock) > 0)) {
+          tempOption.push({
+            key: item.skuid,
+            value: "单一商品",
+            korValue: "단일상품",
+            image: tempMainImages && tempMainImages.length > 0 ? tempMainImages[0] : null,
+            price: item.sale_price,
+            stock: item.stock,
+            disabled: false,
+            active: true,
+            attributes: [
+              {
+                attributeTypeName: "종류",
+                attributeValueName: "단일상품",
+              },
+            ],
+          })
+        }
+        // tempOption.push({
+        //   key: "1",
+        //   value: "单一商品",
+        //   korValue: "단일상품",
+        //   image: `https:${item.pic}`,
+        //   price: item.promotion_price ? item.promotion_price : item.price,
+        //   stock: item.quantity,
+        //   disabled: false,
+        //   active: true
+        // })
       }
 
-      // for(const item of sku_props){
-      //   console.log("sku_props", item)
-      // }
-
-      tempProp = sku_props
-
-      // for(const sku of sku_base.skus){
-
-      //   const propPath = sku.propPath.substring(1, sku.propPath.length -1)
-      //   const propPathArr = propPath.split(";")
-      //   let value = ``
-      //   let korValue = ``
-      //   let image = null
-      //   for(const path of propPathArr){
-      //     if(path.split(":").length === 2){
-      //       const pid = path.split(":")[0]
-      //       const vid = path.split(":")[1]
-      //       const propsValue = response.prop.filter(item => item.pid === pid)[0].values.filter(item => item.vid === vid)[0]
-      //       value += `${propsValue.name} `
-      //       korValue += `${propsValue.korValue} `
-      //       if(propsValue.image){
-      //         image = `https:${propsValue.image}`
-      //       }
-      //     }
-      //   }
-
-      //   tempOption.push({
-      //     key: sku.skuId,
-      //     value: value.trim(),
-      //     korValue: korValue.length > 0 ? korValue.trim() : "단일상품",
-      //     image: image ? image : `https:${response.item.pic}`,
-      //     price: skus[sku.skuId].promotion_price ? skus[sku.skuId].promotion_price :skus[sku.skuId].price,
-      //     stock: skus[sku.skuId].quantity,
-      //     disabled: false,
-      //     active: true
-      //   })
-
-      // }
+      tempOption = tempOption.filter((item) => {
+        if (item.korValue.includes("고객")) {
+          return false
+        }
+        if (item.korValue.includes("커스텀")) {
+          return false
+        }
+        if (item.korValue.includes("연락")) {
+          return false
+        }
+        if (item.korValue.includes("문의")) {
+          return false
+        }
+        if (item.korValue.includes("주문")) {
+          return false
+        }
+        if (item.korValue.includes("참고")) {
+          return false
+        }
+        if (item.korValue.includes("이벤트")) {
+          return false
+        }
+        if (item.korValue.includes("맞춤")) {
+          return false
+        }
+        if (item.korValue.includes("상담")) {
+          return false
+        }
+        if (item.korValue.includes("사용자")) {
+          return false
+        }
+        if (item.korValue.includes("옵션")) {
+          return false
+        }
+        if (item.korValue.includes("사진")) {
+          return false
+        }
+        if (item.korValue.includes("비고")) {
+          return false
+        }
+        if (item.korValue.includes("무료")) {
+          return false
+        }
+        if (item.korValue.includes("Express")) {
+          return false
+        }
+        if (item.korValue.includes("예약")) {
+          return false
+        }
+        if (item.korValue.includes("메시지")) {
+          return false
+        }
+        if (item.korValue.includes("서비스")) {
+          return false
+        }
+        if (item.korValue.includes("구독")) {
+          return false
+        }
+        if (item.korValue.includes("경품")) {
+          return false
+        }
+        if (item.korValue.includes(">>>")) {
+          return false
+        }
+        return true
+      })
     } else {
-      for (const item of skus.filter((item) => Number(item.stock) > 0)) {
-        tempOption.push({
-          key: item.skuid,
-          value: "单一商品",
-          korValue: "단일상품",
-          image: tempMainImages && tempMainImages.length > 0 ? tempMainImages[0] : null,
-          price: item.sale_price,
-          stock: item.stock,
-          disabled: false,
-          active: true,
-          attributes: [
-            {
-              attributeTypeName: "종류",
-              attributeValueName: "단일상품",
-            },
-          ],
-        })
-      }
-      // tempOption.push({
-      //   key: "1",
-      //   value: "单一商品",
-      //   korValue: "단일상품",
-      //   image: `https:${item.pic}`,
-      //   price: item.promotion_price ? item.promotion_price : item.price,
-      //   stock: item.quantity,
-      //   disabled: false,
-      //   active: true
-      // })
+      console.log("getOptionsV2 실패")
     }
-
-    tempOption = tempOption.filter((item) => {
-      if (item.korValue.includes("고객")) {
-        return false
-      }
-      if (item.korValue.includes("커스텀")) {
-        return false
-      }
-      if (item.korValue.includes("연락")) {
-        return false
-      }
-      if (item.korValue.includes("문의")) {
-        return false
-      }
-      if (item.korValue.includes("주문")) {
-        return false
-      }
-      if (item.korValue.includes("참고")) {
-        return false
-      }
-      if (item.korValue.includes("이벤트")) {
-        return false
-      }
-      if (item.korValue.includes("맞춤")) {
-        return false
-      }
-      if (item.korValue.includes("상담")) {
-        return false
-      }
-      if (item.korValue.includes("사용자")) {
-        return false
-      }
-      if (item.korValue.includes("옵션")) {
-        return false
-      }
-      if (item.korValue.includes("사진")) {
-        return false
-      }
-      if (item.korValue.includes("비고")) {
-        return false
-      }
-      if (item.korValue.includes("무료")) {
-        return false
-      }
-      if (item.korValue.includes("Express")) {
-        return false
-      }
-      if (item.korValue.includes("예약")) {
-        return false
-      }
-      if (item.korValue.includes("메시지")) {
-        return false
-      }
-      if (item.korValue.includes("서비스")) {
-        return false
-      }
-      if (item.korValue.includes("구독")) {
-        return false
-      }
-      if (item.korValue.includes("경품")) {
-        return false
-      }
-      if (item.korValue.includes(">>>")) {
-        return false
-      }
-      return true
-    })
   } catch (e) {
     console.log("eeee", e)
     // try {
