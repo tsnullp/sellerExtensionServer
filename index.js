@@ -574,7 +574,7 @@ app.post("/amazon/getCollectionItem", async (req, res) => {
     const registerProducts = await Product.find({
       userID: ObjectId(userInfo._id),
       isDelete: false,
-      "options.key": { $in: asinArr },
+      "basic.good_id": { $in: asinArr },
     })
 
     const tempArr = await TempProduct.find({
@@ -586,6 +586,9 @@ app.post("/amazon/getCollectionItem", async (req, res) => {
       let isRegister = false
       for (const rItem of registerProducts) {
         if (rItem.options.filter((fItem) => fItem.key === item.asin).length > 0) {
+          isRegister = true
+        }
+        if (rItem.basic.good_id === item.asin) {
           isRegister = true
         }
       }
