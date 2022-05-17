@@ -5,9 +5,10 @@ const {
   ItemDescriptionV2,
   ItemDetails,
 } = require("../api/Taobao")
-const { AmazonAsin } = require("../lib/userFunc")
+const { AmazonAsin, regExp_test } = require("../lib/userFunc")
 const { korTranslate } = require("./translate")
 const { getMainKeyword } = require("./keywordSourcing")
+const { searchKeywordCategory } = require("../puppeteer/categorySourcing")
 
 const start = async ({ url, cnTitle, userID, orginalTitle }) => {
   const ObjItem = {
@@ -49,6 +50,16 @@ const start = async ({ url, cnTitle, userID, orginalTitle }) => {
             ObjItem.title = cnTitle
             ObjItem.korTitle = await korTranslate(cnTitle)
           }
+          let titleArray = []
+          const keywordResponse = await searchKeywordCategory({ keyword: ObjItem.korTitle })
+          if (keywordResponse.intersectionTerms) {
+            titleArray.push(...keywordResponse.intersectionTerms.map((mItem) => regExp_test(mItem)))
+          }
+          if (keywordResponse.terms) {
+            titleArray.push(...keywordResponse.terms.map((mItem) => regExp_test(mItem)))
+          }
+
+          ObjItem.korTitle = titleArray.join(" ")
 
           ObjItem.mainKeyword = await getMainKeyword(ObjItem.korTitle)
 
@@ -64,6 +75,7 @@ const start = async ({ url, cnTitle, userID, orginalTitle }) => {
 
           resolve()
         } catch (e) {
+          console.log("0000", e)
           reject(e)
         }
       }),
