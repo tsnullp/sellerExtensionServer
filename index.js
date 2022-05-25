@@ -175,7 +175,11 @@ app.post("/amazon/isRegister", async (req, res) => {
     }
 
     let product = null
-    if (detailUrl.includes("taobao.com") || detailUrl.includes("tmall.com")) {
+    if (
+      detailUrl.includes("taobao.com") ||
+      detailUrl.includes("tmall.com") ||
+      detailUrl.includes("aliexpress.com")
+    ) {
       product = await Product.findOne({
         userID: ObjectId(userInfo._id),
         "basic.good_id": asin,
@@ -268,7 +272,11 @@ app.post("/amazon/isRegisters", async (req, res) => {
       const asinArr = items.map((item) => AmazonAsin(item))
 
       let product = null
-      if (items[0].includes("taobao.com") || items[0].includes("tmall.com")) {
+      if (
+        items[0].includes("taobao.com") ||
+        items[0].includes("tmall.com") ||
+        items[0].includes("aliexpress.com")
+      ) {
         product = await Product.aggregate([
           {
             $match: {
@@ -298,7 +306,7 @@ app.post("/amazon/isRegisters", async (req, res) => {
                   "basic.url": { $regex: `.*iherb.com.*` },
                 },
                 {
-                  "basic.url": { $regex: `.*aliexpress.com/.*` },
+                  "basic.url": { $regex: `.*aliexpress.com.*` },
                 },
               ],
             },
@@ -345,12 +353,19 @@ app.post("/amazon/isRegisters", async (req, res) => {
       // 0: 실패, 1: 등록됨, 2: 수집요청, 3: 수집대기, 4: 수집완려, 5: 수집실패, 6: 삭제
       for (const detailUrl of items) {
         const asin = AmazonAsin(detailUrl)
+
         if (!asin) {
           continue
         }
+
         if (
           product.filter((pItem) => {
-            if (items[0].includes("taobao.com") || items[0].includes("tmall.com")) {
+            if (
+              items[0].includes("taobao.com") ||
+              items[0].includes("tmall.com") ||
+              items[0].includes("aliexpress.com")
+            ) {
+              console.log("pItem.basic.good_id", pItem.basic.good_id)
               return pItem.basic.good_id === asin
             } else {
               return pItem.options.key === asin
