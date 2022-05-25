@@ -799,6 +799,7 @@ app.post("/amazon/collectionItems", async (req, res) => {
                   url: item.detailUrl,
                   userID: ObjectId(userInfo._id),
                 })
+                console.log("detailItem", detailItem)
                 if (detailItem) {
                   await TempProduct.findOneAndUpdate(
                     {

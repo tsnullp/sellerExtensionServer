@@ -56,6 +56,30 @@ const start = async ({ url, title, userID }) => {
             shipPrice = Number(shippingModule.freightCalculateInfo.freight.freightAmount.value)
             deliverDate = shippingModule.freightCalculateInfo.freight.deliveryDateDisplay
             deliverCompany = shippingModule.freightCalculateInfo.freight.company
+          } else if (
+            shippingModule &&
+            shippingModule.generalFreightInfo &&
+            shippingModule.generalFreightInfo.originalLayoutResultList &&
+            Array.isArray(shippingModule.generalFreightInfo.originalLayoutResultList) &&
+            shippingModule.generalFreightInfo.originalLayoutResultList.length > 0
+          ) {
+            const utParams = JSON.parse(
+              shippingModule.generalFreightInfo.originalLayoutResultList[0].bizData.utParams
+            )
+
+            deliverCompany =
+              shippingModule.generalFreightInfo.originalLayoutResultList[0].bizData
+                .deliveryProviderName
+            if (
+              shippingModule.generalFreightInfo.originalLayoutResultList[0].bizData.shippingFee ===
+              "free"
+            ) {
+              shipPrice = 0
+            } else {
+              shipPrice =
+                shippingModule.generalFreightInfo.originalLayoutResultList[0].bizData.displayAmount
+            }
+            deliverDate = utParams.deliveryDate
           }
 
           if (quantityModule && quantityModule.purchaseLimitNumMax) {
@@ -232,7 +256,7 @@ const start = async ({ url, title, userID }) => {
             .map((item) => {
               // console.log("skuActivityAmount", item.skuVal.kuActivityAmount)
               // console.log("skuAmount:", item.skuVal.skuAmount)
-              // console.log("item", item)
+              console.log("item", item)
               let image = null
               let value = ""
               let korValue = ""
