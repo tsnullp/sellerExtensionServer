@@ -2,7 +2,7 @@ const mongoose = require("mongoose")
 
 mongoose.Promise = global.Promise
 
-const MONGODB_URI = "mongodb://tsnullp:xotjr313#!#@14.4.2.100:21210/?authSource=seller"
+const MONGODB_URI = "mongodb://tsnullp:xotjr313#!#@14.4.2.104:21210/?authSource=seller"
 
 module.exports = function async() {
   try {
