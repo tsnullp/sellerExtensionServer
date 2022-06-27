@@ -1093,7 +1093,7 @@ const IherbPriceSync = async () => {
       },
     },
   ])
-
+  console.log("products", products.length)
   for (const product of products) {
     let changePrice = false
     let chagneStock = false

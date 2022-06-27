@@ -7,6 +7,7 @@ const { regExp_test } = require("../lib/userFunc")
 const { korTranslate } = require("./translate")
 const { getMainKeyword } = require("./keywordSourcing")
 const _ = require("lodash")
+const { searchKeywordCategory } = require("../puppeteer/categorySourcing")
 
 const start = async ({ url, title, userID }) => {
   const ObjItem = {
@@ -93,9 +94,23 @@ const start = async ({ url, title, userID }) => {
 
           if (!title || title.length === 0) {
             ObjItem.korTitle = regExp_test(titleModule.subject.trim())
+
+            let titleArray = []
+            const keywordResponse = await searchKeywordCategory({ keyword: ObjItem.korTitle })
+            if (keywordResponse.intersectionTerms) {
+              titleArray.push(
+                ...keywordResponse.intersectionTerms.map((mItem) => regExp_test(mItem))
+              )
+            }
+            if (keywordResponse.terms) {
+              titleArray.push(...keywordResponse.terms.map((mItem) => regExp_test(mItem)))
+            }
+
+            ObjItem.korTitle = titleArray.join(" ")
           } else {
             ObjItem.korTitle = regExp_text(title.trim())
           }
+
           ObjItem.mainKeyword = await getMainKeyword(ObjItem.korTitle)
 
           if (ObjItem.mainKeyword.length === 0) {
@@ -104,10 +119,12 @@ const start = async ({ url, title, userID }) => {
 
           ObjItem.keyword = []
           if (pageModule && pageModule.keywords && pageModule.keywords.length > 0) {
-            const keywords = await korTranslate(pageModule.keywords.trim())
-            ObjItem.keyword = keywords.split(",").map((item) => {
-              return regExp_test(item).trim()
-            })
+            if (!pageModule.keywords.includes("Aliexpress")) {
+              const keywords = await korTranslate(pageModule.keywords.trim())
+              ObjItem.keyword = keywords.split(",").map((item) => {
+                return regExp_test(item).trim()
+              })
+            }
           }
           let brandList = await Brand.find(
             {
