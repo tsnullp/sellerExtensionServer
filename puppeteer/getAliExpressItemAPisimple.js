@@ -116,6 +116,12 @@ const start = async ({ url, title, userID }) => {
               .replace("ins", "")
               .replace("일본식", "")
               .replace("일본", "")
+              .replace("한국어", "")
+              .replace("한국", "")
+              .replace("주최자", "")
+              .replace(" pu ", " ")
+              .replace("Dropshipping", "")
+              .replace("dropshipping", "")
             let tempTitleArray = tempTitle.split(" ").filter((item) => item.length > 0)
             ObjItem.korTitle = tempTitleArray.join(" ")
           } else {
