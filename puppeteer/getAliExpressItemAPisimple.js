@@ -107,6 +107,17 @@ const start = async ({ url, title, userID }) => {
             }
 
             ObjItem.korTitle = titleArray.join(" ")
+
+            let tempTitle = ObjItem.korTitle
+              .replace("크리에이티브", "")
+              .replace("크리 에이 티브", "")
+              .replace("어린이", "")
+              .replace("유아", "")
+              .replace("ins", "")
+              .replace("일본식", "")
+              .replace("일본", "")
+            let tempTitleArray = tempTitle.split(" ").filter((item) => item.length > 0)
+            ObjItem.korTitle = tempTitleArray.join(" ")
           } else {
             ObjItem.korTitle = regExp_text(title.trim())
           }
