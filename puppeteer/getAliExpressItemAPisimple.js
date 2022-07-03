@@ -93,17 +93,15 @@ const start = async ({ url, title, userID }) => {
           ObjItem.deliverCompany = deliverCompany
 
           if (!title || title.length === 0) {
-            ObjItem.korTitle = regExp_test(titleModule.subject.trim())
+            ObjItem.korTitle = titleModule.subject.trim()
 
             let titleArray = []
             const keywordResponse = await searchKeywordCategory({ keyword: ObjItem.korTitle })
             if (keywordResponse.intersectionTerms) {
-              titleArray.push(
-                ...keywordResponse.intersectionTerms.map((mItem) => regExp_test(mItem))
-              )
+              titleArray.push(...keywordResponse.intersectionTerms.map((mItem) => mItem))
             }
             if (keywordResponse.terms) {
-              titleArray.push(...keywordResponse.terms.map((mItem) => regExp_test(mItem)))
+              titleArray.push(...keywordResponse.terms.map((mItem) => mItem))
             }
 
             ObjItem.korTitle = titleArray.join(" ")
@@ -125,7 +123,7 @@ const start = async ({ url, title, userID }) => {
             let tempTitleArray = tempTitle.split(" ").filter((item) => item.length > 0)
             ObjItem.korTitle = tempTitleArray.join(" ")
           } else {
-            ObjItem.korTitle = regExp_text(title.trim())
+            ObjItem.korTitle = title.trim()
           }
 
           ObjItem.mainKeyword = await getMainKeyword(ObjItem.korTitle)
