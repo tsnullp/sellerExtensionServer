@@ -1042,7 +1042,7 @@ app.post("/amazon/aliText", async (req, res) => {
 app.post("/ali/cookie", async (req, res) => {
   try {
     const { xman_t } = req.body
-    if (!xman_t || !xman_t.includes("==")) {
+    if (!xman_t || !xman_t.includes("==") || xman_t.length > 100) {
       res.json({
         message: "fail",
       })
