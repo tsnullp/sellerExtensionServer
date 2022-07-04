@@ -675,239 +675,243 @@ app.post("/amazon/collectionItems", async (req, res) => {
     setTimeout(async () => {
       try {
         for (const item of products) {
-          let product = null
-          if (item.detailUrl.includes("taobao.com") || item.detailUrl.includes("tmall.com")) {
-            product = await Product.findOne({
-              userID: ObjectId(userInfo._id),
-              "basic.good_id": item.asin,
-              isDelete: false,
-            })
-          } else {
-            product = await Product.findOne({
-              userID: ObjectId(userInfo._id),
-              "options.key": item.asin,
-              isDelete: false,
-            })
-          }
+          try {
+            let product = null
+            if (item.detailUrl.includes("taobao.com") || item.detailUrl.includes("tmall.com")) {
+              product = await Product.findOne({
+                userID: ObjectId(userInfo._id),
+                "basic.good_id": item.asin,
+                isDelete: false,
+              })
+            } else {
+              product = await Product.findOne({
+                userID: ObjectId(userInfo._id),
+                "options.key": item.asin,
+                isDelete: false,
+              })
+            }
 
-          if (!product) {
-            const tempProduct = await TempProduct.findOne({
-              userID: ObjectId(userInfo._id),
-              good_id: item.asin,
-            })
-            if (!tempProduct) {
-              if (item.detailUrl.includes("amazon.com")) {
-                // 아마존
-                let detailItem = await findAmazonDetailAPIsimple({
-                  url: item.detailUrl,
-                  userID: ObjectId(userInfo._id),
-                })
-                if (detailItem) {
-                  await TempProduct.findOneAndUpdate(
-                    {
-                      userID: ObjectId(userInfo._id),
-                      good_id: item.asin,
-                    },
-                    {
-                      $set: {
-                        userID: ObjectId(userInfo._id),
-                        good_id: item.asin,
-                        brand: detailItem.brand,
-                        manufacture: detailItem.manufacture,
-                        title: detailItem.title,
-                        keyword: detailItem.keyword,
-                        mainImages: detailItem.mainImages,
-                        price: detailItem.price,
-                        salePrice: detailItem.salePrice,
-                        content: detailItem.content,
-                        options: detailItem.options,
-                        detailUrl: detailItem.detailUrl,
-                        isPrime: detailItem.isPrime,
-                        korTitle: detailItem.korTitle,
-                        titleArray: detailItem.titleArray,
-                        titkorTitleArrayeArray: detailItem.korTitleArray,
-                        feature: detailItem.feature,
-                        spec: detailItem.spec,
-                        prop: detailItem.prop,
-                        prohibitWord: detailItem.prohibitWord,
-                        engSentence: detailItem.engSentence,
-                        lastUpdate: moment().toDate(),
-                      },
-                    },
-                    {
-                      upsert: true,
-                      new: true,
-                    }
-                  )
-                }
-              } else if (item.detailUrl.includes("iherb.com")) {
-                // 아이허브
-                console.log("item.detailUrl", item.detailUrl)
-                const asin = AmazonAsin(item.detailUrl)
-                if (!asin) {
-                  continue
-                }
-                const host = item.detailUrl.replace(`/${asin}`, "/")
-                const response = await iHerbCode({ url: item.detailUrl })
-                for (const pid of response) {
-                  let detailItem = await findIherbDetailAPI({
-                    url: `${host}${pid}`,
+            if (!product) {
+              const tempProduct = await TempProduct.findOne({
+                userID: ObjectId(userInfo._id),
+                good_id: item.asin,
+              })
+              if (!tempProduct) {
+                if (item.detailUrl.includes("amazon.com")) {
+                  // 아마존
+                  let detailItem = await findAmazonDetailAPIsimple({
+                    url: item.detailUrl,
                     userID: ObjectId(userInfo._id),
                   })
                   if (detailItem) {
-                    console.log("detailITEm", detailItem)
-                    if (detailItem.prohibited === true) {
-                      await AmazonCollection.remove({
+                    await TempProduct.findOneAndUpdate(
+                      {
                         userID: ObjectId(userInfo._id),
-                        asin,
-                      })
-                    } else {
-                      await TempProduct.findOneAndUpdate(
-                        {
+                        good_id: item.asin,
+                      },
+                      {
+                        $set: {
                           userID: ObjectId(userInfo._id),
-                          good_id: detailItem.good_id,
+                          good_id: item.asin,
+                          brand: detailItem.brand,
+                          manufacture: detailItem.manufacture,
+                          title: detailItem.title,
+                          keyword: detailItem.keyword,
+                          mainImages: detailItem.mainImages,
+                          price: detailItem.price,
+                          salePrice: detailItem.salePrice,
+                          content: detailItem.content,
+                          options: detailItem.options,
+                          detailUrl: detailItem.detailUrl,
+                          isPrime: detailItem.isPrime,
+                          korTitle: detailItem.korTitle,
+                          titleArray: detailItem.titleArray,
+                          titkorTitleArrayeArray: detailItem.korTitleArray,
+                          feature: detailItem.feature,
+                          spec: detailItem.spec,
+                          prop: detailItem.prop,
+                          prohibitWord: detailItem.prohibitWord,
+                          engSentence: detailItem.engSentence,
+                          lastUpdate: moment().toDate(),
                         },
-                        {
-                          $set: {
+                      },
+                      {
+                        upsert: true,
+                        new: true,
+                      }
+                    )
+                  }
+                } else if (item.detailUrl.includes("iherb.com")) {
+                  // 아이허브
+                  console.log("item.detailUrl", item.detailUrl)
+                  const asin = AmazonAsin(item.detailUrl)
+                  if (!asin) {
+                    continue
+                  }
+                  const host = item.detailUrl.replace(`/${asin}`, "/")
+                  const response = await iHerbCode({ url: item.detailUrl })
+                  for (const pid of response) {
+                    let detailItem = await findIherbDetailAPI({
+                      url: `${host}${pid}`,
+                      userID: ObjectId(userInfo._id),
+                    })
+                    if (detailItem) {
+                      console.log("detailITEm", detailItem)
+                      if (detailItem.prohibited === true) {
+                        await AmazonCollection.remove({
+                          userID: ObjectId(userInfo._id),
+                          asin,
+                        })
+                      } else {
+                        await TempProduct.findOneAndUpdate(
+                          {
                             userID: ObjectId(userInfo._id),
                             good_id: detailItem.good_id,
-                            brand: detailItem.brand,
-                            manufacture: detailItem.manufacture,
-                            title: detailItem.title,
-                            keyword: detailItem.keyword,
-                            mainImages: detailItem.mainImages,
-                            price: detailItem.price,
-                            salePrice: detailItem.salePrice,
-                            content: detailItem.content,
-                            description: detailItem.description, // 제품설명
-                            suggestedUse: detailItem.suggestedUse, // 제품 사용법
-                            ingredients: detailItem.ingredients, //  포함된 다른 성분들
-                            warnings: detailItem.warnings, // 주의사항
-                            disclaimer: detailItem.disclaimer, // 면책사항
-                            supplementFacts: detailItem.supplementFacts,
-                            options: detailItem.options,
-                            detailUrl: detailItem.detailUrl,
-                            isPrime: detailItem.isPrime,
-                            korTitle: detailItem.korTitle,
-                            titleArray: detailItem.titleArray,
-                            korTitleArray: detailItem.korTitleArray,
-                            feature: detailItem.feature,
-                            spec: detailItem.spec,
-                            prop: detailItem.prop,
-                            prohibitWord: detailItem.prohibitWord,
-                            engSentence: detailItem.engSentence,
-                            lastUpdate: moment().toDate(),
                           },
-                        },
-                        {
-                          upsert: true,
-                          new: true,
-                        }
-                      )
+                          {
+                            $set: {
+                              userID: ObjectId(userInfo._id),
+                              good_id: detailItem.good_id,
+                              brand: detailItem.brand,
+                              manufacture: detailItem.manufacture,
+                              title: detailItem.title,
+                              keyword: detailItem.keyword,
+                              mainImages: detailItem.mainImages,
+                              price: detailItem.price,
+                              salePrice: detailItem.salePrice,
+                              content: detailItem.content,
+                              description: detailItem.description, // 제품설명
+                              suggestedUse: detailItem.suggestedUse, // 제품 사용법
+                              ingredients: detailItem.ingredients, //  포함된 다른 성분들
+                              warnings: detailItem.warnings, // 주의사항
+                              disclaimer: detailItem.disclaimer, // 면책사항
+                              supplementFacts: detailItem.supplementFacts,
+                              options: detailItem.options,
+                              detailUrl: detailItem.detailUrl,
+                              isPrime: detailItem.isPrime,
+                              korTitle: detailItem.korTitle,
+                              titleArray: detailItem.titleArray,
+                              korTitleArray: detailItem.korTitleArray,
+                              feature: detailItem.feature,
+                              spec: detailItem.spec,
+                              prop: detailItem.prop,
+                              prohibitWord: detailItem.prohibitWord,
+                              engSentence: detailItem.engSentence,
+                              lastUpdate: moment().toDate(),
+                            },
+                          },
+                          {
+                            upsert: true,
+                            new: true,
+                          }
+                        )
+                      }
                     }
                   }
-                }
-              } else if (item.detailUrl.includes("aliexpress.com")) {
-                // 알리익스프레스
-                console.log("item.detailUrl", item.detailUrl)
-                let detailItem = await findAliExpressDetailAPIsimple({
-                  url: item.detailUrl,
-                  userID: ObjectId(userInfo._id),
-                })
-                console.log("detailItem", detailItem)
-                if (detailItem) {
-                  await TempProduct.findOneAndUpdate(
-                    {
-                      userID: ObjectId(userInfo._id),
-                      good_id: detailItem.good_id,
-                    },
-                    {
-                      $set: {
+                } else if (item.detailUrl.includes("aliexpress.com")) {
+                  // 알리익스프레스
+                  console.log("item.detailUrl", item.detailUrl)
+                  let detailItem = await findAliExpressDetailAPIsimple({
+                    url: item.detailUrl,
+                    userID: ObjectId(userInfo._id),
+                  })
+                  console.log("detailItem", detailItem)
+                  if (detailItem) {
+                    await TempProduct.findOneAndUpdate(
+                      {
                         userID: ObjectId(userInfo._id),
                         good_id: detailItem.good_id,
-                        brand: detailItem.brand,
-                        manufacture: detailItem.manufacture,
-                        title: detailItem.title,
-                        keyword: detailItem.keyword,
-                        mainKeyword: detailItem.mainKeyword,
-                        spec: detailItem.spec,
-                        mainImages: detailItem.mainImages,
-                        price: detailItem.price,
-                        salePrice: detailItem.salePrice,
-                        content: detailItem.content,
-                        shipPrice: detailItem.shipPrice, // 배송비
-                        deliverDate: detailItem.deliverDate, // 배송일
-                        purchaseLimitNumMax: detailItem.purchaseLimitNumMax, // 구매수량
-                        deliverCompany: detailItem.deliverCompany,
-                        options: detailItem.options,
-                        detailUrl: detailItem.detailUrl,
-                        isPrime: detailItem.isPrime,
-                        korTitle: detailItem.korTitle,
-                        titleArray: detailItem.titleArray,
-                        korTitleArray: detailItem.korTitleArray,
-                        prop: detailItem.prop,
-                        lastUpdate: moment().toDate(),
                       },
-                    },
-                    {
-                      upsert: true,
-                      new: true,
-                    }
-                  )
-                }
-              } else if (
-                item.detailUrl.includes("taobao.com") ||
-                item.detailUrl.includes("tmall.com")
-              ) {
-                // 타오바오
-                console.log("item.detailUrl", item.detailUrl)
-                let detailItem = await findTaobaoDetailAPIsimple({
-                  url: item.detailUrl,
-                  userID: ObjectId(userInfo._id),
-                })
+                      {
+                        $set: {
+                          userID: ObjectId(userInfo._id),
+                          good_id: detailItem.good_id,
+                          brand: detailItem.brand,
+                          manufacture: detailItem.manufacture,
+                          title: detailItem.title,
+                          keyword: detailItem.keyword,
+                          mainKeyword: detailItem.mainKeyword,
+                          spec: detailItem.spec,
+                          mainImages: detailItem.mainImages,
+                          price: detailItem.price,
+                          salePrice: detailItem.salePrice,
+                          content: detailItem.content,
+                          shipPrice: detailItem.shipPrice, // 배송비
+                          deliverDate: detailItem.deliverDate, // 배송일
+                          purchaseLimitNumMax: detailItem.purchaseLimitNumMax, // 구매수량
+                          deliverCompany: detailItem.deliverCompany,
+                          options: detailItem.options,
+                          detailUrl: detailItem.detailUrl,
+                          isPrime: detailItem.isPrime,
+                          korTitle: detailItem.korTitle,
+                          titleArray: detailItem.titleArray,
+                          korTitleArray: detailItem.korTitleArray,
+                          prop: detailItem.prop,
+                          lastUpdate: moment().toDate(),
+                        },
+                      },
+                      {
+                        upsert: true,
+                        new: true,
+                      }
+                    )
+                  }
+                } else if (
+                  item.detailUrl.includes("taobao.com") ||
+                  item.detailUrl.includes("tmall.com")
+                ) {
+                  // 타오바오
+                  console.log("item.detailUrl", item.detailUrl)
+                  let detailItem = await findTaobaoDetailAPIsimple({
+                    url: item.detailUrl,
+                    userID: ObjectId(userInfo._id),
+                  })
 
-                if (detailItem && detailItem.options && detailItem.options.length > 0) {
-                  await TempProduct.findOneAndUpdate(
-                    {
-                      userID: ObjectId(userInfo._id),
-                      good_id: detailItem.good_id,
-                    },
-                    {
-                      $set: {
+                  if (detailItem && detailItem.options && detailItem.options.length > 0) {
+                    await TempProduct.findOneAndUpdate(
+                      {
                         userID: ObjectId(userInfo._id),
                         good_id: detailItem.good_id,
-                        brand: detailItem.brand,
-                        manufacture: detailItem.manufacture,
-                        title: detailItem.title,
-                        keyword: detailItem.keyword,
-                        mainKeyword: detailItem.mainKeyword,
-                        spec: detailItem.spec,
-                        mainImages: detailItem.mainImages,
-                        price: detailItem.price,
-                        salePrice: detailItem.salePrice,
-                        content: detailItem.content,
-                        shipPrice: detailItem.shipPrice, // 배송비
-                        deliverDate: detailItem.deliverDate, // 배송일
-                        purchaseLimitNumMax: detailItem.purchaseLimitNumMax, // 구매수량
-                        deliverCompany: detailItem.deliverCompany,
-                        options: detailItem.options,
-                        detailUrl: item.detailUrl,
-                        isPrime: detailItem.isPrime,
-                        korTitle: detailItem.korTitle,
-                        titleArray: detailItem.titleArray,
-                        korTitleArray: detailItem.korTitleArray,
-                        prop: detailItem.prop,
-                        lastUpdate: moment().toDate(),
                       },
-                    },
-                    {
-                      upsert: true,
-                      new: true,
-                    }
-                  )
+                      {
+                        $set: {
+                          userID: ObjectId(userInfo._id),
+                          good_id: detailItem.good_id,
+                          brand: detailItem.brand,
+                          manufacture: detailItem.manufacture,
+                          title: detailItem.title,
+                          keyword: detailItem.keyword,
+                          mainKeyword: detailItem.mainKeyword,
+                          spec: detailItem.spec,
+                          mainImages: detailItem.mainImages,
+                          price: detailItem.price,
+                          salePrice: detailItem.salePrice,
+                          content: detailItem.content,
+                          shipPrice: detailItem.shipPrice, // 배송비
+                          deliverDate: detailItem.deliverDate, // 배송일
+                          purchaseLimitNumMax: detailItem.purchaseLimitNumMax, // 구매수량
+                          deliverCompany: detailItem.deliverCompany,
+                          options: detailItem.options,
+                          detailUrl: item.detailUrl,
+                          isPrime: detailItem.isPrime,
+                          korTitle: detailItem.korTitle,
+                          titleArray: detailItem.titleArray,
+                          korTitleArray: detailItem.korTitleArray,
+                          prop: detailItem.prop,
+                          lastUpdate: moment().toDate(),
+                        },
+                      },
+                      {
+                        upsert: true,
+                        new: true,
+                      }
+                    )
+                  }
                 }
               }
             }
+          } catch (e) {
+            console.log("collectionItems", e)
           }
         }
       } catch (e) {
