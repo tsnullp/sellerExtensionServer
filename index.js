@@ -812,7 +812,7 @@ app.post("/amazon/collectionItems", async (req, res) => {
                   // 알리익스프레스
                   console.log("item.detailUrl", item.detailUrl)
                   let detailItem = await findAliExpressDetailAPIsimple({
-                    url: item.detailUrl,
+                    url: item.detailUrl.replace("https:ko", "https://ko"),
                     userID: ObjectId(userInfo._id),
                   })
                   // console.log("detailItem", detailItem)
@@ -841,7 +841,7 @@ app.post("/amazon/collectionItems", async (req, res) => {
                           purchaseLimitNumMax: detailItem.purchaseLimitNumMax, // 구매수량
                           deliverCompany: detailItem.deliverCompany,
                           options: detailItem.options,
-                          detailUrl: detailItem.detailUrl,
+                          detailUrl: detailItem.detailUrl.replace("https:ko", "https://ko"),
                           isPrime: detailItem.isPrime,
                           korTitle: detailItem.korTitle,
                           titleArray: detailItem.titleArray,
