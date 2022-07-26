@@ -483,7 +483,7 @@ const start = async ({ url, title, userID }) => {
 
     await Promise.all(promiseArr)
   } catch (e) {
-    console.log("getAliExpressItemAPI", e)
+    console.log("getAliExpressItemAPI", e.message)
   } finally {
     // console.log("ObjItem", ObjItem)
     return ObjItem
