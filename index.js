@@ -1115,7 +1115,7 @@ const IherbPriceSync = async () => {
           url: product.basic.url,
           // userID: ObjectId(item.userID)
         })
-
+        console.log("detailItem", detailItem)
         const market = await Market.findOne({
           userID: ObjectId(product.userID),
         })
@@ -1336,3 +1336,5 @@ const getPermutations = function (arr, selectNumber) {
 
   return results // 결과 담긴 results return
 }
+
+// IherbPriceSync()
