@@ -141,6 +141,7 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
           }
         })
     }
+
     let otherImage = []
     try {
       otherImage = [
