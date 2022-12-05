@@ -16,7 +16,7 @@ const CategoryInfo = require("../models/CategoryInfo")
 const mongoose = require("mongoose")
 const ObjectId = mongoose.Types.ObjectId
 
-const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, userID, writerID }) => {
+const updateCafe24 = async ({ id, isSingle, isShippingPrirce, product, prop, options, cafe24, userID, writerID }) => {
   const returnMessage = {
     cafe24: {
       code: null,
