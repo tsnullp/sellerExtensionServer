@@ -24,10 +24,22 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
     },
   }
 
+  let shipping_price = 0
+  let optionValue = options
+    .filter((item) => item.active && !item.disabled)
+    .filter((i, index) => index < 100)
+    .map((item) => {
+      if (item.weightPrice > shipping_price) {
+        shipping_price = item.weightPrice
+      }
+      return item
+    })
+
   try {
     let baseIndex = 0
-    const inValidArr = []
-    options.forEach((item) => {
+    let inValidArr = []
+    
+    optionValue.forEach((item) => {
       let salePrice = item.salePrice
 
       let minPassablePrice = Math.ceil((salePrice - (salePrice * 50) / 100) * 0.1) * 10
@@ -35,7 +47,7 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
 
       const inValid = []
 
-      options
+      optionValue
         .filter((item) => item.active && !item.disabled)
         .forEach((item1) => {
           if (item1.price < minPassablePrice || item1.price > maxPassablePrice) {
@@ -44,7 +56,7 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
         })
       inValidArr.push(inValid.length)
     })
-
+    
     const minValue = Math.min.apply(null, inValidArr)
     baseIndex = inValidArr.indexOf(minValue)
 
@@ -52,7 +64,9 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
     let minPrice = basePrice - basePrice * 0.5
     let maxPrice = basePrice + basePrice * 0.5
 
-    options
+
+
+    optionValue
       .filter((item) => item.active && !item.disabled)
       .map((item, index) => {
         if (index === baseIndex) {
@@ -65,13 +79,23 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
         }
       })
 
-    options.map((item) => {
+    console.log("baseIndex", baseIndex)
+    console.log("basePrice", basePrice)
+    console.log("minPrice", minPrice)
+    console.log("maxPrice", maxPrice)
+    console.log("수정전", options.filter((item) => item.active && !item.disabled).length)
+
+    
+    optionValue.map((item) => {
       if (item.salePrice >= minPrice && item.salePrice <= maxPrice) {
         item.active = true
       } else {
         item.active = false
       }
     })
+
+    console.log("수정후", options.filter((item) => item.active && !item.disabled).length)
+
 
     const basic = await Basic.findOne({
       userID,
@@ -104,7 +128,7 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
 
     searchTags = searchTags.filter((item, i) => i < 5)
 
-    const htmlContent = `${product.topHtml}${
+    const htmlContent = `${product.gifHtml}${product.topHtml}${
       product.isClothes && product.clothesHtml ? product.clothesHtml : ""
     }${product.isShoes && product.shoesHtml ? product.shoesHtml : ""}${product.optionHtml}${
       product.html
@@ -112,13 +136,13 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
 
     //
     let cafe24Product = null
-    let mainImage = product.cafe24_mainImage ? product.cafe24_mainImage : null
-    // let mainImage = null
+    // let mainImage = product.cafe24_mainImage ? product.cafe24_mainImage : null
+    let mainImage = null
 
     if (!product.cafe24) {
       product.cafe24 = {}
     }
-
+    console.log("cafe24", cafe24)
     if (!mainImage) {
       const imagesResponse = await Cafe24UploadImages({
         mallID: cafe24.mallID,
@@ -126,7 +150,7 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
         images:
           product.mainImages && product.mainImages.length > 0
             ? [product.mainImages[0]]
-            : [options[0].image],
+            : [optionValue[0].image],
       })
 
       imagesResponse &&
@@ -137,6 +161,10 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
             mainImage = item.path
               .replace(`http://${cafe24.mallID}.cafe24.com`, "")
               .replace(`https://${cafe24.mallID}.cafe24.com`, "")
+
+            if (mainImage.includes(cafe24.mallID)) {
+              mainImage = mainImage.split(cafe24.mallID)[1]
+            }
             product.cafe24.mainImage = mainImage
           }
         })
@@ -181,20 +209,20 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
 
     let price = 0
     let retail_price = 0
-    if (options.filter((item) => item.active && !item.disabled && item.base).length === 0) {
-      price = options.filter((item) => item.active && !item.disabled)[0].salePrice
-      retail_price = options.filter((item) => item.active && !item.disabled)[0].productPrice
+    if (optionValue.filter((item) => item.active && !item.disabled && item.base).length === 0) {
+      price = optionValue.filter((item) => item.active && !item.disabled)[0].salePrice
+      retail_price = optionValue.filter((item) => item.active && !item.disabled)[0].productPrice
     } else {
-      price = options.filter((item) => item.active && !item.disabled && item.base)[0].salePrice
-      retail_price = options.filter((item) => item.active && !item.disabled && item.base)[0]
+      price = optionValue.filter((item) => item.active && !item.disabled && item.base)[0].salePrice
+      retail_price = optionValue.filter((item) => item.active && !item.disabled && item.base)[0]
         .productPrice
     }
 
     if (!price) {
-      price = options[0].salePrice
-      retail_price = options[0].productPrice
+      price = optionValue[0].salePrice
+      retail_price = optionValue[0].productPrice
     }
-
+    console.log("price", price)
     if (!price) {
       await Product.findOneAndUpdate(
         {
@@ -232,7 +260,7 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
     if (product.cafe24_product_no) {
       otherImage = [
         ...product.mainImages.filter((item, index) => index > 0),
-        ...options.map((item) => {
+        ...optionValue.map((item) => {
           if (item.image.includes("//img.alicdn.com/")) {
             return `${item.image}_800x800.jpg`
           } else {
@@ -254,6 +282,9 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
       if (isSingle) {
         otherImage = []
       }
+
+      console.log("price", price)
+      console.log("retail_price", retail_price)
       // 수정
       cafe24Product = {
         shop_no: cafe24.shop_no,
@@ -267,15 +298,15 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
           price, // 상품 판매가
           retail_price, // 상품 소비자가
           supply_price: 0, // 상품 공급가
-          has_option: isSingle ? "F" : "T", // 옵션 사용여부
+          // has_option: isSingle ? "F" : "T", // 옵션 사용여부
           options:
-            !options.filter((item) => item.active && !item.disabled)[0].korKey &&
+            !optionValue.filter((item) => item.active && !item.disabled)[0].korKey &&
             prop &&
             Array.isArray(prop) &&
             prop.length > 0 &&
-            (options.filter((item) => item.active && !item.disabled)[0].korKey === null ||
-              (options.filter((item) => item.active && !item.disabled)[0].korKey &&
-                options.filter((item) => item.active && !item.disabled)[0].korKey.length === 0))
+            (optionValue.filter((item) => item.active && !item.disabled)[0].korKey === null ||
+              (optionValue.filter((item) => item.active && !item.disabled)[0].korKey &&
+              optionValue.filter((item) => item.active && !item.disabled)[0].korKey.length === 0))
               ? prop.map((item) => {
                   return {
                     name: item.korTypeName,
@@ -285,7 +316,7 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
               : [
                   {
                     name: "종류",
-                    value: options
+                    value: optionValue
                       .filter((item) => item.active && !item.disabled)
                       .filter((i, index) => index < 100)
                       .map((item) => regExp_test(item.korKey ? item.korKey : item.korValue)),
@@ -317,10 +348,14 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
             minimum: product.outboundShippingTimeDay,
             maximum: product.outboundShippingTimeDay,
           },
-          shipping_fee_type: product.deliveryChargeType === "FREE" ? "T" : "R", // 배송비 타입
+          shipping_fee_type: isShippingPrirce
+            ? "R"
+            : product.deliveryChargeType === "FREE"
+            ? "T"
+            : "R", // 배송비 타입
           shipping_rates: [
             {
-              shipping_fee: product.deliveryCharge, // 배송비
+              shipping_fee: isShippingPrirce ? shipping_price : product.deliveryCharge, // 배송비
             },
           ],
           prepaid_shipping_fee: "P", // 배송비 선결제 설정
@@ -346,17 +381,20 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
           adult_certification: "F", // 성인인증
         },
       }
+      
 
       if (isSingle) {
         delete cafe24Product.request.options
       }
+
+      console.log("cafe24Product---", cafe24Product.request)
 
       cafe24response = await Cafe24UpdateProduct({
         mallID: cafe24.mallID,
         payload: cafe24Product,
         product_no: product.cafe24_product_no,
       })
-      // console.log("cafe24response", cafe24response)
+      console.log("cafe24response", cafe24response)
       // console.log("**** 제품업데이트 ****")
       // const productTemp = await Product.findOne({
       //   userID,
@@ -414,7 +452,7 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
         //       }
         //     })
         // }
-
+        console.log("isSingle", isSingle)
         cafe24Option = {
           shop_no: cafe24.shop_no,
           request: {
@@ -422,7 +460,7 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
             option_type: "T",
             option_list_type: "S",
             options:
-              !options.filter((item) => item.active && !item.disabled)[0].korKey &&
+              !optionValue.filter((item) => item.active && !item.disabled)[0].korKey &&
               prop &&
               Array.isArray(prop) &&
               prop.length > 0
@@ -440,7 +478,7 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
                 : [
                     {
                       option_name: "종류",
-                      option_value: options
+                      option_value: optionValue
                         .filter((item) => item.active && !item.disabled)
                         .map((item, index) => {
                           return {
@@ -452,23 +490,28 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
                   ],
           },
         }
+        // console.log("cafe24Option", cafe24Option)
 
         const createProductsOptionResponse = await Cafe24CreateProductsOption({
           mallID: cafe24.mallID,
           payload: cafe24Option,
-          product_no: cafe24response.data.product.product_no,
+          product_no: cafe24response.data ? cafe24response.data.product.product_no : product.cafe24_product_no,
         })
 
         // console.log("**** 옵션 업데이트 ****")
+        // console.log("createProductsOptionResponse", createProductsOptionResponse)
         cafe24ProductsVariants = await Cafe24ListProductsVariants({
           mallID: cafe24.mallID,
-          product_no: cafe24response.data.product.product_no,
+          product_no: cafe24response.data ? cafe24response.data.product.product_no : product.cafe24_product_no,
         })
-
+        // console.log("cafe24ProductsVariants", cafe24ProductsVariants)
         cafe24ProductsVariants.data.variants.forEach((item) => {
+          // console.log(" item ", item)
           const optionName = item.options && item.options.length > 0 ? item.options[0].value : null
 
-          options.forEach((oItem) => {
+          options.forEach((oItem) => 
+          {
+            // console.log(" oItem ", oItem)
             if (
               regExp_test(oItem.korValue) === optionName ||
               regExp_test(oItem.korKey) === optionName
@@ -483,14 +526,14 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
 
       otherImage = [
         ...product.mainImages.filter((item, index) => index > 0),
-        ...options.map((item) => {
+        ...optionValue.map((item) => {
           if (item.image.includes("//img.alicdn.com/")) {
             return `${item.image}_800x800.jpg`
           } else {
             return item.image
           }
         }),
-      ]
+      ].filter(item => !item.includes("undefind"))
 
       if (otherImage.length > 20) {
         otherImage = otherImage.filter((item, index) => {
@@ -506,6 +549,7 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
         otherImage = []
       }
 
+      // console.log("options-->", options)
       cafe24Product = {
         shop_no: cafe24.shop_no,
         request: {
@@ -520,13 +564,13 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
           supply_price: 0, // 상품 공급가
           has_option: isSingle ? "F" : "T", // 옵션 사용여부
           options:
-            !options.filter((item) => item.active && !item.disabled)[0].korKey &&
+            !optionValue.filter((item) => item.active && !item.disabled)[0].korKey &&
             prop &&
             Array.isArray(prop) &&
             prop.length > 0 &&
-            (options.filter((item) => item.active && !item.disabled)[0].korKey === null ||
-              (options.filter((item) => item.active && !item.disabled)[0].korKey &&
-                options.filter((item) => item.active && !item.disabled)[0].korKey.length === 0))
+            (optionValue.filter((item) => item.active && !item.disabled)[0].korKey === null ||
+              (optionValue.filter((item) => item.active && !item.disabled)[0].korKey &&
+              optionValue.filter((item) => item.active && !item.disabled)[0].korKey.length === 0))
               ? prop.map((item) => {
                   return {
                     name: item.korTypeName,
@@ -547,10 +591,13 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
               : [
                   {
                     name: "종류",
-                    value: options
+                    value: optionValue
                       .filter((item) => item.active && !item.disabled)
                       .filter((valueItem) => {
-                        const temp = options.filter(
+                        if (valueItem.korKey) {
+                          return true
+                        }
+                        const temp = optionValue.filter(
                           (vItem) =>
                             vItem.korValue.toString().trim() ===
                             valueItem.korValue.toString().trim()
@@ -592,10 +639,14 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
             minimum: product.outboundShippingTimeDay,
             maximum: product.outboundShippingTimeDay,
           },
-          shipping_fee_type: product.deliveryChargeType === "FREE" ? "T" : "R", // 배송비 타입
+          shipping_fee_type: isShippingPrirce
+            ? "R"
+            : product.deliveryChargeType === "FREE"
+            ? "T"
+            : "R", // 배송비 타입
           shipping_rates: [
             {
-              shipping_fee: product.deliveryCharge, // 배송비
+              shipping_fee: isShippingPrirce ? shipping_price : product.deliveryCharge, // 배송비
             },
           ],
           prepaid_shipping_fee: "P", // 배송비 선결제 설정
@@ -625,6 +676,7 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
       if (isSingle) {
         delete cafe24Product.request.options
       }
+
       cafe24response = await Cafe24CreateProduct({
         mallID: cafe24.mallID,
         payload: cafe24Product,
@@ -633,6 +685,10 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
         console.log("cafe24reaponse", cafe24response)
         console.log("cafe24.mallID", cafe24.mallID)
         console.log("cafe24Product", cafe24Product)
+
+        for (const item of cafe24Product.request.options) {
+          console.log("ITE0--->", item)
+        }
       }
 
       if (!isSingle) {
@@ -733,7 +789,7 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
 
     const cafe24ProductVariantsPayload = {
       shop_no: cafe24.shop_no,
-      request: options
+      request: optionValue
         .filter((item) => {
           if (item.cafe24_variant_code) {
             return true
@@ -745,6 +801,7 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
           return false
         })
         .map((item, index) => {
+          
           return {
             variant_code: item.cafe24_variant_code
               ? item.cafe24_variant_code
@@ -762,7 +819,7 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
           }
         }),
     }
-
+    // console.log("cafe24ProductVariantsPayload", cafe24ProductVariantsPayload)
     if (!isSingle) {
       // console.log("cafe24ProductVariantsPayload", cafe24ProductVariantsPayload.request)
       const variantsResponse = await Cafe24UpdateProductsVariants({
@@ -773,7 +830,9 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
       // console.log("variantsResponse", variantsResponse)
       if (variantsResponse && variantsResponse.data && variantsResponse.data.variants) {
         variantsResponse.data.variants.forEach((item) => {
-          options
+
+          // console.log("item--", item)
+          optionValue
             .filter((item) => item.cafe24_variant_code)
             .forEach((oItem) => {
               oItem.cafe24.variant_code = item.variant_code
@@ -783,7 +842,7 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
       }
     }
 
-    for (const item of options) {
+    for (const item of optionValue) {
       if (item.cafe24.variant_code) {
         await Cafe24UpdateProductsVariantsInventories({
           mallID: cafe24.mallID,
@@ -798,6 +857,8 @@ const updateCafe24 = async ({ id, isSingle, product, prop, options, cafe24, user
           product_no: cafe24response.data.product.product_no,
           variant_code: item.cafe24.variant_code,
         })
+        
+        await sleep(500)
       }
     }
 

@@ -33,7 +33,7 @@ const cron = require("node-cron")
 cron.schedule("0 0,15 * * *", () => {
   try {
     console.log("schedule")
-    IherbPriceSync()
+    // IherbPriceSync()
   } catch (e) {
     console.log("schedule", e.message)
   }
@@ -1296,6 +1296,7 @@ const getIherbSalePrice = (price, marginInfo) => {
   } else {
     weightPrice = 0
   }
+ 
   let margin = 30
   let marginArr = marginInfo.filter((fItem) => fItem.title >= Number(price))
 
