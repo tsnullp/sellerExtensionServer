@@ -9,7 +9,7 @@ const {
   Cafe24UpdateProductsVariantsInventories,
 } = require("../api/Market")
 const moment = require("moment")
-const { regExp_test } = require("../lib/userFunc")
+const { regExp_test, sleep } = require("../lib/userFunc")
 const Product = require("../models/Product")
 const Basic = require("../models/Basic")
 const CategoryInfo = require("../models/CategoryInfo")
@@ -79,11 +79,11 @@ const updateCafe24 = async ({ id, isSingle, isShippingPrirce, product, prop, opt
         }
       })
 
-    console.log("baseIndex", baseIndex)
-    console.log("basePrice", basePrice)
-    console.log("minPrice", minPrice)
-    console.log("maxPrice", maxPrice)
-    console.log("수정전", options.filter((item) => item.active && !item.disabled).length)
+    // console.log("baseIndex", baseIndex)
+    // console.log("basePrice", basePrice)
+    // console.log("minPrice", minPrice)
+    // console.log("maxPrice", maxPrice)
+    // console.log("수정전", options.filter((item) => item.active && !item.disabled).length)
 
     
     optionValue.map((item) => {
@@ -94,7 +94,7 @@ const updateCafe24 = async ({ id, isSingle, isShippingPrirce, product, prop, opt
       }
     })
 
-    console.log("수정후", options.filter((item) => item.active && !item.disabled).length)
+    // console.log("수정후", options.filter((item) => item.active && !item.disabled).length)
 
 
     const basic = await Basic.findOne({
@@ -142,7 +142,7 @@ const updateCafe24 = async ({ id, isSingle, isShippingPrirce, product, prop, opt
     if (!product.cafe24) {
       product.cafe24 = {}
     }
-    console.log("cafe24", cafe24)
+    // console.log("cafe24", cafe24)
     if (!mainImage) {
       const imagesResponse = await Cafe24UploadImages({
         mallID: cafe24.mallID,
@@ -222,7 +222,7 @@ const updateCafe24 = async ({ id, isSingle, isShippingPrirce, product, prop, opt
       price = optionValue[0].salePrice
       retail_price = optionValue[0].productPrice
     }
-    console.log("price", price)
+    // console.log("price", price)
     if (!price) {
       await Product.findOneAndUpdate(
         {
@@ -283,8 +283,8 @@ const updateCafe24 = async ({ id, isSingle, isShippingPrirce, product, prop, opt
         otherImage = []
       }
 
-      console.log("price", price)
-      console.log("retail_price", retail_price)
+      // console.log("price", price)
+      // console.log("retail_price", retail_price)
       // 수정
       cafe24Product = {
         shop_no: cafe24.shop_no,
@@ -387,14 +387,14 @@ const updateCafe24 = async ({ id, isSingle, isShippingPrirce, product, prop, opt
         delete cafe24Product.request.options
       }
 
-      console.log("cafe24Product---", cafe24Product.request)
+      // console.log("cafe24Product---", cafe24Product.request)
 
       cafe24response = await Cafe24UpdateProduct({
         mallID: cafe24.mallID,
         payload: cafe24Product,
         product_no: product.cafe24_product_no,
       })
-      console.log("cafe24response", cafe24response)
+      // console.log("cafe24response", cafe24response)
       // console.log("**** 제품업데이트 ****")
       // const productTemp = await Product.findOne({
       //   userID,
@@ -452,7 +452,7 @@ const updateCafe24 = async ({ id, isSingle, isShippingPrirce, product, prop, opt
         //       }
         //     })
         // }
-        console.log("isSingle", isSingle)
+        // console.log("isSingle", isSingle)
         cafe24Option = {
           shop_no: cafe24.shop_no,
           request: {
@@ -682,12 +682,12 @@ const updateCafe24 = async ({ id, isSingle, isShippingPrirce, product, prop, opt
         payload: cafe24Product,
       })
       if (!cafe24response || !cafe24response.data) {
-        console.log("cafe24reaponse", cafe24response)
-        console.log("cafe24.mallID", cafe24.mallID)
-        console.log("cafe24Product", cafe24Product)
+        // console.log("cafe24reaponse", cafe24response)
+        // console.log("cafe24.mallID", cafe24.mallID)
+        // console.log("cafe24Product", cafe24Product)
 
         for (const item of cafe24Product.request.options) {
-          console.log("ITE0--->", item)
+          // console.log("ITE0--->", item)
         }
       }
 
