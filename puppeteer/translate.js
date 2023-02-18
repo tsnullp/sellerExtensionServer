@@ -1,6 +1,7 @@
 const translate = require("translate")
 const startBrowser = require("./startBrowser")
 const axios = require("axios")
+const {shuffle} = require("../lib/userFunc")
 
 const korTranslate = async text => {
 
@@ -224,26 +225,228 @@ const googleTranslate = async text => {
   }
 }
 
-const papagoTranslate = async text => {
-  const browser = await startBrowser()
+const papagoTranslate = async (text, source="zh-CN", target="ko") => {
+  let clients = [
+    {
+      clientID: "HgpYPNhPhbJSuOqeOlQc",
+      clientSecret: "Oei1APoKJf"
+    },
+    {
+     clientID: "loau89IOS5kuMyXY1lkq",
+     clientSecret: "HUYOMW5Q5Z"
+   },
+   {
+     clientID: "YBx8bP0T7C3xN_6u2S3Y",
+     clientSecret: "MjUPMYMGVx"
+   },
+   {
+     clientID: "VCpdZ6RMqCkmJbclnYOy",
+     clientSecret: "6tdrxp94bh"
+   },
+   {
+     clientID: "MC5JthhRd_poRD7ApTjs",
+     clientSecret: "F0zxL8yunI"
+   },
+   //영미
+   {
+     clientID: "hUH0Bku23NDgXb_iZ0n9",
+     clientSecret: "kMqyrlQuX8"
+   },
+   {
+     clientID: "hX4kZEA_NTClzeGC58XO",
+     clientSecret: "AnZ33WURoD"
+   },
+   {
+     clientID: "e9wVLMuHdOfZAyKN7Ev1",
+     clientSecret: "8KL3UaRVUg"
+   },
+   {
+     clientID: "EQjbKEDRORlP1p9i9h56",
+     clientSecret: "kjZSqKOcF8"
+   },
+   {
+     clientID: "6wW10rqmzJgtx2F_FwVX",
+     clientSecret: "AAUnFvqvzE"
+   },
+   {
+     clientID: "wlEuP824T_bZTGmdELmS",
+     clientSecret: "qSd4ngm_Qn"
+   },
+   {
+     clientID: "2GpXnBjlXBurytrs3QPx",
+     clientSecret: "MUyckmGgvM"
+   },
+   {
+     clientID: "r2p4hvYWqJWCRWF6d3vV",
+     clientSecret: "S8ZTUrl6FT"
+   },
+   {
+     clientID: "OHHQnEqPCeQhXNN7JqEU",
+     clientSecret: "dz3MN03h_V"
+   },
+   {
+     clientID: "pfuPqrqjwvVpXqn7o941",
+     clientSecret: "cH70bBydwZ"
+   },
+   //박서방
+   {
+     clientID: "bol1tRkBtNvQsvgj2DCd",
+     clientSecret: "du6n7oiw10"
+   },
+   {
+     clientID: "tifUkunKbMEOxrmBj3Uj",
+     clientSecret: "HY7ueikVtp"
+   },
+   {
+     clientID: "7aPBCPfsTTjrfr9haF9M",
+     clientSecret: "QAi1BybC3b"
+   },
+   {
+     clientID: "Ge4fOrZTdJxLLROhju43",
+     clientSecret: "eHKqg3GNx7"
+   },
+   {
+     clientID: "HfTkYQLyctkFn_P8aTyv",
+     clientSecret: "gXzyt2mX7d"
+   },
+   {
+     clientID: "OEnyDLh1XMlFdC8E69bc",
+     clientSecret: "wiBZfW0oHM"
+   },
+   {
+     clientID: "q7BBs1NKzl0w9RjNs_3z",
+     clientSecret: "BXO4wEuBlk"
+   },
+   {
+     clientID: "QoAGpEq8beZNmNOIhNiS",
+     clientSecret: "sFvTexcO9_"
+   },
+   {
+     clientID: "xYC31rURJkXBmNvWgFEE",
+     clientSecret: "sonXtYZxD9"
+   },
+   {
+     clientID: "xzpRGHN9eKqUmJYygRxk",
+     clientSecret: "2hDyDERC0i"
+   },
+   //수빈
+   {
+     clientID: "4tKZsuQh3AD23m437vJ8",
+     clientSecret: "gesesU3NnD"
+   },
+   {
+     clientID: "UGdYFZxTTtUlWmzecZYS",
+     clientSecret: "i7W46pHR6e"
+   },
+   {
+     clientID: "5jkLl6Ybq6BDDZPQACzq",
+     clientSecret: "b1AyOhHJBT"
+   },
+   {
+     clientID: "THkwPFJ_8hCEyEn9VETL",
+     clientSecret: "zSJP0Vrhpz"
+   },
+   {
+     clientID: "1Ty0UVr9MxDhTKcDERoe",
+     clientSecret: "B1kpYD7bK3"
+   },
+   {
+     clientID: "85t6kYyznHMUd2VAJbt_",
+     clientSecret: "3Ts52TpPs1"
+   },
+   {
+     clientID: "yXhiWV2QSFHWATNK6dzf",
+     clientSecret: "d61k1_MkD0"
+   },
+   {
+     clientID: "DI0Smx3Y7mQuvAg4sLyb",
+     clientSecret: "CSNBlgEdzJ"
+   },
+   {
+     clientID: "jbvpmA34SweJfRTSaPTb",
+     clientSecret: "RgSVgLgLTr"
+   },
+   {
+     clientID: "dtNstu5Xa6rRu23vw2cd",
+     clientSecret: "vcSUp3yX2b"
+   },
+ 
+   // 준환
+   {
+     clientID: "OgyDA9px7517XjQNkn2D",
+     clientSecret: "sUFkUQ83F8"
+   },
+   {
+     clientID: "sB8A5HzoF_UpR0vEYIkv",
+     clientSecret: "zi3NCkc5XB"
+   },
+   {
+     clientID: "8G187nnokeJEv7E8yZQl",
+     clientSecret: "jIPdg919NY"
+   },
+   {
+     clientID: "yXABM1NRHehO59iLZi1y",
+     clientSecret: "MszthLBC57"
+   },
+   {
+     clientID: "sX8SyrXZ6Wg4_ODUhdbT",
+     clientSecret: "eqdbuIgjfp"
+   },
+   {
+     clientID: "HPxmzF3MIpaBrAQ7X404",
+     clientSecret: "vCEf0KZgl6"
+   },
+   {
+     clientID: "7mSE02NexV9GHXMOA8lS",
+     clientSecret: "Y7nz5WJ5Xr"
+   },
+   {
+     clientID: "5Kw8y246dETCddJZC7Jq",
+     clientSecret: "jmnsjYI4oq"
+   },
+   {
+     clientID: "r3dc_WOlRxT8MIzT6wjg",
+     clientSecret: "GNYgfRxzT9"
+   },
+   {
+     clientID: "lgrKfRLlx5fkAZdp2ZXT",
+     clientSecret: "mjvgwuwD4N"
+   },
+ 
+  ]
   try {
-    const page = await browser.newPage()
-    await page.setJavaScriptEnabled(true)
-
-    await page.goto(`https://papago.naver.com/?sk=zh-CN&tk=ko&hn=0&st=${encodeURI(text)}`, {
-      waituntil: "networkidle0"
-    })
-    const selector = "#targetEditArea > #txtTarget > span"
-    await page.waitForSelector(selector, { timeout: 5000 })
-    const title = await page.$eval(selector, elem => elem.innerText)
-    return title
-  } catch (e) {
-    console.log("papagoTranslate", e.message)
-    return null
-  } finally {
-    await browser.close()
+   clients = shuffle(clients)
+ 
+   for(const client of clients) {
+     try {
+       const response = await axios({
+         url: "https://openapi.naver.com/v1/papago/n2mt",
+         method: "POST",
+         data: {
+           source,
+           target,
+           text
+         },
+         headers: {
+           "X-Naver-Client-Id": client.clientID,
+           "X-Naver-Client-Secret": client.clientSecret
+         }
+       })
+       // console.log("response,", response.data.message.result)
+       if(response && response.data.message.result){      
+         return response.data.message.result.translatedText
+       }
+     } catch(e){
+       // console.log("papago-->", e.data)
+     }
+     
+   }
+ 
+  } catch(e) {
+    console.log("파파고 실패 -->", e)
+    return text
   }
-}
+ }
 
 const papagoTranslateNew = async (text) => {
   const browser = await startBrowser()

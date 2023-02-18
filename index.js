@@ -17,6 +17,7 @@ const findAmazonDetailAPIsimple = require("./puppeteer/getAmazonItemAPIsimple")
 const { findIherbDetailAPI, findIherbDetailSimple } = require("./puppeteer/getIherbItemAPIsimple")
 const findTaobaoDetailAPIsimple = require("./puppeteer/getTaobaoItemAPIsimple")
 const findAliExpressDetailAPIsimple = require("./puppeteer/getAliExpressItemAPisimple")
+const getVVIC = require("./puppeteer/getVVICAPI")
 const updateCafe24 = require("./puppeteer/updateCafe24")
 const mongoose = require("mongoose")
 const ObjectId = mongoose.Types.ObjectId
@@ -677,7 +678,7 @@ app.post("/amazon/collectionItems", async (req, res) => {
         for (const item of products) {
           try {
             let product = null
-            if (item.detailUrl.includes("taobao.com") || item.detailUrl.includes("tmall.com")) {
+            if (item.detailUrl.includes("taobao.com") || item.detailUrl.includes("tmall.com") || item.detailUrl.includes("vvic.com")) {
               product = await Product.findOne({
                 userID: ObjectId(userInfo._id),
                 "basic.good_id": item.asin,
@@ -726,7 +727,7 @@ app.post("/amazon/collectionItems", async (req, res) => {
                           isPrime: detailItem.isPrime,
                           korTitle: detailItem.korTitle,
                           titleArray: detailItem.titleArray,
-                          titkorTitleArrayeArray: detailItem.korTitleArray,
+                          korTitleArray: detailItem.korTitleArray,
                           feature: detailItem.feature,
                           spec: detailItem.spec,
                           prop: detailItem.prop,
@@ -897,6 +898,45 @@ app.post("/amazon/collectionItems", async (req, res) => {
                           korTitle: detailItem.korTitle,
                           titleArray: detailItem.titleArray,
                           korTitleArray: detailItem.korTitleArray,
+                          prop: detailItem.prop,
+                          lastUpdate: moment().toDate(),
+                        },
+                      },
+                      {
+                        upsert: true,
+                        new: true,
+                      }
+                    )
+                  }
+                } else if (item.detailUrl.includes("vvic.com")) {
+                  const asin = AmazonAsin(item.detailUrl)
+                  if (!asin) {
+                    continue
+                  }
+                  // console.log("detailUrl", item.detailUrl)
+                  let detailItem = await getVVIC({url: item.detailUrl})
+                  // console.log("detailItem", detailItem)
+                  if (detailItem && detailItem.options && detailItem.options.length > 0) {
+                    await TempProduct.findOneAndUpdate(
+                      {
+                        userID: ObjectId(userInfo._id),
+                        good_id: detailItem.good_id,
+                      },
+                      {
+                        $set: {
+                          userID: ObjectId(userInfo._id),
+                          good_id: detailItem.good_id,
+                          brand: detailItem.brand,
+                          manufacture: detailItem.manufacture,
+                          title: detailItem.title,
+                          keyword: detailItem.keyword,
+                          mainImages: detailItem.mainImages,
+                          price: detailItem.price,
+                          salePrice: detailItem.salePrice,
+                          content: detailItem.content,
+                          options: detailItem.options,
+                          detailUrl: item.detailUrl,
+                          korTitle: detailItem.title,
                           prop: detailItem.prop,
                           lastUpdate: moment().toDate(),
                         },
@@ -1338,4 +1378,14 @@ const getPermutations = function (arr, selectNumber) {
   return results // 결과 담긴 results return
 }
 
-IherbPriceSync()
+// IherbPriceSync()
+
+const getVVICItems = async () => {
+  try {
+    await getVVIC({url: "https://www.vvic.com/item/634952642f99950008b96b27"})
+  } catch (e) {
+    console.log("getVVICItems.",e)
+  }
+}
+
+// getVVICItems()

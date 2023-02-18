@@ -4,7 +4,7 @@ const Brand = require("../models/Brand")
 const cheerio = require("cheerio")
 const { GetAliProduct, GetDetailHtml } = require("../api/AliExpress")
 const { regExp_test } = require("../lib/userFunc")
-const { korTranslate } = require("./translate")
+const { papagoTranslate } = require("./translate")
 const { getMainKeyword } = require("./keywordSourcing")
 const _ = require("lodash")
 const { searchKeywordCategory } = require("../puppeteer/categorySourcing")
@@ -135,7 +135,7 @@ const start = async ({ url, title, userID }) => {
           ObjItem.keyword = []
           if (pageModule && pageModule.keywords && pageModule.keywords.length > 0) {
             if (!pageModule.keywords.includes("Aliexpress")) {
-              const keywords = await korTranslate(pageModule.keywords.trim())
+              const keywords = await papagoTranslate(pageModule.keywords.trim())
               ObjItem.keyword = keywords.split(",").map((item) => {
                 return regExp_test(item).trim()
               })

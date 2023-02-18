@@ -6,7 +6,7 @@ const {
   ItemDetails,
 } = require("../api/Taobao")
 const { AmazonAsin, regExp_test } = require("../lib/userFunc")
-const { korTranslate } = require("./translate")
+const { papagoTranslate } = require("./translate")
 const { getMainKeyword } = require("./keywordSourcing")
 const { searchKeywordCategory } = require("../puppeteer/categorySourcing")
 
@@ -45,10 +45,10 @@ const start = async ({ url, cnTitle, userID, orginalTitle }) => {
             // mainImage: Array.isArray(mainImages) && mainImages.length > 0 ? mainImages[0] : null
           })
           if (title) {
-            ObjItem.korTitle = await korTranslate(title.trim())
+            ObjItem.korTitle = await papagoTranslate(title.trim())
           } else {
             ObjItem.title = cnTitle
-            ObjItem.korTitle = await korTranslate(cnTitle)
+            ObjItem.korTitle = await papagoTranslate(cnTitle)
           }
           let titleArray = []
           const keywordResponse = await searchKeywordCategory({ keyword: ObjItem.korTitle })
@@ -131,7 +131,7 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
       if (sku_props && sku_props.length > 0) {
         let ii = 0
         for (const item of sku_props) {
-          item.korTypeName = await korTranslate(item.prop_name.trim())
+          item.korTypeName = await papagoTranslate(item.prop_name.trim())
 
           try {
             let valueNamesArr = []
@@ -140,7 +140,7 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
               valueNamesArr.push(value.name.replace(/#/gi, "").trim())
             }
 
-            const tempValueKor = await korTranslate(valueNamesArr.join("#"))
+            const tempValueKor = await papagoTranslate(valueNamesArr.join("#"))
             const tempValueKorArr = tempValueKor.split("#")
 
             let i = 0
@@ -177,7 +177,7 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
 
             tempOptionImages = []
             for (const value of item.values) {
-              value.korValueName = await korTranslate(value.name)
+              value.korValueName = await papagoTranslate(value.name)
 
               if (value.imageUrl) {
                 const imageUrl = value.imageUrl.replace("https:", "").replace("http:", "")

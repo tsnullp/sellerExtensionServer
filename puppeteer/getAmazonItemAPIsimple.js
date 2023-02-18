@@ -3,7 +3,7 @@ const Brand = require("../models/Brand")
 
 const { ProductDetails } = require("../api/Amazon")
 const { AmazonAsin } = require("../lib/userFunc")
-const { EngtoKorTranslate } = require("./translate")
+const { papagoTranslate } = require("./translate")
 
 
 const start = async ({ url, title, userID }) => {
@@ -39,7 +39,7 @@ const start = async ({ url, title, userID }) => {
             ObjItem.isPrime = response.isPrime
             ObjItem.title = response.product_title
             if(!title || title.length === 0){
-              ObjItem.korTitle = await EngtoKorTranslate(response.product_title)
+              ObjItem.korTitle = await papagoTranslate(response.product_title, "en", "ko")
             } else {
               ObjItem.korTitle = title
             }
@@ -129,7 +129,7 @@ const start = async ({ url, title, userID }) => {
             ObjItem.feature = []
             for(const item of response.feature_bullets){
               ObjItem.feature.push(
-                await EngtoKorTranslate(item)
+                await EngtoKorTranslate(item, "en", "ko")
               )
             }
           
@@ -235,7 +235,7 @@ const start = async ({ url, title, userID }) => {
                 for(const key in response.variantAsin){
                   console.log("key", key, response.variantAsin[key])
                   const optionName = key
-                  const korValue = await EngtoKorTranslate(optionName)
+                  const korValue = await EngtoKorTranslate(optionName, "en", "ko")
                   const asin = response.variantAsin[key].asin
                   const subResponse = await ProductDetails({productId: asin})
                 
