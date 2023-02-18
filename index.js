@@ -268,7 +268,7 @@ app.post("/amazon/isRegisters", async (req, res) => {
     }
 
     let response = []
-
+    
     if (items && Array.isArray(items) && items.length > 0) {
       const asinArr = items.map((item) => AmazonAsin(item))
 
@@ -276,7 +276,8 @@ app.post("/amazon/isRegisters", async (req, res) => {
       if (
         items[0].includes("taobao.com") ||
         items[0].includes("tmall.com") ||
-        items[0].includes("aliexpress.com")
+        items[0].includes("aliexpress.com") ||
+        items[0].includes("vvic.com")
       ) {
         product = await Product.aggregate([
           {
@@ -364,7 +365,8 @@ app.post("/amazon/isRegisters", async (req, res) => {
             if (
               items[0].includes("taobao.com") ||
               items[0].includes("tmall.com") ||
-              items[0].includes("aliexpress.com")
+              items[0].includes("aliexpress.com") ||
+              items[0].includes("vvic.com")
             ) {
               console.log("pItem.basic.good_id", pItem.basic.good_id)
               return pItem.basic.good_id === asin
