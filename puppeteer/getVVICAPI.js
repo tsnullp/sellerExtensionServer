@@ -33,7 +33,8 @@ const start = async ({url}) => {
   
     const $ = cheerio.load(content)
 
-    ObjItem.title = await papagoTranslate($(".detail-title").text().replace("실사", "").trim())
+    ObjItem.title = await papagoTranslate($(".detail-title").text().trim())
+    ObjItem.title = ObjItem.title.replace("실사", "").replace("실가", "").replace("~", "").replace("#", "").trim()
     console.log("title", ObjItem.title)
     
     $("#thumblist > .tb-thumb-item").each( (i, elem) => {
