@@ -31,21 +31,21 @@ const cron = require("node-cron")
 
 // jtsjna@gmail.com
 
-cron.schedule("0 0,15 * * *", () => {
-  try {
-    console.log("schedule")
-    // IherbPriceSync()
-  } catch (e) {
-    console.log("schedule", e.message)
-  }
+// cron.schedule("0 0,15 * * *", () => {
+//   try {
+//     console.log("schedule")
+//     // IherbPriceSync()
+//   } catch (e) {
+//     console.log("schedule", e.message)
+//   }
 
-  // CoupangStatusSearch()
-})
+//   // CoupangStatusSearch()
+// })
 
-setInterval(function () {
-  console.log("setInterval")
-  http.get("https://sellerextension.herokuapp.com/")
-}, 600000)
+// setInterval(function () {
+//   console.log("setInterval")
+//   http.get("https://sellerextension.herokuapp.com/")
+// }, 600000)
 
 database()
 
