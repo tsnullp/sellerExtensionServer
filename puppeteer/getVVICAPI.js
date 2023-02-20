@@ -1,9 +1,12 @@
 const axios = require("axios")
 const cheerio = require("cheerio")
 const {papagoTranslate} = require("../puppeteer/translate")
-const _ = require("lodash")
+const ExchangeRate = require("../models/ExchangeRate")
+const ShippingPrice = require("../models/ShippingPrice")
+const Brand = require("../models/Brand")
 const {regExp_test} = require("../lib/userFunc")
 const {Cafe24UploadLocalImages, Cafe24UploadLocalImage} = require("../api/Market")
+const _ = require("lodash")
 
 const start = async ({url, title, userID}) => {
   const ObjItem = {

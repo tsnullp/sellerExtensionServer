@@ -916,7 +916,7 @@ app.post("/amazon/collectionItems", async (req, res) => {
                     continue
                   }
                   // console.log("detailUrl", item.detailUrl)
-                  let detailItem = await getVVIC({url: item.detailUrl})
+                  let detailItem = await getVVIC({url: item.detailUrl, userID: userInfo._id})
                   // console.log("detailItem", detailItem)
                   if (detailItem && detailItem.options && detailItem.options.length > 0) {
                     await TempProduct.findOneAndUpdate(
