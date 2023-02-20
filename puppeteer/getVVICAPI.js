@@ -2,6 +2,7 @@ const axios = require("axios")
 const cheerio = require("cheerio")
 const {papagoTranslate} = require("../puppeteer/translate")
 const _ = require("lodash")
+const {regExp_test} = require("../lib/userFunc")
 
 const start = async ({url}) => {
   const ObjItem = {
@@ -34,7 +35,7 @@ const start = async ({url}) => {
     const $ = cheerio.load(content)
 
     ObjItem.title = await papagoTranslate($(".detail-title").text().trim())
-    ObjItem.title = ObjItem.title.replace("실사", "").replace("실가", "").replace("~", "").replace("#", "").trim()
+    ObjItem.title = regExp_test(ObjItem.title.replace(/실사/gi, "").replace(/실가/gi, "").replace(/샷/gi, "").replace("~", "").replace("#", "").trim())
     console.log("title", ObjItem.title)
     
     $("#thumblist > .tb-thumb-item").each( (i, elem) => {
