@@ -575,10 +575,11 @@ app.post("/amazon/registerItem", async (req, res) => {
 app.post("/amazon/getCollectionItem", async (req, res) => {
   try {
     const { user } = req.body
-
+    
     const userInfo = await User.findOne({
       email: user,
     })
+    
     if (!userInfo) {
       res.json([])
       return
@@ -588,13 +589,13 @@ app.post("/amazon/getCollectionItem", async (req, res) => {
       isDelete: { $ne: true },
     })
     let asinArr = products.map((item) => item.asin)
-
+    
     const registerProducts = await Product.find({
       userID: ObjectId(userInfo._id),
       isDelete: false,
       "basic.good_id": { $in: asinArr },
     })
-
+    
     const tempArr = await TempProduct.find({
       userID: ObjectId(userInfo._id),
       good_id: { $in: asinArr },
@@ -637,7 +638,7 @@ app.post("/amazon/getCollectionItem", async (req, res) => {
         productArr.push(item)
       }
     }
-
+    
     res.json(
       productArr.map((item) => {
         return {
@@ -938,7 +939,7 @@ app.post("/amazon/collectionItems", async (req, res) => {
                           content: detailItem.content,
                           options: detailItem.options,
                           detailUrl: item.detailUrl,
-                          korTitle: detailItem.title,
+                          korTitle: detailItem.korTitle,
                           prop: detailItem.prop,
                           lastUpdate: moment().toDate(),
                         },

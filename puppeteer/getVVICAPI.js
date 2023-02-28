@@ -4,7 +4,7 @@ const {papagoTranslate} = require("../puppeteer/translate")
 const ExchangeRate = require("../models/ExchangeRate")
 const ShippingPrice = require("../models/ShippingPrice")
 const Brand = require("../models/Brand")
-const {regExp_test} = require("../lib/userFunc")
+const {regExp_test, sleep} = require("../lib/userFunc")
 const {Cafe24UploadLocalImages, Cafe24UploadLocalImage} = require("../api/Market")
 const _ = require("lodash")
 
@@ -48,7 +48,10 @@ const start = async ({url, title, userID}) => {
           } else {
             ObjItem.korTitle = title
           }
+
+          
           ObjItem.korTitle = regExp_test(ObjItem.korTitle.replace(/실사/gi, "").replace(/실가/gi, "").replace(/샷/gi, "").replace("~", "").replace("#", "").trim())
+          
 
           let brandList = await Brand.find(
             {
@@ -115,9 +118,8 @@ const start = async ({url, title, userID}) => {
             ObjItem.mainImages.push(image)
           })
       
-          
-
           let base64Images = ``
+        
           for(let image of ObjItem.mainImages){
             const imageRespone = await axios({
               method: "GET",
@@ -126,13 +128,12 @@ const start = async ({url, title, userID}) => {
               maxContentLength: Infinity,
               maxBodyLength: Infinity
             })
-            const buffer = Buffer.from(imageRespone.data)
-            const base64 = new Buffer(buffer).toString("base64")
+            const base64 = Buffer.from(imageRespone.data).toString("base64")
             base64Images += `${base64}"PAPAGO_OCR"`
           }
           if(base64Images.length > 0) {
             const imageUrlResponse = await Cafe24UploadLocalImages({base64Images})
-            console.log("imageUrlResponse", imageUrlResponse)
+            console.log("mainImageUrlResponse", imageUrlResponse)
             if(imageUrlResponse && Array.isArray(imageUrlResponse)){
               ObjItem.mainImages = imageUrlResponse
             }
@@ -193,8 +194,7 @@ const start = async ({url, title, userID}) => {
               maxContentLength: Infinity,
               maxBodyLength: Infinity
             })
-            const buffer = Buffer.from(imageRespone.data)
-            const base64 = new Buffer(buffer).toString("base64")
+            const base64 = Buffer.from(imageRespone.data).toString("base64")
             base64Images += `${base64}"PAPAGO_OCR"`
           }
           if(base64Images.length > 0){
@@ -210,8 +210,7 @@ const start = async ({url, title, userID}) => {
                   url: image,
                   responseType: "arraybuffer",
                 })
-                const buffer = Buffer.from(imageRespone.data)
-                const base64 = new Buffer(buffer).toString("base64")
+                const base64 = Buffer.from(imageRespone.data).toString("base64")
 
                 const contentUrlResponse = await Cafe24UploadLocalImage({base64Image: `base64,${base64}`})
                 console.log("===", contentUrlResponse)
@@ -250,8 +249,7 @@ const start = async ({url, title, userID}) => {
               url: item.originImage,
               responseType: "arraybuffer"
             })
-            const buffer = Buffer.from(imageRespone.data)
-            const base64 = new Buffer(buffer).toString("base64")
+            const base64 = Buffer.from(imageRespone.data).toString("base64")
             base64Images += `${base64}"PAPAGO_OCR"`
           }
 
