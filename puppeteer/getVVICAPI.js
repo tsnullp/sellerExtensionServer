@@ -1,10 +1,12 @@
 const axios = require("axios")
 const cheerio = require("cheerio")
+const sharp = require('sharp')
+const fs = require("fs")
 const {papagoTranslate} = require("../puppeteer/translate")
 const ExchangeRate = require("../models/ExchangeRate")
 const ShippingPrice = require("../models/ShippingPrice")
 const Brand = require("../models/Brand")
-const {regExp_test, sleep} = require("../lib/userFunc")
+const {regExp_test, imageCheck, sleep} = require("../lib/userFunc")
 const {Cafe24UploadLocalImages, Cafe24UploadLocalImage} = require("../api/Market")
 const _ = require("lodash")
 
@@ -38,7 +40,9 @@ const start = async ({url, title, userID}) => {
           })
       
           content = content.data.toString()
-        
+          if(content){
+            console.log("성공", url)
+          }
           const $ = cheerio.load(content)
       
           ObjItem.title = $(".detail-title").text().trim()
@@ -133,8 +137,9 @@ const start = async ({url, title, userID}) => {
           }
           if(base64Images.length > 0) {
             const imageUrlResponse = await Cafe24UploadLocalImages({base64Images})
-            console.log("mainImageUrlResponse", imageUrlResponse)
+            
             if(imageUrlResponse && Array.isArray(imageUrlResponse)){
+              console.log("메인이미지 성공", url)
               ObjItem.mainImages = imageUrlResponse
             }
           }
@@ -157,7 +162,7 @@ const start = async ({url, title, userID}) => {
             })
           })
           await Promise.all(keywordPromise)
-          console.log("ObjItem.keyword", ObjItem.keyword)
+          
 
           const itemVidTemp1 = content.split("var ITEM_VID = '")[1]
           const itemVidTemp2 = itemVidTemp1.split("';")[0]
@@ -213,8 +218,9 @@ const start = async ({url, title, userID}) => {
                 const base64 = Buffer.from(imageRespone.data).toString("base64")
 
                 const contentUrlResponse = await Cafe24UploadLocalImage({base64Image: `base64,${base64}`})
-                console.log("===", contentUrlResponse)
+                
                 if(contentUrlResponse) {
+                  console.log("상세이미지 성공", url)
                   tempContent.push(contentUrlResponse)
                 }
               }
@@ -241,33 +247,52 @@ const start = async ({url, title, userID}) => {
             }
           })
       
-          console.log("uniqColorPic", uniqColorPic)
+          
           base64Images = ``
           for(let item of uniqColorPic){
+
+            let base64 = null
             const imageRespone = await axios({
               method: "GET",
               url: item.originImage,
               responseType: "arraybuffer"
             })
-            const base64 = Buffer.from(imageRespone.data).toString("base64")
+
+            const imageCheckValue = await imageCheck(item.originImage)
+            if(imageCheckValue && imageCheckValue.width < 400 || imageCheckValue.height < 400) {
+              try {
+                const image = Buffer.from(imageRespone.data)
+                await sharp(image).resize(500, 500).toFile(path.join(appDataDirPath, "temp", "resize.jpg"))
+                const bitmap = fs.readFileSync(path.join(appDataDirPath, "temp", "resize.jpg"))
+                base64 = new Buffer(bitmap).toString("base64")
+              } catch (e) {
+                console.log("ee", e)
+                base64 = Buffer.from(imageRespone.data).toString("base64")
+              }
+              
+            } else {
+              base64 = Buffer.from(imageRespone.data).toString("base64")
+            }
+
+            
             base64Images += `${base64}"PAPAGO_OCR"`
           }
 
           if(base64Images.length > 0){
             const optionUrlResponse = await Cafe24UploadLocalImages({base64Images})
-            console.log("optionUrlResponse", optionUrlResponse)
+            console.log("옵션이미지 성공", url)
             if(optionUrlResponse && Array.isArray(optionUrlResponse)){
               optionUrlResponse.forEach((item, i) => {
                 uniqColorPic[i].image = item
               })
             }
           }
-          console.log("uniqColorPic", uniqColorPic)
+          
           for(const item of skumap){
             const findObj = _.find(uniqColorPic, {originImage: item.color_pic.includes("http") ? item.color_pic : `https:${item.color_pic}`})
             if(findObj){
               item.color_pic = findObj.image
-              console.log("item.color_pic", item.color_pic)
+          
             }
           }
 
@@ -340,7 +365,6 @@ const start = async ({url, title, userID}) => {
               }
             })
           })
-      
           
           for(const item of skumap) {
             try {
@@ -476,7 +500,7 @@ const start = async ({url, title, userID}) => {
 
     await Promise.all(promiseArr)
   } catch(e) {
-    console.log("getVVICAPI", e)
+    console.log("getVVICAPI", url, e)
   } finally {
     // console.log("ObjItem", ObjItem)
     return ObjItem

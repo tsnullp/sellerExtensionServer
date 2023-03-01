@@ -574,6 +574,7 @@ app.post("/amazon/registerItem", async (req, res) => {
 
 app.post("/amazon/getCollectionItem", async (req, res) => {
   try {
+    
     const { user } = req.body
     
     const userInfo = await User.findOne({
