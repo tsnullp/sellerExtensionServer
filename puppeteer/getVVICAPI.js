@@ -54,7 +54,22 @@ const start = async ({url, title, userID}) => {
           }
 
           
-          ObjItem.korTitle = regExp_test(ObjItem.korTitle.replace(/현물/gi, "").replace(/관리/gi, "").replace(/컨트롤/gi, "").replace(/2/gi, "").replace(/실사/gi, "").replace(/실가/gi, "").replace(/샷/gi, "").replace("~", "").replace("#", "").trim())
+          ObjItem.korTitle = regExp_test(ObjItem.korTitle.replace(/현물/gi, "").replace(/관리/gi, "").replace(/컨트롤/gi, "")
+          .replace(/2/gi, "")
+          .replace(/·/gi, "")
+          .replace(/출하/gi, "")
+          .replace(/완료/gi, "")
+          .replace(/이미/gi, "")
+          .replace(/03년/gi, "")
+          .replace(/03/gi, "")
+          .replace(/0년/gi, "")
+          .replace(/0/gi, "")
+          .replace(/한국판/gi, "")
+          .replace(/한국/gi, "")
+          .replace(/ins/gi, "")
+          .replace(/통통/gi, "")
+          .replace(/mm/gi, "")
+          .replace(/실사/gi, "").replace(/실가/gi, "").replace(/샷/gi, "").replace("~", "").replace("#", "").trim())
           
 
           let brandList = await Brand.find(
