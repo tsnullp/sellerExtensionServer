@@ -381,7 +381,7 @@ const start = async ({url, title, userID}) => {
             })
           })
           
-          for(const item of skumap) {
+          for(const item of skumap.filter(fItem => fItem.discount_price < 10000)) {
             try {
               let image = item.color_pic
               if(image && !image.includes("http")) {
