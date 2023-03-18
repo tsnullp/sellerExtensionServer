@@ -7,6 +7,8 @@ const cors = require("cors")
 const moment = require("moment")
 const User = require("./models/User")
 const Market = require("./models/Market")
+const MarketOrder = require("./models/MarketOrder")
+const DeliveryInfo = require("./models/DeliveryInfo")
 const AmazonCollection = require("./models/AmazonCollection")
 const TempProduct = require("./models/TempProduct")
 const ShippingPrice = require("./models/ShippingPrice")
@@ -15,10 +17,12 @@ const Cookie = require("./models/Cookie")
 const { iHerbCode } = require("./api/iHerb")
 const findAmazonDetailAPIsimple = require("./puppeteer/getAmazonItemAPIsimple")
 const { findIherbDetailAPI, findIherbDetailSimple } = require("./puppeteer/getIherbItemAPIsimple")
+const {getFirstBdgOrder} = require("./puppeteer/getFirstBdgOrder")
 const findTaobaoDetailAPIsimple = require("./puppeteer/getTaobaoItemAPIsimple")
 const findAliExpressDetailAPIsimple = require("./puppeteer/getAliExpressItemAPisimple")
 const getVVIC = require("./puppeteer/getVVICAPI")
 const updateCafe24 = require("./puppeteer/updateCafe24")
+const {Cafe24ListOrders, Cafe24RegisterShipments} = require("./api/Market")
 const mongoose = require("mongoose")
 const ObjectId = mongoose.Types.ObjectId
 const {
@@ -1118,6 +1122,219 @@ app.post("/ali/cookie", async (req, res) => {
     console.log("error", e)
     res.json({
       message: "fail",
+    })
+  }
+})
+
+app.post("/bdg/orderList", async (req, res) => {
+  try {
+    const { user, cookie } = req.body
+    
+    // console.log("user", user)
+    // console.log("cookie", cookie)
+    const userInfo = await User.findOne({
+      email: user,
+    }).lean()
+
+    if (!userInfo) {
+      res.json({
+        message: false
+      })
+      return
+    }
+    console.log("userInfo.group", userInfo.group)
+    console.log("userInfo", userInfo)
+    if(userInfo.group){
+      const userGroups = await User.find({
+        group: userInfo.group
+      })
+
+      const startDate = moment().subtract(2, "month").format("YYYY-MM-DD")
+      const endDate = moment().format("YYYY-MM-DD")
+
+      
+    const response = await getFirstBdgOrder({userInfo, cookie})
+    
+    if(response && response.result && response.result.list.length > 0){
+      
+      for(const item of response.result.list){
+        console.log("item-->", item)
+        const promiseArr = userGroups.map(user => {
+          return new Promise(async (resolve, reject) => {
+            try {
+              const market = await Market.findOne(
+                {
+                  userID: ObjectId(user._id)
+                }
+              )
+              const cafe24OrderResponse = await Cafe24ListOrders({mallID : market.cafe24.mallID,
+                orderState: "상품준비",
+                startDate, endDate
+              })
+  
+              const temp = await DeliveryInfo.findOne({
+                userID: ObjectId(user._id),
+                orderNo: item.od_code  // 주문번호
+              })
+
+              let orderItems = item.in_order.map((mItem, i) => {
+                
+                let taobaoOrderNo = null
+                if(item.in_order_fo && item.in_order_fo[i]){
+                  taobaoOrderNo = item.in_order_fo[i]
+                } else if(Array.isArray(item.in_order_fo) && item.in_order_fo[0]) {
+                  taobaoOrderNo = item.in_order_fo[0]
+                }
+                let taobaoTrackingNo = null
+                if(item.in_invoice && item.in_invoice[0] && item.in_invoice[0][i]){
+                  taobaoTrackingNo = item.in_invoice[0][i]
+                } else if(Array.isArray(item.in_invoice) && item.in_invoice[0]) {
+                  taobaoTrackingNo = item.in_invoice[0][0]
+                }
+                let 오픈마켓주문번호 = null
+                if(temp && temp.orderItems[i] && temp.orderItems[i].오픈마켓주문번호.trim().length > 0) {
+                  오픈마켓주문번호 = temp.orderItems[i].오픈마켓주문번호.replace("`", "").replace("′", "").trim()
+                } else {
+                  오픈마켓주문번호 = mItem
+                }
+                
+                return {
+                  taobaoOrderNo,
+                  taobaoTrackingNo,
+                  오픈마켓주문번호
+                }
+              })
+              
+              if(temp && temp.orderItems.length <= item.in_order.length){
+                // 디비 내용을 따라 가야함
+                orderItems = temp.orderItems
+              }
+              const deliveySave = await DeliveryInfo.findOneAndUpdate(
+                {
+                  userID: ObjectId(user._id),
+                  orderNo: item.od_code  // 주문번호
+                },
+                {
+                  $set: {
+                    userID: ObjectId(user._id),
+                    orderSeq: item.od_id,
+                    orderNo: item.od_code,  // 주문번호
+                    상태: item.od_status,
+                    수취인주소: `${item.od_addr} ${item.od_addr_detail}`,
+                    수취인우편번호: item.od_zip,
+                    수취인이름: item.od_name,
+                    수취인연락처: item.od_hp,
+                    개인통관부호: item.od_customs_code,
+                    orderItems,
+                    무게: Number(item.od_weight),
+                    배송비용: Number(item.order_price),
+                    shippingNumber: item.od_invoice,
+                    // customs,
+                    // deliveryTracking,
+                    isDelete: item.od_status === "신청취소"  || item.od_status === "반송완료"  ? true : false
+                  }
+                },
+                { upsert: true, new:true }
+              )
+
+              await MarketOrder.findOneAndUpdate(
+                {
+                  userID: ObjectId(user._id),
+                  orderId: item.od_code
+                },
+                {
+                  $set: {
+                    invoiceNumber: item.od_courier,
+                    deliveryCompanyName: "경동택배"
+                  }
+                },
+                { upsert: true }
+              )
+
+              const deliveryTemp = await DeliveryInfo.findOne({
+                userID: ObjectId(user._id),
+                orderNo: item.od_code
+              })
+
+              if(deliveryTemp && deliveryTemp.orderItms){
+                try {
+                  const tempOrderItmes = _.uniqBy(
+                    deliveryTemp.orderItems, "오픈마켓주문번호"
+                  )
+
+                  for (const orderItem of tempOrderItmes) {
+                   
+                   
+                    const tempCafe24Order = cafe24OrderResponse.filter(fItem => fItem.market_order_info === orderItem.오픈마켓주문번호)
+                    console.log("tempCafe24Order", tempCafe24Order.length)
+                    if(tempCafe24Order.length > 0){
+                      const marketOrder = await MarketOrder.findOne({
+                        userID: ObjectId(user._id),
+                        orderId: orderItem.오픈마켓주문번호,
+                      })
+                      
+                      if(!deliveryTemp.isDelete){
+                        for(const item of tempCafe24Order){
+                          try {
+                            const response = await Cafe24RegisterShipments({
+                              mallID: market.cafe24.mallID,
+                              order_id: item.order_id,
+                              tracking_no: tableItem.shippingNumber,
+                              shipping_company_code: marketOrder && marketOrder.deliveryCompanyName === "경동택배" ? "0039" : "0006",
+                              order_item_code: item.items.map(item => item.order_item_code),
+                              shipping_code: item.receivers[0].shipping_code
+                            })
+                            console.log("resonse-->", response)
+                            
+                            await sleep(500)
+                            const response1 = await Cafe24UpdateShipments({
+                              mallID: market.cafe24.mallID,
+                              input: [{
+                                shipping_code: item.receivers[0].shipping_code,
+                                order_id: item.order_id
+                              }]
+                            })
+                            console.log("resonse1-->", response1)
+                            await sleep(500)
+                          } catch (e) {
+                            console.log("에러", e)
+                          }
+                          
+                        }
+                      }
+                      
+                    }
+                    
+                  }
+                } catch (e) {}
+              }
+
+
+              await sleep(500)
+              resolve()
+            } catch(e){
+              console.log("무슨 에러", e)
+              reject(e)
+            }
+          })
+        })
+        
+        await Promise.all(promiseArr)
+      }
+        
+
+        
+        
+      }
+    }
+    res.json({
+      message: true,
+    })
+    
+  } catch (e) {
+    console.log("/bdg/orderList", e)
+    res.json({
+      message: false
     })
   }
 })

@@ -671,10 +671,52 @@ exports.Cafe24CountAllOrders = async ({mallID, orderState="", startDate, endDate
   }
 }
 exports.Cafe24ListOrders = async ({ mallID, orderState, startDate, endDate }) => {
+  const Cafe24CountAllOrdersInner = async ({mallID, orderState="", startDate, endDate}) => {
+    try {
+  
+      let order_state = ""
+      switch(orderState) {
+        case "상품준비":
+          order_state = "N10,N20"
+          break
+        case "배송지시":
+          order_state = "N21,N22"
+          break
+        case "배송중":
+          order_state = "N30"
+          break
+        case "배송완료":
+          order_state = "N40"
+          break
+        case "준비지시중":
+          order_state ="N10,N20,N21,N22,N30"
+          break
+        default:
+          break;
+      }
+      
+      let path = ""
+      if(order_state.length > 0){
+        path = `admin/orders/count?shop_no=1&start_date=${startDate}&end_date=${endDate}&order_status=${order_state}&date_type=pay_date`
+      } else {
+        path = `admin/orders/count?shop_no=1&start_date=${startDate}&end_date=${endDate}&date_type=pay_date`
+      }
+      
+      return await Cafe24API({
+        mallID,
+        method: "GET",
+        path
+      })
+    } catch (e) {
+      console.log("Cafe24CountAllOrders", e)
+      return null
+    }
+  }
+
   try {
     console.log("startDate, endDate", startDate, endDate)
     const limit = 500
-    const countResponse = await this.Cafe24CountAllOrders({mallID, orderState, startDate, endDate})
+    const countResponse = await Cafe24CountAllOrdersInner({mallID, orderState, startDate, endDate})
     console.log("countResponse", countResponse)
     const count = countResponse.data.count
     const page = Math.ceil(count/limit)
@@ -727,7 +769,7 @@ exports.Cafe24ListOrders = async ({ mallID, orderState, startDate, endDate }) =>
     return list
     
   } catch (e) {
-    console.log("Cafe24ListAllOrigin", e)
+    console.log("Cafe24ListOrders", e)
     return []
   }
 }
@@ -762,7 +804,7 @@ exports.Cafe24ListAllOrders = async ({ mallID, startDate, endDate }) => {
     return list
     
   } catch (e) {
-    console.log("Cafe24ListAllOrigin", e)
+    console.log("Cafe24ListAllOrders", e)
     return []
   }
 }

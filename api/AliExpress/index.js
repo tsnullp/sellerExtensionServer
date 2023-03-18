@@ -60,7 +60,7 @@ exports.GetDetailHtml = async ({ url }) => {
     //       "origin": "https://ko.aliexpress.com/",
     //     },
     //   })
-
+    
     // console.log("content--->", content)
     return content.data.toString()
   } catch (e) {
