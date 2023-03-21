@@ -22,7 +22,7 @@ const findTaobaoDetailAPIsimple = require("./puppeteer/getTaobaoItemAPIsimple")
 const findAliExpressDetailAPIsimple = require("./puppeteer/getAliExpressItemAPisimple")
 const getVVIC = require("./puppeteer/getVVICAPI")
 const updateCafe24 = require("./puppeteer/updateCafe24")
-const {Cafe24ListOrders, Cafe24RegisterShipments} = require("./api/Market")
+const {Cafe24ListOrders, Cafe24RegisterShipments, Cafe24UpdateShipments} = require("./api/Market")
 const mongoose = require("mongoose")
 const ObjectId = mongoose.Types.ObjectId
 const {
@@ -32,7 +32,7 @@ const {
   CoupnagUPDATE_PARTIAL_PRODUCT,
 } = require("./api/Market")
 const cron = require("node-cron")
-
+const _ = require("lodash")
 // jtsjna@gmail.com
 
 // cron.schedule("0 0,15 * * *", () => {
@@ -1142,8 +1142,7 @@ app.post("/bdg/orderList", async (req, res) => {
       })
       return
     }
-    console.log("userInfo.group", userInfo.group)
-    console.log("userInfo", userInfo)
+    
     if(userInfo.group){
       const userGroups = await User.find({
         group: userInfo.group
@@ -1158,7 +1157,7 @@ app.post("/bdg/orderList", async (req, res) => {
     if(response && response.result && response.result.list.length > 0){
       
       for(const item of response.result.list){
-        console.log("item-->", item)
+        // console.log("item-->", item)
         const promiseArr = userGroups.map(user => {
           return new Promise(async (resolve, reject) => {
             try {
@@ -1256,17 +1255,19 @@ app.post("/bdg/orderList", async (req, res) => {
                 orderNo: item.od_code
               })
 
-              if(deliveryTemp && deliveryTemp.orderItms){
+              
+              if(deliveryTemp && deliveryTemp.orderItems){
                 try {
+                  
                   const tempOrderItmes = _.uniqBy(
                     deliveryTemp.orderItems, "오픈마켓주문번호"
                   )
-
+                  
                   for (const orderItem of tempOrderItmes) {
                    
-                   
-                    const tempCafe24Order = cafe24OrderResponse.filter(fItem => fItem.market_order_info === orderItem.오픈마켓주문번호)
-                    console.log("tempCafe24Order", tempCafe24Order.length)
+                    
+                    const tempCafe24Order = cafe24OrderResponse.filter(fItem => fItem.market_order_info.toString() === orderItem.오픈마켓주문번호.toString())
+                  
                     if(tempCafe24Order.length > 0){
                       const marketOrder = await MarketOrder.findOne({
                         userID: ObjectId(user._id),
@@ -1279,7 +1280,7 @@ app.post("/bdg/orderList", async (req, res) => {
                             const response = await Cafe24RegisterShipments({
                               mallID: market.cafe24.mallID,
                               order_id: item.order_id,
-                              tracking_no: tableItem.shippingNumber,
+                              tracking_no: deliveySave.shippingNumber,
                               shipping_company_code: marketOrder && marketOrder.deliveryCompanyName === "경동택배" ? "0039" : "0006",
                               order_item_code: item.items.map(item => item.order_item_code),
                               shipping_code: item.receivers[0].shipping_code
@@ -1306,7 +1307,9 @@ app.post("/bdg/orderList", async (req, res) => {
                     }
                     
                   }
-                } catch (e) {}
+                } catch (e) {
+                  console.log("무슨 에러", e)
+                }
               }
 
 
