@@ -1,6 +1,12 @@
 const TaobaoAPI = require("./TaobaoAPI")
 const moment = require("moment")
 const axios = require("axios")
+const User = require("../../models/User")
+const _ = require("lodash")
+const {imageCheck, getAppDataPath} = require("../../lib/userFunc")
+const fs = require("fs")
+const path = require("path")
+const {Cafe24UploadLocalImage} = require("../Market/index")
 
 exports.TaobaoOrderList = async ({ pageNum, referer, cookie }) => {
   const path =
@@ -126,25 +132,93 @@ exports.ItemSKU = async ({ num_iid }) => {
   }
 }
 
-exports.ItemSKUV2 = async ({ item_id }) => {
+exports.ItemSKUV2 = async ({ userID, item_id }) => {
   try {
+    let apiToken =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRzbnVsbHAifQ.KLUeGxRdf088cUQwnYt-XS3Tgk8fxr-o7IpqG_BZmuI"
+
+    if(userID) {
+      const groupUser = await User.find(
+        {
+          group: "3"
+        }
+      )
+      const userIDs = groupUser.map(item => item._id.toString())
+      if(userIDs.includes(userID.toString())) {
+        apiToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VybmFtZSI6InppdGFuZTM4IiwiQ29taWQiOm51bGwsIlJvbGVpZCI6bnVsbCwiaXNzIjoidG1hcGkiLCJzdWIiOiJ6aXRhbmUzOCIsImF1ZCI6WyIiXX0.csSgsUbe-9VruviWYF-AXKaZDP_mO8pFiyKNFSe0N1s"
+      }
+    }
     const options = {
       method: "GET",
-      url: "https://taobao-tmall-product-data-v2.p.rapidapi.com/api/sc/taobao/item_detail",
-      params: { item_id },
-      headers: {
-        "x-rapidapi-host": "taobao-tmall-product-data-v2.p.rapidapi.com",
-        "x-rapidapi-key": "932f64e27amsh78cdad966b2c2c0p129e12jsn92420146f153",
-        // "useQueryString": true
-      },
+      url: "http://api.tmapi.top/taobao/item_detail",
+      params: { item_id, apiToken },
     }
     const response = await axios({
       ...options,
     })
 
+
+    //TODO:
+    let mainImages = []
+   
+    console.log("response", response.data)
+    
+    mainImages = _.sortBy(mainImages.filter(item => item.image), "textLength")
+   
+    
+
+    response.data.data.main_imgs = mainImages.map(item => item.image)
+
+    const appDataDirPath = getAppDataPath()
+    
+    if (!fs.existsSync(appDataDirPath)) {
+      fs.mkdirSync(appDataDirPath)
+    }
+
+    if (!fs.existsSync(path.join(appDataDirPath, "temp"))) {
+      fs.mkdirSync(path.join(appDataDirPath, "temp"))
+    }
+
+    for(const props of response.data.data.sku_props){
+      
+      for(const value of props.values){
+        try {
+          if(value.imageUrl) {
+            const imageCheckValue = await imageCheck(value.imageUrl)
+          
+            if(imageCheckValue && (imageCheckValue.width < 400 || imageCheckValue.height < 400)) {
+              console.log("imageCheckValue", imageCheckValue)
+              try {
+                const imageRespone = await axios({
+                  method: "GET",
+                  url: value.imageUrl,
+                  responseType: "arraybuffer"
+                })
+                const image = Buffer.from(imageRespone.data)
+                await sharp(image).resize(500, 500).toFile(path.join(appDataDirPath, "temp", "resize.jpg"))
+                const bitmap = fs.readFileSync(path.join(appDataDirPath, "temp", "resize.jpg"))
+                const base64 = new Buffer(bitmap).toString("base64")
+                const imageUrlResponse = await Cafe24UploadLocalImage({base64Image: `base64,${base64}`})
+                console.log("imageUrlResponse", imageUrlResponse)
+                if(imageUrlResponse){
+                  value.imageUrl = imageUrlResponse
+                }
+              } catch(e){
+                // value.imageUrl = null
+              }
+            }
+            
+          }
+        } catch (e) {
+          console.log("error", e)
+          value.imageUrl = null
+        }
+        
+      }
+    }
     return response.data.data
   } catch (e) {
-    // console.log("ItemSKU", e)
+    console.log("ItemSKUV2", e)
     return null
   }
 }
@@ -195,25 +269,75 @@ exports.ItemDescription = async ({ num_iid }) => {
   }
 }
 
-exports.ItemDescriptionV2 = async ({ item_id }) => {
+exports.ItemDescriptionV2 = async ({ userID, item_id, detailImages = [] }) => {
+  let detailUrls = []
   try {
-    const options = {
-      method: "GET",
-      url: "https://taobao-tmall-product-data-v2.p.rapidapi.com/api/sc/taobao/item_desc",
-      params: { item_id },
-      headers: {
-        "x-rapidapi-host": "taobao-tmall-product-data-v2.p.rapidapi.com",
-        "x-rapidapi-key": "932f64e27amsh78cdad966b2c2c0p129e12jsn92420146f153",
-      },
-    }
-    const response = await axios({
-      ...options,
-    })
+    if(detailImages.length === 0) {
+      let apiToken =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRzbnVsbHAifQ.KLUeGxRdf088cUQwnYt-XS3Tgk8fxr-o7IpqG_BZmuI"
 
-    return response.data
+      if(userID) {
+        const groupUser = await User.find(
+          {
+            group: "3"
+          }
+        )
+        const userIDs = groupUser.map(item => item._id.toString())
+        if(userIDs.includes(userID.toString())) {
+          apiToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VybmFtZSI6InppdGFuZTM4IiwiQ29taWQiOm51bGwsIlJvbGVpZCI6bnVsbCwiaXNzIjoidG1hcGkiLCJzdWIiOiJ6aXRhbmUzOCIsImF1ZCI6WyIiXX0.csSgsUbe-9VruviWYF-AXKaZDP_mO8pFiyKNFSe0N1s"
+        }
+      }
+      // const options = {
+      //   method: "GET",
+      //   url: "https://taobao-tmall-product-data-v2.p.rapidapi.com/api/sc/taobao/item_desc",
+      //   params: { item_id },
+      //   headers: {
+      //     "x-rapidapi-host": "taobao-tmall-product-data-v2.p.rapidapi.com",
+      //     "x-rapidapi-key": "932f64e27amsh78cdad966b2c2c0p129e12jsn92420146f153",
+      //   },
+      // }
+      const options = {
+        method: "GET",
+        url: "http://api.tmapi.top/taobao/item_desc",
+        params: { item_id, apiToken },
+      }
+      const response = await axios({
+        ...options,
+      })
+
+      // console.log("response.data", response.data)
+      
+      if(response.data && response.data.code === 200){
+        for(const item of response.data.data.detail_imgs){
+          try {
+            await imageCheck(item)
+            detailUrls.push(item)
+          } catch(e){
+            // console.log("imageCheck", e)
+          }
+          
+          // const img = await axios.get(item, {responseType: "arraybuffer"}).then((response) => Buffer.from(response.data))
+          // await sharp(img).withMetadata().then(info => {
+          //   console.log("img", img)
+          //   console.log("info", info)
+          // })
+        }
+      }
+    } else {
+      for(const item of detailImages){
+        try {
+          await imageCheck(item)
+          detailUrls.push(item)
+        } catch(e){
+         
+        }
+      }
+    }
+    
+    return detailUrls
   } catch (e) {
     console.log("ItemDescription", e)
-    return null
+    return []
   }
 }
 
