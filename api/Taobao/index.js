@@ -159,15 +159,15 @@ exports.ItemSKUV2 = async ({ userID, item_id }) => {
 
 
     //TODO:
-    let mainImages = []
+    // let mainImages = []
    
     console.log("response", response.data)
     
-    mainImages = _.sortBy(mainImages.filter(item => item.image), "textLength")
+    // mainImages = _.sortBy(mainImages.filter(item => item.image), "textLength")
    
     
 
-    response.data.data.main_imgs = mainImages.map(item => item.image)
+    // response.data.data.main_imgs = mainImages.map(item => item.image)
 
     const appDataDirPath = getAppDataPath()
     
