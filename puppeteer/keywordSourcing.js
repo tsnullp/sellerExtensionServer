@@ -1,6 +1,7 @@
 const { CategoryPredict } = require("../api/Market")
 const { NaverKeywordRel } = require("../api/Naver")
 const { sleep, regExp_test, ranking, DimensionArray } = require("../lib/userFunc")
+const { searchKeywordCategory } = require("./categorySourcing")
 const axios = require("axios")
 const qs = require("querystring")
 const _ = require("lodash")
@@ -324,8 +325,68 @@ const searchKeywordTitle = async ({ page, keyword, index = 1 }) => {
   }
 }
 
+const searchLensImage = async ({url}) => {
+  let searchKeyword = []
+  try {
+  
+    const content = await axios.get(
+      `https://msearch.shopping.naver.com/search/image?iu=${encodeURI(url)}`,
+      {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Linux; Android 8.0.0; SM-G955U Build/R16NW) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Mobile Safari/537.36",
+          "sec-fetch-site": "same-origin",
+          "sec-fetch-mode": "cors",
+          "Accept-Encoding": "gzip, deflate, br",
+          Connection: "keep-alive",
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+          Expires: "0",
+          referer: `https://msearch.shopping.naver.com/search/image`,
+          // sbth: getSbth()
+        },
+      }
+    )
+    
+    const data = content.data.split(`<script id="__NEXT_DATA__" type="application/json">`)[1].split(`</script></body></html>`)[0]
+    const jsonObj = JSON.parse(data.replace(/\\"/), `"` )
+    // console.log("jsonObj", jsonObj)
+    const initialState = JSON.parse(jsonObj.props.pageProps.initialState.replace("undefined", `"undefined`))
+    
+    
+    if(initialState.imageSearch.searchResult.size.h < 400){
+      return searchKeyword
+    }
+    const similarImages = initialState.imageSearch.searchResult.similarImages
+    const products = similarImages.filter(item => item.score >= 0.94).map(item => item.productTitle.split("{")[0].replace(/,/, "").trim())
+
+    // let arrayKeyword = []
+    // console.log("products", url, products.length)
+    // console.log("products uniq", _.uniq(products).length)
+    for(const title of _.uniq(products)){
+      const {nluTerms} = await searchKeywordCategory({keyword: title})
+      await sleep(300)
+      if(nluTerms) {
+        searchKeyword.push(...nluTerms.filter(item => item.type !== "브랜드").map(item => item.keyword))
+      }
+    }
+   
+    // const rankKeyword = ranking(arrayKeyword, 1)
+    
+    // searchKeyword = rankKeyword.map(item => item.name)
+    // console.log("searchKeyword", searchKeyword)
+  } catch (e) {
+    console.log("쇼핑렌즈 --- @@@ ", url)
+    console.log("searchLensKeyword", e)
+  } finally {
+    return searchKeyword
+  }
+}
+
+
 module.exports = {
   getMainKeyword,
   getCoupnagRelatedKeyword,
   getCoupnagAutoKeyword,
+  searchLensImage
 }

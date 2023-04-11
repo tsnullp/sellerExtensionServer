@@ -266,6 +266,7 @@ app.post("/amazon/isRegisters", async (req, res) => {
     const userInfo = await User.findOne({
       email: user,
     })
+    
     if (!userInfo) {
       res.json([])
       return
@@ -589,31 +590,58 @@ app.post("/amazon/getCollectionItem", async (req, res) => {
       res.json([])
       return
     }
+    
     const products = await AmazonCollection.find({
       userID: ObjectId(userInfo._id),
       isDelete: { $ne: true },
     })
+    
     let asinArr = products.map((item) => item.asin)
     
-    const registerProducts = await Product.find({
-      userID: ObjectId(userInfo._id),
-      isDelete: false,
-      "basic.good_id": { $in: asinArr },
-    })
     
-    const tempArr = await TempProduct.find({
-      userID: ObjectId(userInfo._id),
-      good_id: { $in: asinArr },
-    })
+    // const registerProducts = await Product.find({
+    //   userID: ObjectId(userInfo._id),
+    //   isDelete: false,
+    //   "basic.good_id": { $in: asinArr },
+    // })
+    const registerProducts = await Product.aggregate([
+      {
+        $match: {
+          userID: ObjectId(userInfo._id),
+          isDelete: false,
+          "basic.good_id": { $in: asinArr },
+        }
+      },
+      {
+        $project: {
+          "options.key": 1,
+          "basic.good_id": 1
+        }
+      }
+    ])
+    
+    const tempArr = await TempProduct.aggregate([
+      {
+        $match: {
+          userID: ObjectId(userInfo._id),
+          good_id: { $in: asinArr },
+          
+        }
+      }
+    ])
+
+    
     const productArr = []
     for (const item of products) {
       let isRegister = false
       for (const rItem of registerProducts) {
         if (rItem.options.filter((fItem) => fItem.key === item.asin).length > 0) {
           isRegister = true
+          break
         }
         if (rItem.basic.good_id === item.asin) {
           isRegister = true
+          break
         }
       }
       if (!isRegister) {
@@ -625,25 +653,12 @@ app.post("/amazon/getCollectionItem", async (req, res) => {
             item.isFail = true
           }
         }
-        // const temp = await TempProduct.findOne(
-        //   {
-        //     userID: ObjectId(userInfo._id),
-        //     good_id: item.asin
-        //   }
-        // )
-        // if(temp) {
-
-        //   item.isDone = true
-        //   if(temp.options.length === 0) {
-        //     console.log("실패")
-        //     item.isFail = true
-        //   }
-        // }
 
         productArr.push(item)
+        
       }
     }
-    
+
     res.json(
       productArr.map((item) => {
         return {
@@ -1130,8 +1145,7 @@ app.post("/bdg/orderList", async (req, res) => {
   try {
     const { user, cookie } = req.body
     
-    // console.log("user", user)
-    // console.log("cookie", cookie)
+    
     const userInfo = await User.findOne({
       email: user,
     }).lean()

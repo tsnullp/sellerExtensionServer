@@ -3,9 +3,9 @@ const ShippingPrice = require("../models/ShippingPrice")
 const Brand = require("../models/Brand")
 const cheerio = require("cheerio")
 const { GetAliProduct, GetDetailHtml } = require("../api/AliExpress")
-const { regExp_test } = require("../lib/userFunc")
+const { regExp_test, ranking, sleep } = require("../lib/userFunc")
 const { papagoTranslate } = require("./translate")
-const { getMainKeyword } = require("./keywordSourcing")
+const { getMainKeyword, searchLensImage } = require("./keywordSourcing")
 const _ = require("lodash")
 const { searchKeywordCategory } = require("../puppeteer/categorySourcing")
 
@@ -30,7 +30,7 @@ const start = async ({ url, title, userID }) => {
     const promiseArr = [
       new Promise(async (resolve, reject) => {
         try {
-          const response = await GetAliProduct({ url })
+          const response = await GetAliProduct({ url: url.split("?")[0] })
           const {
             pageModule,
             commonModule,
@@ -42,6 +42,7 @@ const start = async ({ url, title, userID }) => {
             skuModule,
             specsModule,
             titleModule,
+            crossLinkModule
           } = response.data
 
           let shipPrice = 0
@@ -87,10 +88,20 @@ const start = async ({ url, title, userID }) => {
             purchaseLimitNumMax = quantityModule.purchaseLimitNumMax
           }
 
-          ObjItem.shipPrice = shipPrice
-          ObjItem.deliverDate = deliverDate
+          if(shippingModule &&
+            shippingModule.generalFreightInfo &&
+            shippingModule.generalFreightInfo.originalLayoutResultList
+           ) {
+             let shippingObj = shippingModule.generalFreightInfo.originalLayoutResultList[0].bizData
+             ObjItem.shipPrice = shippingObj.displayAmount ? shippingObj.displayAmount : 0
+             ObjItem.deliverDate = shippingObj.deliveryDate ? shippingObj.deliveryDate : null
+             ObjItem.deliverCompany = shippingObj.company ? shippingObj.company : null
+           }
+
+          // ObjItem.shipPrice = shipPrice
+          // ObjItem.deliverDate = deliverDate
           ObjItem.purchaseLimitNumMax = purchaseLimitNumMax
-          ObjItem.deliverCompany = deliverCompany
+          // ObjItem.deliverCompany = deliverCompany
 
           if (!title || title.length === 0) {
             ObjItem.korTitle = titleModule.subject.trim()
@@ -126,21 +137,83 @@ const start = async ({ url, title, userID }) => {
             ObjItem.korTitle = title.trim()
           }
 
-          ObjItem.mainKeyword = await getMainKeyword(ObjItem.korTitle)
+          // ObjItem.mainKeyword = await getMainKeyword(ObjItem.korTitle)
 
-          if (ObjItem.mainKeyword.length === 0) {
-            ObjItem.mainKeyword = await getMainKeyword(ObjItem.korTitle, true)
+          // if (ObjItem.mainKeyword.length === 0) {
+          //   ObjItem.mainKeyword = await getMainKeyword(ObjItem.korTitle, true)
+          // }
+          let mainImageKeywords = []
+          const promiseMainImages = ObjItem.mainImages.map(image => {
+            return new Promise(async (resolve, reject) => {
+              try {
+                const keywords = await searchLensImage({url: image})
+                mainImageKeywords.push(...keywords)
+                await sleep(500)
+              // console.log("keywrods----->", keywords)
+                resolve()
+              } catch(e){
+                reject(e)
+              }
+            })
+          })
+          await Promise.all(promiseMainImages)
+
+          ObjItem.mainImages = imageModule.imagePathList
+
+          const detailResponse = await GetDetailHtml({ url: descriptionModule.descriptionUrl })
+
+          if (detailResponse) {
+            const $ = cheerio.load(detailResponse)
+            $("img").each(function (i, elem) {
+              const value = $(this).attr("src")
+              ObjItem.content.push(value)
+            })
           }
 
-          ObjItem.keyword = []
-          if (pageModule && pageModule.keywords && pageModule.keywords.length > 0) {
-            if (!pageModule.keywords.includes("Aliexpress")) {
-              const keywords = await papagoTranslate(pageModule.keywords.trim())
-              ObjItem.keyword = keywords.split(",").map((item) => {
-                return regExp_test(item).trim()
-              })
+          let contentKeywords = []
+          const promiseContentKeywords = ObjItem.content.filter(image => image.includes("http") && image.includes(".jpg")).map(image => {
+            return new Promise(async (resolve, reject) => {
+              try {
+                const keywords = await searchLensImage({url: image})
+                contentKeywords.push(...keywords)
+                await sleep(500)
+                resolve()
+              } catch(e) {
+                reject(e)
+              }
+            })
+          })
+          await Promise.all(promiseContentKeywords)
+          // console.log("contentKeywords ---- ", contentKeywords)
+
+          const {nluTerms} = await searchKeywordCategory({keyword: ObjItem.korTitle})
+          const rankKeyword = await ranking([...nluTerms.filter(item => item.type !== "브랜드").map(item => item.keyword), ...mainImageKeywords, ...contentKeywords], 1)
+          // console.log("rankKeyword **** ", rankKeyword)
+
+          let tempTitle = ""
+          for(const item of rankKeyword){
+            if(tempTitle.length < 50) {
+              tempTitle += `${item.name} `
             }
           }
+          ObjItem.korTitle = tempTitle.trim()
+          // console.log("tempTitle = >", tempTitle.trim())
+
+
+          ObjItem.keyword = []
+          if(crossLinkModule && crossLinkModule.crossLinkGroupList) {
+            for(const crossLink of crossLinkModule.crossLinkGroupList){
+              ObjItem.keyword.push(...crossLink.crossLinkList.map(item => item.displayName))
+            }
+          }
+          // if (pageModule && pageModule.keywords && pageModule.keywords.length > 0) {
+          //   if (!pageModule.keywords.includes("Aliexpress")) {
+          //     const keywords = await papagoTranslate(pageModule.keywords.trim())
+          //     ObjItem.keyword = keywords.split(",").map((item) => {
+          //       return regExp_test(item).trim()
+          //     })
+          //   }
+          // }
           let brandList = await Brand.find(
             {
               brand: { $ne: null },
@@ -205,17 +278,8 @@ const start = async ({ url, title, userID }) => {
             }
           })
 
-          ObjItem.mainImages = imageModule.imagePathList
-
-          const detailResponse = await GetDetailHtml({ url: descriptionModule.descriptionUrl })
-
-          if (detailResponse) {
-            const $ = cheerio.load(detailResponse)
-            $("img").each(function (i, elem) {
-              const value = $(this).attr("src")
-              ObjItem.content.push(value)
-            })
-          }
+          
+         
 
           const { productSKUPropertyList, skuPriceList } = skuModule
 
@@ -285,10 +349,11 @@ const start = async ({ url, title, userID }) => {
           // }
 
           ObjItem.options = skuPriceList
+            .filter(item => item.skuVal.inventory > 0)
             .map((item) => {
               // console.log("skuActivityAmount", item.skuVal.kuActivityAmount)
               // console.log("skuAmount:", item.skuVal.skuAmount)
-              console.log("item", item)
+              // console.log("item", item)
               let image = null
               let value = ""
               let korValue = ""

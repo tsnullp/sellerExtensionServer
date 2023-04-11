@@ -1,3 +1,4 @@
+const { getSbth } = require("../lib/userFunc")
 const axios = require("axios")
 
 const searchKeywordCategory = async ({ keyword }) => {
@@ -19,6 +20,7 @@ const searchKeywordCategory = async ({ keyword }) => {
           Pragma: "no-cache",
           Expires: "0",
           referer: `https://msearch.shopping.naver.com/search/all`,
+          sbth: getSbth()
         },
       }
     )

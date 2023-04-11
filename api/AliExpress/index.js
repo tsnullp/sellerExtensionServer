@@ -3,6 +3,8 @@ const axios = require("axios")
 const Cookie = require("../../models/Cookie")
 
 exports.GetAliProduct = async ({ url }) => {
+  // console.log("url111", url)
+  let temp3 = null
   try {
     const cookie = await Cookie.findOne({
       name: "xman_t",
@@ -30,17 +32,23 @@ exports.GetAliProduct = async ({ url }) => {
     // .replace("abtestMap", `"abtestMap"`)
     // .replace(/'/gi, `"`)
     const temp2 = temp.split("csrfToken")[0].trim()
-    const temp3 = `{${temp2.slice(0, temp2.length - 1)}}`
+    temp3 = `{${temp2.slice(0, temp2.length - 1)}}`
     return JSON.parse(temp3)
   } catch (e) {
-    console.log("GetAliProduct", e)
-    return null
+    try {
+      temp3 = temp3.split("</script>")[0]
+      temp3 = `{${temp3.slice(0, temp3.length -1)}}`
+      return JSON.parse(temp3)   
+    } catch(e) {
+      console.log("GetAliProduct", temp3)
+      return null
+    }
   }
 }
 
 exports.GetDetailHtml = async ({ url }) => {
   try {
-    console.log("url", url)
+    // console.log("url", url)
 
     const content = await axios({
       url,
