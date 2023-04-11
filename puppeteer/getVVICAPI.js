@@ -32,23 +32,34 @@ const start = async ({ url, title, userID }) => {
   }
 
   try {
+    let content = await axios({
+      url,
+      method: "GET"
+    })
+
+    content = content.data.toString()
+    if (content) {
+      console.log("성공", url)
+    }
+
+    const temp1 = content.split("var _SKUMAP = '")[1]
+    const temp2 = temp1.split("';")[0]
+
+    const skumap = JSON.parse(temp2)
+
+    if (skumap.length === 0) {
+      return null
+    }
+
     const promiseArr = [
       new Promise(async (resolve, reject) => {
         try {
 
-          let content = await axios({
-            url,
-            method: "GET"
-          })
 
-          content = content.data.toString()
-          if (content) {
-            console.log("성공", url)
-          }
           const $ = cheerio.load(content)
 
           ObjItem.title = $(".detail-title").text().trim()
-          
+
           if (!title || title.length === 0) {
             ObjItem.korTitle = await papagoTranslate(ObjItem.title)
           } else {
@@ -112,7 +123,7 @@ const start = async ({ url, title, userID }) => {
           const promiseMainImages = ObjItem.mainImages.map(image => {
             return new Promise(async (resolve, reject) => {
               try {
-                const keywords = await searchLensImage({ url: image })
+                const keywords = await searchLensImage({ url: image.split("?")[0] })
                 mainImageKeywords.push(...keywords)
                 await sleep(500)
                 // console.log("keywrods----->", keywords)
@@ -132,10 +143,10 @@ const start = async ({ url, title, userID }) => {
           const detail$ = cheerio.load(scriptTemp2)
           detail$("img").each((i, elem) => {
             let image = detail$(elem).attr("src")
-            if (!image.includes("http")) {
+            if (image &&!image.includes("http")) {
               image = `https:${image}`
+              ObjItem.content.push(image)
             }
-            ObjItem.content.push(image)
           })
 
           base64Images = ``
@@ -182,7 +193,7 @@ const start = async ({ url, title, userID }) => {
           const promiseContentKeywords = ObjItem.content.filter(image => image.includes("http") && image.includes(".jpg")).map(image => {
             return new Promise(async (resolve, reject) => {
               try {
-                const keywords = await searchLensImage({ url: image })
+                const keywords = await searchLensImage({ url: image.split("?")[0] })
                 contentKeywords.push(...keywords)
                 await sleep(500)
                 resolve()
@@ -196,7 +207,13 @@ const start = async ({ url, title, userID }) => {
 
           // console.log("ObjItem.korTitle 0))))", ObjItem.korTitle)
           const { nluTerms } = await searchKeywordCategory({ keyword: ObjItem.korTitle })
-          const rankKeyword = await ranking([...nluTerms.filter(item => item.type !== "브랜드").map(item => item.keyword), ...mainImageKeywords, ...contentKeywords], 1)
+          let rankKeyword = []
+          if(nluTerms){
+            rankKeyword = await ranking([ ...nluTerms.filter(item => item.type !== "브랜드").map(item => item.keyword) , ...mainImageKeywords, ...contentKeywords], 1)
+          } else {
+            rankKeyword = await ranking([ ...mainImageKeywords, ...contentKeywords], 1)
+          }
+          
           // console.log("rankKeyword **** ", rankKeyword)
 
           let tempTitle = ""
@@ -206,7 +223,24 @@ const start = async ({ url, title, userID }) => {
             }
           }
 
-          ObjItem.korTitle = regExp_test(tempTitle.replace(/실사/gi, "").replace(/실가/gi, "").replace(/샷/gi, "").replace("~", "").replace("#", "").trim())
+          ObjItem.korTitle = regExp_test(tempTitle
+            .replace(/현물/gi, "").replace(/관리/gi, "").replace(/컨트롤/gi, "")
+              .replace(/2/gi, "")
+              .replace(/·/gi, "")
+              .replace(/출하/gi, "")
+              .replace(/완료/gi, "")
+              .replace(/이미/gi, "")
+              .replace(/03년/gi, "")
+              .replace(/03/gi, "")
+              .replace(/0년/gi, "")
+              .replace(/0/gi, "")
+              .replace(/한국판/gi, "")
+              .replace(/한국/gi, "")
+              .replace(/ins/gi, "")
+              .replace(/통통/gi, "")
+              .replace(/mm/gi, "")
+              
+            .replace(/실사/gi, "").replace(/실가/gi, "").replace(/샷/gi, "").replace("~", "").replace("#", "").trim())
 
           // console.log("korTitle --->   ", ObjItem.korTitle)
 

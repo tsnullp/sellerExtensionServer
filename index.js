@@ -939,7 +939,24 @@ app.post("/amazon/collectionItems", async (req, res) => {
                   // console.log("detailUrl", item.detailUrl)
                   let detailItem = await getVVIC({url: item.detailUrl, userID: userInfo._id})
                   // console.log("detailItem", detailItem)
-                  if (detailItem && detailItem.options && detailItem.options.length > 0) {
+                  if(!detailItem){
+                    console.log("없음 --><", asin)
+                    await AmazonCollection.findOneAndUpdate(
+                      {
+                        userID: ObjectId(userInfo._id),
+                        asin,
+                      },
+                      {
+                        $set: {
+                          isDelete: true,
+                          lastUpdate: moment().toDate(),
+                        },
+                      },
+                      {
+                        upsert: true,
+                      }
+                    )
+                  } else if (detailItem && detailItem.options && detailItem.options.length > 0) {
                     await TempProduct.findOneAndUpdate(
                       {
                         userID: ObjectId(userInfo._id),

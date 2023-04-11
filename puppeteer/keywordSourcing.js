@@ -354,7 +354,7 @@ const searchLensImage = async ({url}) => {
     const initialState = JSON.parse(jsonObj.props.pageProps.initialState.replace("undefined", `"undefined`))
     
     
-    if(initialState.imageSearch.searchResult.size.h < 400){
+    if(!initialState.imageSearch.searchResult || initialState.imageSearch.searchResult.size.h < 400){
       return searchKeyword
     }
     const similarImages = initialState.imageSearch.searchResult.similarImages
