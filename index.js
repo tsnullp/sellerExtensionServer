@@ -375,7 +375,7 @@ app.post("/amazon/isRegisters", async (req, res) => {
               items[0].includes("aliexpress.com") ||
               items[0].includes("vvic.com")
             ) {
-              console.log("pItem.basic.good_id", pItem.basic.good_id)
+              
               return pItem.basic.good_id === asin
             } else {
               return pItem.options.key === asin
@@ -701,6 +701,7 @@ app.post("/amazon/collectionItems", async (req, res) => {
     setTimeout(async () => {
       try {
         for (const item of products) {
+          console.log("item.detailUrl", item.detailUrl)
           try {
             let product = null
             if (item.detailUrl.includes("taobao.com") || item.detailUrl.includes("tmall.com") || item.detailUrl.includes("vvic.com")) {
