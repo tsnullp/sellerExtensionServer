@@ -199,7 +199,9 @@ const start = async ({ url, title, userID }) => {
           ObjItem.korTitle = tempTitle.trim()
           // console.log("tempTitle = >", tempTitle.trim())
 
-
+          ObjItem.content = []
+          // 상세페이지 삭제
+          
           ObjItem.keyword = []
           if(crossLinkModule && crossLinkModule.crossLinkGroupList) {
             for(const crossLink of crossLinkModule.crossLinkGroupList){
