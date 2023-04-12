@@ -33,6 +33,8 @@ const {
 } = require("./api/Market")
 const cron = require("node-cron")
 const _ = require("lodash")
+const { resolve } = require("path")
+const { reject } = require("lodash")
 // jtsjna@gmail.com
 
 // cron.schedule("0 0,15 * * *", () => {
@@ -1006,6 +1008,52 @@ app.post("/amazon/collectionItems", async (req, res) => {
     res.json({
       message: "fail",
     })
+  }
+})
+
+app.post("/amazon/deleteCollectionItems", async (req, res) => {
+  try {
+    const { user } = req.body
+ 
+    const userInfo = await User.findOne({
+      email: user,
+    })
+    if (!userInfo) {
+      res.json({
+        message: "fail",
+      })
+      return
+    }
+
+    const products = await AmazonCollection.find({
+      userID: ObjectId(userInfo._id),
+      isDelete: { $ne: true },
+    })
+
+    const promiseArr = products.map(item => {
+      return new Promise(async (resolve, reject) => {
+        try {
+          await AmazonCollection.deleteOne({
+            userID: ObjectId(userInfo._id),
+            asin: item.asin,
+          })
+          resolve()
+        } catch(e){
+          console.log("무슨 에러", e)
+          reject(e)
+        }
+      })
+    })
+    await Promise.all(promiseArr)
+    
+
+    
+    res.json({
+      message: "success",
+    })
+  } catch (e) {
+    console.log("/amazon/isRegister", e)
+    res.json([])
   }
 })
 

@@ -5,9 +5,10 @@ const {
   ItemDescriptionV2,
   ItemDetails,
 } = require("../api/Taobao")
-const { AmazonAsin, sleep, regExp_test } = require("../lib/userFunc")
+const { AmazonAsin, sleep, ranking, regExp_test } = require("../lib/userFunc")
 const { papagoTranslate } = require("./translate")
 const { getMainKeyword } = require("./keywordSourcing")
+const { searchLensImage } = require("../puppeteer/keywordSourcing")
 const { searchKeywordCategory } = require("../puppeteer/categorySourcing")
 
 const start = async ({ url, cnTitle, userID, orginalTitle }) => {
@@ -59,6 +60,56 @@ const start = async ({ url, cnTitle, userID, orginalTitle }) => {
           ObjItem.mainImages = tempMainImages
 
           ObjItem.attribute = attribute
+
+          let mainImageKeywords = []
+          const promiseMainImages = ObjItem.mainImages.map(image => {
+            return new Promise(async (resolve, reject) => {
+              try {
+                const keywords = await searchLensImage({ url: image })
+                mainImageKeywords.push(...keywords)
+                await sleep(500)
+                // console.log("keywrods----->", keywords)
+                resolve()
+              } catch (e) {
+                reject(e)
+              }
+            })
+          })
+          await Promise.all(promiseMainImages)
+          // console.log("mainImageKeywords ---- ", mainImageKeywords)
+
+          let contentKeywords = []
+          const promiseContentKeywords = ObjItem.content.filter(image => image.includes("http") && image.includes(".jpg")).map(image => {
+            return new Promise(async (resolve, reject) => {
+              try {
+                const keywords = await searchLensImage({ url: image })
+                contentKeywords.push(...keywords)
+                await sleep(500)
+                resolve()
+              } catch (e) {
+                reject(e)
+              }
+            })
+          })
+          await Promise.all(promiseContentKeywords)
+          // console.log("contentKeywords ---- ", contentKeywords)
+
+          const { nluTerms } = await searchKeywordCategory({ keyword: ObjItem.korTitle })
+          let rankKeyword = []
+          if (nluTerms) {
+            rankKeyword = await ranking([...nluTerms.filter(item => item.type !== "브랜드").map(item => item.keyword), ...mainImageKeywords, ...contentKeywords], 1)
+          } else {
+            rankKeyword = await ranking([...ObjItem.korTitle.split(" "), ...mainImageKeywords, ...contentKeywords], 1)
+          }
+
+          let tempTitle = ""
+          for (const item of rankKeyword) {
+            if (tempTitle.length < 50) {
+              tempTitle += `${item.name} `
+            }
+          }
+
+          ObjItem.korTitle = regExp_test(tempTitle.trim())
 
           resolve()
         } catch (e) {
