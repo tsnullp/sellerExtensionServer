@@ -255,7 +255,7 @@ const start = async ({ url, title, userID }) => {
           .replace(/mm/gi, "")
           .replace(/실사/gi, "").replace(/실가/gi, "").replace(/샷/gi, "").replace("~", "").replace("#", "").trim()
           
-          objItem.korTitle = regExp_test(tempTitle.split(" ").filter(item => item.length > 0).join(" "))
+          ObjItem.korTitle = regExp_test(tempTitle.split(" ").filter(item => item.length > 0).join(" "))
 
           // console.log("korTitle --->   ", ObjItem.korTitle)
 
