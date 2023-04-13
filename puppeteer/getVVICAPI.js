@@ -219,28 +219,43 @@ const start = async ({ url, title, userID }) => {
           let tempTitle = ""
           for (const item of rankKeyword) {
             if (tempTitle.length < 50) {
-              tempTitle += `${item.name} `
+              if(item.count === 1) {
+                let isAdded = false
+                for(const tItem of ObjItem.korTitle.split(" ")){
+                  if(!tempTitle.includes(tItem)){
+                    tempTitle += `${tItem} `
+                    isAdded = true
+                    break
+                  }
+                }
+                if(!isAdded) {
+                  tempTitle += `${item.name} `
+                }
+              } else {
+                tempTitle += `${item.name} `
+              }
             }
           }
 
-          ObjItem.korTitle = regExp_test(tempTitle
-            .replace(/현물/gi, "").replace(/관리/gi, "").replace(/컨트롤/gi, "")
-            .replace(/2/gi, "")
-            .replace(/·/gi, "")
-            .replace(/출하/gi, "")
-            .replace(/완료/gi, "")
-            .replace(/이미/gi, "")
-            .replace(/03년/gi, "")
-            .replace(/03/gi, "")
-            .replace(/0년/gi, "")
-            .replace(/0/gi, "")
-            .replace(/한국판/gi, "")
-            .replace(/한국/gi, "")
-            .replace(/ins/gi, "")
-            .replace(/통통/gi, "")
-            .replace(/mm/gi, "")
-
-            .replace(/실사/gi, "").replace(/실가/gi, "").replace(/샷/gi, "").replace("~", "").replace("#", "").trim())
+          tempTitle = tempTitle.replace(/현물/gi, "").replace(/관리/gi, "").replace(/컨트롤/gi, "")
+          .replace(/2/gi, "")
+          .replace(/·/gi, "")
+          .replace(/출하/gi, "")
+          .replace(/완료/gi, "")
+          .replace(/이미/gi, "")
+          .replace(/03년/gi, "")
+          .replace(/03/gi, "")
+          .replace(/0년/gi, "")
+          .replace(/0/gi, "")
+          .replace(/한국판/gi, "")
+          .replace(/한국/gi, "")
+          .replace(/ins/gi, "")
+          .replace(/통통/gi, "")
+          .replace(/동생/gi, "")
+          .replace(/mm/gi, "")
+          .replace(/실사/gi, "").replace(/실가/gi, "").replace(/샷/gi, "").replace("~", "").replace("#", "").trim()
+          
+          objItem.korTitle = regExp_test(tempTitle.split(" ").filter(item => item.length > 0).join(" "))
 
           // console.log("korTitle --->   ", ObjItem.korTitle)
 

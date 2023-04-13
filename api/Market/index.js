@@ -273,6 +273,12 @@ exports.Cafe24UploadLocalImage = async ({ base64Image }) => {
 
 exports.Cafe24UploadLocalImages = async ({ base64Images }) => {
   try {
+    axios.interceptors.request.use(request => {
+      request.maxContentLength = Infinity;
+      request.maxBodyLength = Infinity;
+      return request;
+    })
+    
     const params = new url.URLSearchParams({ base64strs: base64Images.replace(/base64,/gi, "") })
     const options = {
       method: "POST",
