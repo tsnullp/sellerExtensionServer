@@ -237,7 +237,7 @@ const start = async ({ url, title, userID }) => {
             }
           }
 
-          tempTitle = tempTitle.replace(/현물/gi, "").replace(/관리/gi, "").replace(/컨트롤/gi, "")
+          tempTitle = regExp_test(tempTitle.replace(/현물/gi, "").replace(/관리/gi, "").replace(/컨트롤/gi, "")
           .replace(/2/gi, "")
           .replace(/·/gi, "")
           .replace(/출하/gi, "")
@@ -253,9 +253,9 @@ const start = async ({ url, title, userID }) => {
           .replace(/통통/gi, "")
           .replace(/동생/gi, "")
           .replace(/mm/gi, "")
-          .replace(/실사/gi, "").replace(/실가/gi, "").replace(/샷/gi, "").replace("~", "").replace("#", "").trim()
+          .replace(/실사/gi, "").replace(/실가/gi, "").replace(/샷/gi, "").replace("~", "").replace("#", "").trim())
           
-          ObjItem.korTitle = regExp_test(tempTitle.split(" ").filter(item => item.length > 0).join(" "))
+          ObjItem.korTitle = tempTitle.split(" ").filter(item => item.trim().length > 0).join(" ")
 
           // console.log("korTitle --->   ", ObjItem.korTitle)
 
