@@ -11,7 +11,7 @@ const { getMainKeyword } = require("./keywordSourcing")
 const { searchLensImage } = require("../puppeteer/keywordSourcing")
 const { searchKeywordCategory } = require("../puppeteer/categorySourcing")
 
-const start = async ({ url, cnTitle, userID, orginalTitle }) => {
+const start = async ({ url, cnTitle, userID, orginalTitle, detailmages }) => {
   const ObjItem = {
     brand: "기타",
     manufacture: "기타",
@@ -36,9 +36,11 @@ const start = async ({ url, cnTitle, userID, orginalTitle }) => {
       new Promise(async (resolve, reject) => {
         try {
           ObjItem.content = await getContent({
+            userID,
             itemId: ObjItem.good_id,
+            detailmages
           })
-
+          
           const { title, options, tempMainImages, tempOptionImages, prop, videoUrl, videoGif, attribute } = await getOptionsV2({
             itemId: ObjItem.good_id,
             userID,
@@ -176,7 +178,7 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
             item.key = tempStr.split(":")[0].trim()
             item.value = tempStr.split(":")[1].trim()
             item.korKey = temp.split(":")[0].trim()
-            item.korValue = temp.split(":")[1].trim()
+            item.korValue = temp.split(":")[1] ? temp.split(":")[1].trim() : ""
             resolve()
           } catch(e) {
             reject(e)
@@ -523,7 +525,7 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
                   ? pItem.imageUrl.replace("https:", "").replace("http:", "")
                   : vItem.imageUrl
                   ? vItem.imageUrl.replace("https:", "").replace("http:", "")
-                  : v2Item.imageUrl.replace("https:", "")
+                  : v2Item.imageUrl ? v2Item.imageUrl.replace("https:", "") : null
 
                 tempOption.push({
                   key: skuId,
@@ -874,23 +876,13 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
 }
 
 
-const getContent = async ({ itemId }) => {
+const getContent = async ({ userID, itemId, detailmages }) => {
   let content = []
   try {
-    let response = await ItemDescriptionV2({ item_id: itemId })
-
-    if (response && response.code === 200 && response.data.detail_imgs.length > 0) {
-      content = response.data.detail_imgs.map((item) => {
-        return item.includes("http") ? item : `https:${item}`
-      })
-    } else {
-      // response = await ItemDescription({ num_iid: itemId })
-      // if (response && response.status.code === 200) {
-      //   content = response.item.map((item) => {
-      //     return item.includes("http") ? item : `https:${item}`
-      //   })
-      // }
-    }
+    let response = await ItemDescriptionV2({ userID, item_id: itemId, detailmages })
+    content = response.map((item) => {
+      return item.includes("http") ? item : `https:${item}`
+    })
   } catch (e) {
     console.log("getContent", e)
   } finally {

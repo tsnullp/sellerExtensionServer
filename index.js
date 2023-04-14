@@ -701,7 +701,7 @@ app.post("/amazon/collectionItems", async (req, res) => {
     setTimeout(async () => {
       try {
         for (const item of products) {
-          console.log("item.detailUrl", item.detailUrl)
+          // console.log("item.detailUrl", item.detailUrl)
           try {
             let product = null
             if (item.detailUrl.includes("taobao.com") || item.detailUrl.includes("tmall.com") || item.detailUrl.includes("vvic.com")) {
@@ -837,7 +837,7 @@ app.post("/amazon/collectionItems", async (req, res) => {
                   }
                 } else if (item.detailUrl.includes("aliexpress.com")) {
                   // 알리익스프레스
-                  console.log("item.detailUrl", item.detailUrl)
+                  // console.log("item.detailUrl", item.detailUrl)
                   let detailItem = await findAliExpressDetailAPIsimple({
                     url: item.detailUrl.replace("https:ko", "https://ko"),
                     userID: ObjectId(userInfo._id),
@@ -888,7 +888,7 @@ app.post("/amazon/collectionItems", async (req, res) => {
                   item.detailUrl.includes("tmall.com")
                 ) {
                   // 타오바오
-                  console.log("item.detailUrl", item.detailUrl)
+                  // console.log("item.detailUrl", item.detailUrl)
                   let detailItem = await findTaobaoDetailAPIsimple({
                     url: item.detailUrl,
                     userID: ObjectId(userInfo._id),
