@@ -364,11 +364,12 @@ const searchLensImage = async ({url}) => {
     // console.log("products", url, products.length)
     // console.log("products uniq", _.uniq(products).length)
     for(const title of _.uniq(products)){
-      const {nluTerms} = await searchKeywordCategory({keyword: title})
-      await sleep(300)
-      if(nluTerms) {
-        searchKeyword.push(...nluTerms.filter(item => item.type !== "브랜드").map(item => item.keyword))
-      }
+      searchKeyword.push(...title.split(" "))
+      // const {nluTerms} = await searchKeywordCategory({keyword: title})
+      // await sleep(300)
+      // if(nluTerms) {
+      //   searchKeyword.push(...nluTerms.filter(item => item.type !== "브랜드").map(item => item.keyword))
+      // }
     }
    
     // const rankKeyword = ranking(arrayKeyword, 1)

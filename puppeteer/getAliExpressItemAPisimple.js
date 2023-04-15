@@ -186,17 +186,34 @@ const start = async ({ url, title, userID }) => {
           await Promise.all(promiseContentKeywords)
           // console.log("contentKeywords ---- ", contentKeywords)
 
-          const {nluTerms} = await searchKeywordCategory({keyword: ObjItem.korTitle})
-          const rankKeyword = await ranking([...nluTerms.filter(item => item.type !== "브랜드").map(item => item.keyword), ...mainImageKeywords, ...contentKeywords], 1)
+          // const {nluTerms} = await searchKeywordCategory({keyword: ObjItem.korTitle})
+          const rankKeyword = await ranking([...ObjItem.korTitle.split(" "), ...nluTerms.filter(item => item.type !== "브랜드").map(item => item.keyword), ...mainImageKeywords, ...contentKeywords], 1)
           // console.log("rankKeyword **** ", rankKeyword)
 
+          
           let tempTitle = ""
-          for(const item of rankKeyword){
-            if(tempTitle.length < 50) {
-              tempTitle += `${item.name} `
+          for (const item of rankKeyword) {
+            if (tempTitle.length < 50) {
+              if(item.count === 1) {
+                let isAdded = false
+                for(const tItem of ObjItem.korTitle.split(" ")){
+                  if(!tempTitle.includes(tItem)){
+                    tempTitle += `${tItem} `
+                    isAdded = true
+                    break
+                  }
+                }
+                if(!isAdded) {
+                  tempTitle += `${item.name} `
+                }
+              } else {
+                tempTitle += `${item.name} `
+              }
             }
           }
-          ObjItem.korTitle = tempTitle.trim()
+
+          // tempTitle = regExp_test(tempTitle)
+          ObjItem.korTitle = tempTitle.split(" ").filter(item => item.length > 0).join(" ")
           // console.log("tempTitle = >", tempTitle.trim())
 
           ObjItem.content = []

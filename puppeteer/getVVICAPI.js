@@ -205,14 +205,15 @@ const start = async ({ url, title, userID }) => {
           await Promise.all(promiseContentKeywords)
           // console.log("contentKeywords ---- ", contentKeywords)
 
+          let rankKeyword = await ranking([...ObjItem.korTitle.split(" "), ...mainImageKeywords, ...contentKeywords], 1)
           // console.log("ObjItem.korTitle 0))))", ObjItem.korTitle)
-          const { nluTerms } = await searchKeywordCategory({ keyword: ObjItem.korTitle })
-          let rankKeyword = []
-          if (nluTerms) {
-            rankKeyword = await ranking([...nluTerms.filter(item => item.type !== "브랜드").map(item => item.keyword), ...mainImageKeywords, ...contentKeywords], 1)
-          } else {
-            rankKeyword = await ranking([...mainImageKeywords, ...contentKeywords], 1)
-          }
+          // const { nluTerms } = await searchKeywordCategory({ keyword: ObjItem.korTitle })
+          // let rankKeyword = []
+          // if (nluTerms) {
+          //   rankKeyword = await ranking([...nluTerms.filter(item => item.type !== "브랜드").map(item => item.keyword), ...mainImageKeywords, ...contentKeywords], 1)
+          // } else {
+          //   rankKeyword = await ranking([...mainImageKeywords, ...contentKeywords], 1)
+          // }
 
           // console.log("rankKeyword **** ", rankKeyword)
 
@@ -237,7 +238,7 @@ const start = async ({ url, title, userID }) => {
             }
           }
 
-          tempTitle = regExp_test(tempTitle.replace(/현물/gi, "").replace(/관리/gi, "").replace(/컨트롤/gi, "")
+          tempTitle = tempTitle.replace(/현물/gi, "").replace(/관리/gi, "").replace(/컨트롤/gi, "")
           .replace(/2/gi, "")
           .replace(/·/gi, "")
           .replace(/출하/gi, "")
@@ -253,7 +254,7 @@ const start = async ({ url, title, userID }) => {
           .replace(/통통/gi, "")
           .replace(/동생/gi, "")
           .replace(/mm/gi, "")
-          .replace(/실사/gi, "").replace(/실가/gi, "").replace(/샷/gi, "").replace("~", "").replace("#", "").trim())
+          .replace(/실사/gi, "").replace(/실가/gi, "").replace(/샷/gi, "").replace("~", "").replace("#", "").trim()
           
           ObjItem.korTitle = tempTitle.split(" ").filter(item => item.trim().length > 0).join(" ")
 

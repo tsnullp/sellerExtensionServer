@@ -96,22 +96,39 @@ const start = async ({ url, cnTitle, userID, orginalTitle, detailmages }) => {
           await Promise.all(promiseContentKeywords)
           // console.log("contentKeywords ---- ", contentKeywords)
 
-          const { nluTerms } = await searchKeywordCategory({ keyword: ObjItem.korTitle })
-          let rankKeyword = []
-          if (nluTerms) {
-            rankKeyword = await ranking([...nluTerms.filter(item => item.type !== "브랜드").map(item => item.keyword), ...mainImageKeywords, ...contentKeywords], 1)
-          } else {
-            rankKeyword = await ranking([...ObjItem.korTitle.split(" "), ...mainImageKeywords, ...contentKeywords], 1)
-          }
+          let rankKeyword = await ranking([...ObjItem.korTitle.split(" "),...ObjItem.korTitle.split(" "), ...mainImageKeywords, ...contentKeywords], 1)
+          // const { nluTerms } = await searchKeywordCategory({ keyword: ObjItem.korTitle })
+          // let rankKeyword = []
+          // if (nluTerms) {
+          //   rankKeyword = await ranking([...nluTerms.filter(item => item.type !== "브랜드").map(item => item.keyword), ...mainImageKeywords, ...contentKeywords], 1)
+          // } else {
+          //   rankKeyword = await ranking([...ObjItem.korTitle.split(" "), ...mainImageKeywords, ...contentKeywords], 1)
+          // }
 
           let tempTitle = ""
           for (const item of rankKeyword) {
             if (tempTitle.length < 50) {
-              tempTitle += `${item.name} `
+              if(item.count === 1) {
+                let isAdded = false
+                for(const tItem of ObjItem.korTitle.split(" ")){
+                  if(!tempTitle.includes(tItem)){
+                    tempTitle += `${tItem} `
+                    isAdded = true
+                    break
+                  }
+                }
+                if(!isAdded) {
+                  tempTitle += `${item.name} `
+                }
+              } else {
+                tempTitle += `${item.name} `
+              }
+              
             }
           }
 
-          ObjItem.korTitle = regExp_test(tempTitle.trim())
+          // tempTitle = regExp_test(tempTitle)
+          ObjItem.korTitle = tempTitle.split(" ").filter(item => item.trim().length > 0).join(" ")
 
           resolve()
         } catch (e) {
