@@ -34,7 +34,12 @@ const start = async ({ url, title, userID }) => {
   try {
     let content = await axios({
       url,
-      method: "GET"
+      method: "GET",
+      headers: {
+        Origin: "https://www.vvic.com",
+        Referer: "https://www.vvic.com/",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_16_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36"
+      }
     })
 
     content = content.data.toString()

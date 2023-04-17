@@ -660,7 +660,7 @@ app.post("/amazon/getCollectionItem", async (req, res) => {
         
       }
     }
-
+   
     res.json(
       productArr.map((item) => {
         return {
@@ -692,16 +692,30 @@ app.post("/amazon/collectionItems", async (req, res) => {
       })
       return
     }
-
+    const registerProducts = await TempProduct.aggregate([
+      {
+        $match: {
+          userID: ObjectId(userInfo._id)
+        }
+      },
+      {
+        $project: {
+          good_id: 1
+        }
+      }
+    ])
+    let goodIDs = registerProducts.map(item => item.good_id)
     const products = await AmazonCollection.find({
       userID: ObjectId(userInfo._id),
       isDelete: { $ne: true },
+      asin: {$nin: goodIDs}
     })
-
+    console.log("prodcuts", products.length)
     setTimeout(async () => {
       try {
+        let i = 1
         for (const item of products) {
-          // console.log("item.detailUrl", item.detailUrl)
+          console.log("item.detailUrl", i++ , " -  ", products.length, " - " , item.detailUrl)
           try {
             let product = null
             if (item.detailUrl.includes("taobao.com") || item.detailUrl.includes("tmall.com") || item.detailUrl.includes("vvic.com")) {
@@ -937,6 +951,7 @@ app.post("/amazon/collectionItems", async (req, res) => {
                 } else if (item.detailUrl.includes("vvic.com")) {
                   const asin = AmazonAsin(item.detailUrl)
                   if (!asin) {
+                    console.log("asin 없음")
                     continue
                   }
                   // console.log("detailUrl", item.detailUrl)
@@ -960,6 +975,7 @@ app.post("/amazon/collectionItems", async (req, res) => {
                       }
                     )
                   } else if (detailItem && detailItem.options && detailItem.options.length > 0) {
+                    console.log("detailItem.korTitle", detailItem.korTitle)
                     await TempProduct.findOneAndUpdate(
                       {
                         userID: ObjectId(userInfo._id),
@@ -989,6 +1005,8 @@ app.post("/amazon/collectionItems", async (req, res) => {
                         new: true,
                       }
                     )
+                  } else {
+                    console.log("옵션 없음", item.detailUrl)
                   }
                 }
               }
@@ -1000,6 +1018,7 @@ app.post("/amazon/collectionItems", async (req, res) => {
       } catch (e) {
         console.log("errir00", e)
       }
+      console.log("---끝 ----")
     }, 1000)
     res.json({
       message: "success",
