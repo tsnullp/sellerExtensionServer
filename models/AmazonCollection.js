@@ -1,22 +1,23 @@
-const mongoose = require("mongoose")
-const moment = require("moment")
+const mongoose = require("mongoose");
+const moment = require("moment");
 
 const AmazonCollectionSchema = mongoose.Schema({
   userID: {
-    type: mongoose.Schema.Types.ObjectId
+    type: mongoose.Schema.Types.ObjectId,
   },
   asin: String,
   detailUrl: String,
   title: String,
   image: String,
+  keyword: String,
   isDelete: {
     type: Boolean,
-    default: false
+    default: false,
   },
   lastUpdate: {
     type: Date,
-    default: () => moment().toDate()
-  }
-})
+    default: () => moment().toDate(),
+  },
+});
 
-module.exports = mongoose.model("AmazonCollection", AmazonCollectionSchema)
+module.exports = mongoose.model("AmazonCollection", AmazonCollectionSchema);

@@ -4,14 +4,21 @@ const {
   ItemDescription,
   ItemDescriptionV2,
   ItemDetails,
-} = require("../api/Taobao")
-const { AmazonAsin, sleep, ranking, regExp_test } = require("../lib/userFunc")
-const { papagoTranslate } = require("./translate")
-const { getMainKeyword } = require("./keywordSourcing")
-const { searchLensImage } = require("../puppeteer/keywordSourcing")
-const { searchKeywordCategory } = require("../puppeteer/categorySourcing")
+} = require("../api/Taobao");
+const { AmazonAsin, sleep, ranking, regExp_test } = require("../lib/userFunc");
+const { papagoTranslate } = require("./translate");
+const { getMainKeyword } = require("./keywordSourcing");
+const { searchLensImage } = require("../puppeteer/keywordSourcing");
+const { searchKeywordCategory } = require("../puppeteer/categorySourcing");
 
-const start = async ({ url, cnTitle, userID, orginalTitle, detailmages }) => {
+const start = async ({
+  url,
+  cnTitle,
+  userID,
+  orginalTitle,
+  detailmages,
+  keyword,
+}) => {
   const ObjItem = {
     brand: "기타",
     manufacture: "기타",
@@ -27,7 +34,7 @@ const start = async ({ url, cnTitle, userID, orginalTitle, detailmages }) => {
     exchange: "",
     marginInfo: [],
     shippingWeightInfo: [],
-  }
+  };
 
   try {
     // await page.setJavaScriptEnabled(true)
@@ -38,65 +45,85 @@ const start = async ({ url, cnTitle, userID, orginalTitle, detailmages }) => {
           ObjItem.content = await getContent({
             userID,
             itemId: ObjItem.good_id,
-            detailmages
-          })
-          
-          const { title, options, tempMainImages, tempOptionImages, prop, videoUrl, videoGif, attribute } = await getOptionsV2({
+            detailmages,
+          });
+
+          const {
+            title,
+            options,
+            tempMainImages,
+            tempOptionImages,
+            prop,
+            videoUrl,
+            videoGif,
+            attribute,
+          } = await getOptionsV2({
             itemId: ObjItem.good_id,
             userID,
             url,
             // mainImage: Array.isArray(mainImages) && mainImages.length > 0 ? mainImages[0] : null
-          })
+          });
           if (title) {
-            ObjItem.korTitle = await papagoTranslate(title.trim())
+            ObjItem.korTitle = await papagoTranslate(title.trim());
           } else {
-            ObjItem.title = cnTitle
-            ObjItem.korTitle = await papagoTranslate(cnTitle)
+            ObjItem.title = cnTitle;
+            ObjItem.korTitle = await papagoTranslate(cnTitle);
           }
-          ObjItem.options = options
-          ObjItem.optionsImage = tempOptionImages
-          ObjItem.prop = prop
-          ObjItem.videoUrl = videoUrl
-          ObjItem.videoGif = videoGif
+          ObjItem.options = options;
+          ObjItem.optionsImage = tempOptionImages;
+          ObjItem.prop = prop;
+          ObjItem.videoUrl = videoUrl;
+          ObjItem.videoGif = videoGif;
 
-          ObjItem.mainImages = tempMainImages
+          ObjItem.mainKeyword = keyword;
+          ObjItem.mainImages = tempMainImages;
 
-          ObjItem.attribute = attribute
+          ObjItem.attribute = attribute;
 
-          let mainImageKeywords = []
-          const promiseMainImages = ObjItem.mainImages.map(image => {
+          let mainImageKeywords = [];
+          const promiseMainImages = ObjItem.mainImages.map((image) => {
             return new Promise(async (resolve, reject) => {
               try {
-                const keywords = await searchLensImage({ url: image })
-                mainImageKeywords.push(...keywords)
-                await sleep(500)
+                const keywords = await searchLensImage({ url: image });
+                mainImageKeywords.push(...keywords);
+                await sleep(500);
                 // console.log("keywrods----->", keywords)
-                resolve()
+                resolve();
               } catch (e) {
-                reject(e)
+                reject(e);
               }
-            })
-          })
-          await Promise.all(promiseMainImages)
+            });
+          });
+          await Promise.all(promiseMainImages);
           // console.log("mainImageKeywords ---- ", mainImageKeywords)
 
-          let contentKeywords = []
-          const promiseContentKeywords = ObjItem.content.filter(image => image.includes("http") && image.includes(".jpg")).map(image => {
-            return new Promise(async (resolve, reject) => {
-              try {
-                const keywords = await searchLensImage({ url: image })
-                contentKeywords.push(...keywords)
-                await sleep(500)
-                resolve()
-              } catch (e) {
-                reject(e)
-              }
-            })
-          })
-          await Promise.all(promiseContentKeywords)
+          let contentKeywords = [];
+          const promiseContentKeywords = ObjItem.content
+            .filter((image) => image.includes("http") && image.includes(".jpg"))
+            .map((image) => {
+              return new Promise(async (resolve, reject) => {
+                try {
+                  const keywords = await searchLensImage({ url: image });
+                  contentKeywords.push(...keywords);
+                  await sleep(500);
+                  resolve();
+                } catch (e) {
+                  reject(e);
+                }
+              });
+            });
+          await Promise.all(promiseContentKeywords);
           // console.log("contentKeywords ---- ", contentKeywords)
 
-          let rankKeyword = await ranking([...ObjItem.korTitle.split(" "),...ObjItem.korTitle.split(" "), ...mainImageKeywords, ...contentKeywords], 1)
+          let rankKeyword = await ranking(
+            [
+              ...ObjItem.korTitle.split(" "),
+              ...ObjItem.korTitle.split(" "),
+              ...mainImageKeywords,
+              ...contentKeywords,
+            ],
+            1
+          );
           // const { nluTerms } = await searchKeywordCategory({ keyword: ObjItem.korTitle })
           // let rankKeyword = []
           // if (nluTerms) {
@@ -105,42 +132,46 @@ const start = async ({ url, cnTitle, userID, orginalTitle, detailmages }) => {
           //   rankKeyword = await ranking([...ObjItem.korTitle.split(" "), ...mainImageKeywords, ...contentKeywords], 1)
           // }
 
-          let tempTitle = ""
+          let tempTitle = keyword ? `${keyword} ` : "";
           for (const item of rankKeyword) {
             if (tempTitle.length < 50) {
-              if(item.count === 1) {
-                let isAdded = false
-                for(const tItem of ObjItem.korTitle.split(" ")){
-                  if(!tempTitle.includes(tItem)){
-                    tempTitle += `${tItem} `
-                    isAdded = true
-                    break
+              if (item.count === 1) {
+                let isAdded = false;
+                for (const tItem of ObjItem.korTitle.split(" ")) {
+                  if (!tempTitle.includes(tItem)) {
+                    tempTitle += `${tItem} `;
+                    isAdded = true;
+                    break;
                   }
                 }
-                if(!isAdded) {
-                  tempTitle += `${item.name} `
+                if (!isAdded) {
+                  tempTitle += `${item.name} `;
                 }
               } else {
-                tempTitle += `${item.name} `
+                if (!tempTitle.includes(tItem)) {
+                  tempTitle += `${item.name} `;
+                }
               }
-              
             }
           }
 
           // tempTitle = regExp_test(tempTitle)
-          ObjItem.korTitle = tempTitle.split(" ").filter(item => item.trim().length > 0).join(" ")
+          ObjItem.korTitle = tempTitle
+            .split(" ")
+            .filter((item) => item.trim().length > 0)
+            .join(" ");
 
-          resolve()
+          resolve();
         } catch (e) {
-          console.log("0000", e)
-          reject(e)
+          console.log("0000", e);
+          reject(e);
         }
       }),
-    ]
+    ];
 
-    await Promise.all(promiseArr)
+    await Promise.all(promiseArr);
   } catch (e) {
-    console.log("getTaobaoItemAPI", e)
+    console.log("getTaobaoItemAPI", e);
   } finally {
     // console.log("ObjItem", ObjItem.options)
     // for(const item of ObjItem.options){
@@ -152,100 +183,113 @@ const start = async ({ url, cnTitle, userID, orginalTitle, detailmages }) => {
         ObjItem.taobaoAttributes.push({
           attributeTypeName: pItem.korTypeName,
           attributeValueName: item.korValueName,
-        })
+        });
       }
     }
 
     // console.log("ObjItem", ObjItem.attributes)
-    return ObjItem
+    return ObjItem;
   }
-}
+};
 
-module.exports = start
+module.exports = start;
 
 const getOptionsV2 = async ({ itemId, userID, url }) => {
-  let tempTitle = ""
-  let tempOption = []
-  let tempMainImages = []
-  let tempOptionImages = []
-  let tempProp = []
-  let videoUrl = null
-  let videoGif = null
-  let tempProductProps = []
+  let tempTitle = "";
+  let tempOption = [];
+  let tempMainImages = [];
+  let tempOptionImages = [];
+  let tempProp = [];
+  let videoUrl = null;
+  let videoGif = null;
+  let tempProductProps = [];
   try {
-    console.time(itemId)
-    const response = await ItemSKUV2({ userID, item_id: itemId })
+    console.time(itemId);
+    const response = await ItemSKUV2({ userID, item_id: itemId });
 
     if (response.skus) {
-      console.log(itemId, "getOptionsV2 끝", response.skus.length)   
+      console.log(itemId, "getOptionsV2 끝", response.skus.length);
     } else {
-      console.log("getOptionsV2 실패")
+      console.log("getOptionsV2 실패");
     }
-    console.timeEnd(itemId)
-    const { title, sku_props, skus, main_imgs, video_url, video_gif, product_props } = response
+    console.timeEnd(itemId);
+    const {
+      title,
+      sku_props,
+      skus,
+      main_imgs,
+      video_url,
+      video_gif,
+      product_props,
+    } = response;
 
-    if(product_props && Array.isArray(product_props)) {
-      const promiseArray = product_props.map(item => {
+    if (product_props && Array.isArray(product_props)) {
+      const promiseArray = product_props.map((item) => {
         return new Promise(async (resolve, reject) => {
           try {
-            
-            let tempStr = JSON.stringify(item)
-            tempStr = tempStr.replace("{", "").replace("}", "").replace(/'/gi, "").replace(/"/gi, "")
-            const temp = await papagoTranslate(tempStr)
-            item.key = tempStr.split(":")[0].trim()
-            item.value = tempStr.split(":")[1].trim()
-            item.korKey = temp.split(":")[0].trim()
-            item.korValue = temp.split(":")[1] ? temp.split(":")[1].trim() : ""
-            resolve()
-          } catch(e) {
-            reject(e)
+            let tempStr = JSON.stringify(item);
+            tempStr = tempStr
+              .replace("{", "")
+              .replace("}", "")
+              .replace(/'/gi, "")
+              .replace(/"/gi, "");
+            const temp = await papagoTranslate(tempStr);
+            item.key = tempStr.split(":")[0].trim();
+            item.value = tempStr.split(":")[1].trim();
+            item.korKey = temp.split(":")[0].trim();
+            item.korValue = temp.split(":")[1] ? temp.split(":")[1].trim() : "";
+            resolve();
+          } catch (e) {
+            reject(e);
           }
-        })
-      })
-      await Promise.all(promiseArray)
-      tempProductProps = product_props.map(item => {
+        });
+      });
+      await Promise.all(promiseArray);
+      tempProductProps = product_props.map((item) => {
         return {
           key: item.key,
           value: item.value,
           korKey: item.korKey,
-          korValue: item.korValue
-        }
-      })
+          korValue: item.korValue,
+        };
+      });
     }
 
     // tempMainImags.push(
     //   item.pic.includes("https:") ? item.pic : `https:${item.pic}`
     // )
-    videoUrl = video_url
-    videoGif = video_gif
-    tempTitle = title
-    tempMainImages = main_imgs
+    videoUrl = video_url;
+    videoGif = video_gif;
+    tempTitle = title;
+    tempMainImages = main_imgs;
 
     if (sku_props && sku_props.length > 0) {
-      let ii = 0
-      console.time(`${itemId} 번역`)
+      let ii = 0;
+      console.time(`${itemId} 번역`);
 
-      const promiseArray = sku_props.map(item => {
+      const promiseArray = sku_props.map((item) => {
         return new Promise(async (resolve, reject) => {
           try {
-            await sleep(ii * 100)
-            item.korTypeName = await papagoTranslate(item.prop_name.trim())
+            await sleep(ii * 100);
+            item.korTypeName = await papagoTranslate(item.prop_name.trim());
             // console.log("item.korTypeName", item.korTypeName)
-            tempOptionImages = []
-          
+            tempOptionImages = [];
+
             const OptionPromiseArray = item.values.map((value, index) => {
               return new Promise(async (resolve, reject) => {
                 try {
                   // await sleep(index * 100)
-                  value.korValueName = await papagoTranslate(value.name)
+                  value.korValueName = await papagoTranslate(value.name);
                   // console.log("value.korValueName", value.name, value.korValueName)
                   if (value.imageUrl) {
-                    const imageUrl = value.imageUrl.replace("https:", "").replace("http:", "")
+                    const imageUrl = value.imageUrl
+                      .replace("https:", "")
+                      .replace("http:", "");
                     value.image = imageUrl.includes("http")
                       ? imageUrl
                       : imageUrl
                       ? `https:${imageUrl}`
-                      : tempMainImages[0]
+                      : tempMainImages[0];
                     tempOptionImages.push({
                       vid: value.vid,
                       name: value.name,
@@ -255,31 +299,34 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
                         : imageUrl
                         ? `https:${imageUrl}`
                         : tempMainImages[0],
-                    })
+                    });
                   } else {
                     if (ii === 0) {
-                      value.image = tempMainImages && tempMainImages.length > 0 ? tempMainImages[0] : null
+                      value.image =
+                        tempMainImages && tempMainImages.length > 0
+                          ? tempMainImages[0]
+                          : null;
                     }
                   }
-                  resolve()
+                  resolve();
                 } catch (e) {
-                  reject(e)
+                  reject(e);
                 }
-              })
-            })
-            await Promise.all(OptionPromiseArray)
-            
-            ii++
-            resolve()
-          } catch(e) {
-            reject(e)
-          }
-        })
-      })
+              });
+            });
+            await Promise.all(OptionPromiseArray);
 
-      await Promise.all(promiseArray)
-      console.timeEnd(`${itemId} 번역`)
-      console.log("sku_props.length", sku_props.length)
+            ii++;
+            resolve();
+          } catch (e) {
+            reject(e);
+          }
+        });
+      });
+
+      await Promise.all(promiseArray);
+      console.timeEnd(`${itemId} 번역`);
+      console.log("sku_props.length", sku_props.length);
       // for (const item of sku_props) {
       //   item.korTypeName = await korTranslate(item.prop_name.trim(), userID )
       //   tempOptionImages = []
@@ -381,29 +428,31 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
       //   ii++
       //   // console.log("ITEM__", item)
       // }
-     
+
       if (sku_props.length === 1) {
         for (const pItem of sku_props[0].values) {
-          const propPath = `${sku_props[0].pid}:${pItem.vid}`
-          let skuId = null
+          const propPath = `${sku_props[0].pid}:${pItem.vid}`;
+          let skuId = null;
           let price,
             promotion_price,
-            quantity = 0
+            quantity = 0;
 
           const filterSku = skus
             .filter((item) => item.props_ids === propPath)
-            .filter((item) => Number(item.stock) > 0)
+            .filter((item) => Number(item.stock) > 0);
           if (filterSku.length > 0) {
-            skuId = filterSku[0].skuid
-            price = filterSku[0].sale_price
-            promotion_price = filterSku[0].sale_price
-            quantity = filterSku[0].stock
+            skuId = filterSku[0].skuid;
+            price = filterSku[0].sale_price;
+            promotion_price = filterSku[0].sale_price;
+            quantity = filterSku[0].stock;
 
-            let imageUrl = null
+            let imageUrl = null;
             if (pItem.imageUrl) {
-              imageUrl = pItem.imageUrl.replace("https:", "").replace("http:", "")
+              imageUrl = pItem.imageUrl
+                .replace("https:", "")
+                .replace("http:", "");
             } else {
-              imageUrl = main_imgs[0]
+              imageUrl = main_imgs[0];
             }
 
             tempOption.push({
@@ -412,7 +461,10 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
               price: price ? price : 0,
               promotion_price: promotion_price ? promotion_price : 0,
               stock: quantity ? quantity : 0,
-              image: imageUrl && imageUrl.includes("http") ? imageUrl : `https:${imageUrl}`,
+              image:
+                imageUrl && imageUrl.includes("http")
+                  ? imageUrl
+                  : `https:${imageUrl}`,
               attributes: [
                 {
                   typeName: sku_props[0].name,
@@ -425,38 +477,41 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
               active: skuId ? true : false,
               value: pItem.name,
               korValue: pItem.korValueName,
-            })
+            });
           }
         }
       } else if (sku_props.length === 2) {
         for (const pItem of sku_props[0].values) {
           for (const vItem of sku_props[1].values) {
-            let propPath = `${sku_props[0].pid}:${pItem.vid};${sku_props[1].pid}:${vItem.vid}`
-            let propPath2 = `${sku_props[1].pid}:${vItem.vid};${sku_props[0].pid}:${pItem.vid}`
+            let propPath = `${sku_props[0].pid}:${pItem.vid};${sku_props[1].pid}:${vItem.vid}`;
+            let propPath2 = `${sku_props[1].pid}:${vItem.vid};${sku_props[0].pid}:${pItem.vid}`;
 
             // console.log("propPath", propPath)
-            let skuId = null
+            let skuId = null;
             let price,
               promotion_price,
-              quantity = 0
+              quantity = 0;
             // console.log("skus", skus)
             let filterSku = skus
-              .filter((item) => item.props_ids === propPath || item.props_ids === propPath2)
-              .filter((item) => Number(item.stock) > 0)
+              .filter(
+                (item) =>
+                  item.props_ids === propPath || item.props_ids === propPath2
+              )
+              .filter((item) => Number(item.stock) > 0);
             if (filterSku.length > 0) {
-              propPath = filterSku[0].props_ids
-              skuId = filterSku[0].skuid
-              price = filterSku[0].sale_price
-              promotion_price = filterSku[0].sale_price
-              quantity = filterSku[0].stock
+              propPath = filterSku[0].props_ids;
+              skuId = filterSku[0].skuid;
+              price = filterSku[0].sale_price;
+              promotion_price = filterSku[0].sale_price;
+              quantity = filterSku[0].stock;
             } else {
-              propPath = `${sku_props[1].pid}:${vItem.vid};${sku_props[0].pid}:${pItem.vid}`
-              filterSku = skus.filter((item) => item.props_ids === propPath)
+              propPath = `${sku_props[1].pid}:${vItem.vid};${sku_props[0].pid}:${pItem.vid}`;
+              filterSku = skus.filter((item) => item.props_ids === propPath);
               if (filterSku.length > 0) {
-                skuId = filterSku[0].skuid
-                price = filterSku[0].sale_price
-                promotion_price = filterSku[0].sale_price
-                quantity = filterSku[0].stock
+                skuId = filterSku[0].skuid;
+                price = filterSku[0].sale_price;
+                promotion_price = filterSku[0].sale_price;
+                quantity = filterSku[0].stock;
               }
             }
 
@@ -465,7 +520,7 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
                 ? pItem.imageUrl.replace("https:", "").replace("http:", "")
                 : vItem.imageUrl
                 ? vItem.imageUrl.replace("https:", "").replace("http:", "")
-                : null
+                : null;
 
               tempOption.push({
                 key: skuId,
@@ -473,7 +528,10 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
                 price: price ? price : 0,
                 promotion_price: promotion_price ? promotion_price : 0,
                 stock: quantity ? quantity : 0,
-                image: imageUrl && imageUrl.includes("https") ? imageUrl : `https:${imageUrl}`,
+                image:
+                  imageUrl && imageUrl.includes("https")
+                    ? imageUrl
+                    : `https:${imageUrl}`,
                 attributes: [
                   {
                     typeName: sku_props[0].name,
@@ -491,7 +549,7 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
                 disabled: skuId ? false : true,
                 active: skuId ? true : false,
                 korValue: `${pItem.korValueName} ${vItem.korValueName}`,
-              })
+              });
             }
           }
         }
@@ -500,40 +558,45 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
         for (const pItem of sku_props[0].values) {
           for (const vItem of sku_props[1].values) {
             for (const v2Item of sku_props[2].values) {
-              let propPath = `${sku_props[0].pid}:${pItem.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[2].pid}:${v2Item.vid}`
-              let propPath2 = `${sku_props[0].pid}:${pItem.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[1].pid}:${vItem.vid}`
-              let propPath3 = `${sku_props[1].pid}:${vItem.vid};${sku_props[0].pid}:${pItem.vid};${sku_props[2].pid}:${v2Item.vid}`
-              let propPath4 = `${sku_props[1].pid}:${vItem.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[0].pid}:${pItem.vid}`
-              let propPath5 = `${sku_props[2].pid}:${v2Item.vid};${sku_props[0].pid}:${pItem.vid};${sku_props[1].pid}:${vItem.vid}`
-              let propPath6 = `${sku_props[2].pid}:${v2Item.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[0].pid}:${pItem.vid}`
-              
+              let propPath = `${sku_props[0].pid}:${pItem.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[2].pid}:${v2Item.vid}`;
+              let propPath2 = `${sku_props[0].pid}:${pItem.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[1].pid}:${vItem.vid}`;
+              let propPath3 = `${sku_props[1].pid}:${vItem.vid};${sku_props[0].pid}:${pItem.vid};${sku_props[2].pid}:${v2Item.vid}`;
+              let propPath4 = `${sku_props[1].pid}:${vItem.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[0].pid}:${pItem.vid}`;
+              let propPath5 = `${sku_props[2].pid}:${v2Item.vid};${sku_props[0].pid}:${pItem.vid};${sku_props[1].pid}:${vItem.vid}`;
+              let propPath6 = `${sku_props[2].pid}:${v2Item.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[0].pid}:${pItem.vid}`;
+
               // console.log("propPath -- ", propPath)
-              let skuId = null
+              let skuId = null;
               let price,
                 promotion_price,
-                quantity = 0
+                quantity = 0;
 
               let filterSku = skus
-                .filter((item) => (item.props_ids === propPath || item.props_ids === propPath2 || item.props_ids === propPath3 ||
-                  item.props_ids === propPath4 || item.props_ids === propPath5 || item.props_ids === propPath6
-                  ))
-                .filter((item) => Number(item.stock) > 0)
+                .filter(
+                  (item) =>
+                    item.props_ids === propPath ||
+                    item.props_ids === propPath2 ||
+                    item.props_ids === propPath3 ||
+                    item.props_ids === propPath4 ||
+                    item.props_ids === propPath5 ||
+                    item.props_ids === propPath6
+                )
+                .filter((item) => Number(item.stock) > 0);
 
-                
               if (filterSku.length > 0) {
-                propPath = filterSku[0].props_ids
-                skuId = filterSku[0].skuid
-                price = filterSku[0].sale_price
-                promotion_price = filterSku[0].sale_price
-                quantity = filterSku[0].stock
+                propPath = filterSku[0].props_ids;
+                skuId = filterSku[0].skuid;
+                price = filterSku[0].sale_price;
+                promotion_price = filterSku[0].sale_price;
+                quantity = filterSku[0].stock;
               } else {
-                propPath = `${sku_props[0].pid}:${pItem.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[2].pid}:${v2Item.vid}`
-                filterSku = skus.filter((item) => item.props_ids === propPath)
+                propPath = `${sku_props[0].pid}:${pItem.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[2].pid}:${v2Item.vid}`;
+                filterSku = skus.filter((item) => item.props_ids === propPath);
                 if (filterSku.length > 0) {
-                  skuId = filterSku[0].skuid
-                  price = filterSku[0].sale_price
-                  promotion_price = filterSku[0].sale_price
-                  quantity = filterSku[0].stock
+                  skuId = filterSku[0].skuid;
+                  price = filterSku[0].sale_price;
+                  promotion_price = filterSku[0].sale_price;
+                  quantity = filterSku[0].stock;
                 }
               }
 
@@ -542,7 +605,9 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
                   ? pItem.imageUrl.replace("https:", "").replace("http:", "")
                   : vItem.imageUrl
                   ? vItem.imageUrl.replace("https:", "").replace("http:", "")
-                  : v2Item.imageUrl ? v2Item.imageUrl.replace("https:", "") : null
+                  : v2Item.imageUrl
+                  ? v2Item.imageUrl.replace("https:", "")
+                  : null;
 
                 tempOption.push({
                   key: skuId,
@@ -550,7 +615,10 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
                   price: price ? price : 0,
                   promotion_price: promotion_price ? promotion_price : 0,
                   stock: quantity ? quantity : 0,
-                  image: imageUrl && imageUrl.includes("https") ? imageUrl : `https:${imageUrl}`,
+                  image:
+                    imageUrl && imageUrl.includes("https")
+                      ? imageUrl
+                      : `https:${imageUrl}`,
                   attributes: [
                     {
                       typeName: sku_props[0].name,
@@ -574,7 +642,7 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
                   disabled: skuId ? false : true,
                   active: skuId ? true : false,
                   korValue: `${pItem.korValueName} ${vItem.korValueName} ${v2Item.korValueName}`,
-                })
+                });
               }
             }
           }
@@ -584,64 +652,87 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
           for (const vItem of sku_props[1].values) {
             for (const v2Item of sku_props[2].values) {
               for (const v3Item of sku_props[3].values) {
+                let propPath = `${sku_props[0].pid}:${pItem.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[3].pid}:${v3Item.vid}`;
+                let propPath2 = `${sku_props[0].pid}:${pItem.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[3].pid}:${v3Item.vid};${sku_props[2].pid}:${v3Item.vid}`;
+                let propPath3 = `${sku_props[0].pid}:${pItem.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[3].pid}:${v2Item.vid}`;
+                let propPath4 = `${sku_props[0].pid}:${pItem.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[3].pid}:${v3Item.vid};${sku_props[1].pid}:${vItem.vid}`;
+                let propPath5 = `${sku_props[0].pid}:${pItem.vid};${sku_props[3].pid}:${v3Item.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[2].pid}:${v2Item.vid}`;
+                let propPath6 = `${sku_props[0].pid}:${pItem.vid};${sku_props[3].pid}:${v3Item.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[1].pid}:${vItem.vid}`;
 
-                let propPath = `${sku_props[0].pid}:${pItem.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[3].pid}:${v3Item.vid}`
-                let propPath2 = `${sku_props[0].pid}:${pItem.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[3].pid}:${v3Item.vid};${sku_props[2].pid}:${v3Item.vid}`
-                let propPath3 = `${sku_props[0].pid}:${pItem.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[3].pid}:${v2Item.vid}`
-                let propPath4 = `${sku_props[0].pid}:${pItem.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[3].pid}:${v3Item.vid};${sku_props[1].pid}:${vItem.vid}`
-                let propPath5 = `${sku_props[0].pid}:${pItem.vid};${sku_props[3].pid}:${v3Item.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[2].pid}:${v2Item.vid}`
-                let propPath6 = `${sku_props[0].pid}:${pItem.vid};${sku_props[3].pid}:${v3Item.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[1].pid}:${vItem.vid}`
+                let propPath7 = `${sku_props[1].pid}:${vItem.vid};${sku_props[0].pid}:${pItem.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[3].pid}:${v3Item.vid}`;
+                let propPath8 = `${sku_props[1].pid}:${vItem.vid};${sku_props[0].pid}:${pItem.vid};${sku_props[3].pid}:${v3Item.vid};${sku_props[2].pid}:${v2Item.vid}`;
+                let propPath9 = `${sku_props[1].pid}:${vItem.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[0].pid}:${pItem.vid};${sku_props[3].pid}:${v3Item.vid}`;
+                let propPath10 = `${sku_props[1].pid}:${vItem.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[3].pid}:${v3Item.vid};${sku_props[0].pid}:${pItem.vid}`;
+                let propPath11 = `${sku_props[1].pid}:${vItem.vid};${sku_props[3].pid}:${v3Item.vid};${sku_props[0].pid}:${pItem.vid};${sku_props[2].pid}:${v2Item.vid}`;
+                let propPath12 = `${sku_props[1].pid}:${vItem.vid};${sku_props[3].pid}:${v3Item.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[0].pid}:${pItem.vid}`;
 
-                let propPath7 = `${sku_props[1].pid}:${vItem.vid};${sku_props[0].pid}:${pItem.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[3].pid}:${v3Item.vid}`
-                let propPath8 = `${sku_props[1].pid}:${vItem.vid};${sku_props[0].pid}:${pItem.vid};${sku_props[3].pid}:${v3Item.vid};${sku_props[2].pid}:${v2Item.vid}`
-                let propPath9 = `${sku_props[1].pid}:${vItem.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[0].pid}:${pItem.vid};${sku_props[3].pid}:${v3Item.vid}`
-                let propPath10 = `${sku_props[1].pid}:${vItem.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[3].pid}:${v3Item.vid};${sku_props[0].pid}:${pItem.vid}`
-                let propPath11 = `${sku_props[1].pid}:${vItem.vid};${sku_props[3].pid}:${v3Item.vid};${sku_props[0].pid}:${pItem.vid};${sku_props[2].pid}:${v2Item.vid}`
-                let propPath12 = `${sku_props[1].pid}:${vItem.vid};${sku_props[3].pid}:${v3Item.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[0].pid}:${pItem.vid}`
+                let propPath13 = `${sku_props[2].pid}:${v2Item.vid};${sku_props[0].pid}:${vItem.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[3].pid}:${v3Item.vid}`;
+                let propPath14 = `${sku_props[2].pid}:${v2Item.vid};${sku_props[0].pid}:${vItem.vid};${sku_props[3].pid}:${v3Item.vid};${sku_props[1].pid}:${vItem.vid}`;
+                let propPath15 = `${sku_props[2].pid}:${v2Item.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[0].pid}:${pItem.vid};${sku_props[3].pid}:${v3Item.vid}`;
+                let propPath16 = `${sku_props[2].pid}:${v2Item.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[3].pid}:${v3Item.vid};${sku_props[0].pid}:${pItem.vid}`;
+                let propPath17 = `${sku_props[2].pid}:${v2Item.vid};${sku_props[3].pid}:${v3Item.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[0].pid}:${pItem.vid}`;
+                let propPath18 = `${sku_props[2].pid}:${v2Item.vid};${sku_props[3].pid}:${v3Item.vid};${sku_props[0].pid}:${pItem.vid};${sku_props[1].pid}:${vItem.vid}`;
 
-                let propPath13 = `${sku_props[2].pid}:${v2Item.vid};${sku_props[0].pid}:${vItem.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[3].pid}:${v3Item.vid}`
-                let propPath14 = `${sku_props[2].pid}:${v2Item.vid};${sku_props[0].pid}:${vItem.vid};${sku_props[3].pid}:${v3Item.vid};${sku_props[1].pid}:${vItem.vid}`
-                let propPath15 = `${sku_props[2].pid}:${v2Item.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[0].pid}:${pItem.vid};${sku_props[3].pid}:${v3Item.vid}`
-                let propPath16 = `${sku_props[2].pid}:${v2Item.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[3].pid}:${v3Item.vid};${sku_props[0].pid}:${pItem.vid}`
-                let propPath17 = `${sku_props[2].pid}:${v2Item.vid};${sku_props[3].pid}:${v3Item.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[0].pid}:${pItem.vid}`
-                let propPath18 = `${sku_props[2].pid}:${v2Item.vid};${sku_props[3].pid}:${v3Item.vid};${sku_props[0].pid}:${pItem.vid};${sku_props[1].pid}:${vItem.vid}`
+                let propPath19 = `${sku_props[3].pid}:${v3Item.vid};${sku_props[0].pid}:${vItem.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[2].pid}:${v2Item.vid}`;
+                let propPath20 = `${sku_props[3].pid}:${v3Item.vid};${sku_props[0].pid}:${vItem.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[1].pid}:${vItem.vid}`;
+                let propPath21 = `${sku_props[3].pid}:${v3Item.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[0].pid}:${pItem.vid};${sku_props[2].pid}:${v2Item.vid}`;
+                let propPath22 = `${sku_props[3].pid}:${v3Item.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[0].pid}:${pItem.vid}`;
+                let propPath23 = `${sku_props[3].pid}:${v3Item.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[0].pid}:${pItem.vid};${sku_props[1].pid}:${vItem.vid}`;
+                let propPath24 = `${sku_props[3].pid}:${v3Item.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[0].pid}:${pItem.vid}`;
 
-                let propPath19 = `${sku_props[3].pid}:${v3Item.vid};${sku_props[0].pid}:${vItem.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[2].pid}:${v2Item.vid}`
-                let propPath20 = `${sku_props[3].pid}:${v3Item.vid};${sku_props[0].pid}:${vItem.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[1].pid}:${vItem.vid}`
-                let propPath21 = `${sku_props[3].pid}:${v3Item.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[0].pid}:${pItem.vid};${sku_props[2].pid}:${v2Item.vid}`
-                let propPath22 = `${sku_props[3].pid}:${v3Item.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[0].pid}:${pItem.vid}`
-                let propPath23 = `${sku_props[3].pid}:${v3Item.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[0].pid}:${pItem.vid};${sku_props[1].pid}:${vItem.vid}`
-                let propPath24 = `${sku_props[3].pid}:${v3Item.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[0].pid}:${pItem.vid}`
-
-                
-                let skuId = null
+                let skuId = null;
                 let price,
                   promotion_price,
-                  quantity = 0
+                  quantity = 0;
 
                 let filterSku = skus
-                  .filter((item) => (item.props_ids === propPath || item.props_ids === propPath2 || item.props_ids === propPath3 || item.props_ids === propPath4 || item.props_ids === propPath5 || item.props_ids === propPath6 || item.props_ids === propPath7 || item.props_ids === propPath8 ||
-                    item.props_ids === propPath9 || item.props_ids === propPath10 || item.props_ids === propPath11 || item.props_ids === propPath12 || item.props_ids === propPath13 || item.props_ids === propPath14 || item.props_ids === propPath15 || item.props_ids === propPath16 ||
-                    item.props_ids === propPath17 || item.props_ids === propPath18 || item.props_ids === propPath19 || item.props_ids === propPath20 || item.props_ids === propPath21 || item.props_ids === propPath22 || item.props_ids === propPath23 || item.props_ids === propPath24
-                    ) )
-                  .filter((item) => Number(item.stock) > 0)
+                  .filter(
+                    (item) =>
+                      item.props_ids === propPath ||
+                      item.props_ids === propPath2 ||
+                      item.props_ids === propPath3 ||
+                      item.props_ids === propPath4 ||
+                      item.props_ids === propPath5 ||
+                      item.props_ids === propPath6 ||
+                      item.props_ids === propPath7 ||
+                      item.props_ids === propPath8 ||
+                      item.props_ids === propPath9 ||
+                      item.props_ids === propPath10 ||
+                      item.props_ids === propPath11 ||
+                      item.props_ids === propPath12 ||
+                      item.props_ids === propPath13 ||
+                      item.props_ids === propPath14 ||
+                      item.props_ids === propPath15 ||
+                      item.props_ids === propPath16 ||
+                      item.props_ids === propPath17 ||
+                      item.props_ids === propPath18 ||
+                      item.props_ids === propPath19 ||
+                      item.props_ids === propPath20 ||
+                      item.props_ids === propPath21 ||
+                      item.props_ids === propPath22 ||
+                      item.props_ids === propPath23 ||
+                      item.props_ids === propPath24
+                  )
+                  .filter((item) => Number(item.stock) > 0);
 
-                  console.log("filterSku length", filterSku.length)
-                  
+                console.log("filterSku length", filterSku.length);
+
                 if (filterSku.length > 0) {
-                  propPath = filterSku[0].props_ids
-                  skuId = filterSku[0].skuid
-                  price = filterSku[0].sale_price
-                  promotion_price = filterSku[0].sale_price
-                  quantity = filterSku[0].stock
+                  propPath = filterSku[0].props_ids;
+                  skuId = filterSku[0].skuid;
+                  price = filterSku[0].sale_price;
+                  promotion_price = filterSku[0].sale_price;
+                  quantity = filterSku[0].stock;
                 } else {
-                  propPath = `${sku_props[0].pid}:${pItem.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[3].pid}:${v3Item.vid}`
-                  filterSku = skus.filter((item) => item.props_ids === propPath)
+                  propPath = `${sku_props[0].pid}:${pItem.vid};${sku_props[1].pid}:${vItem.vid};${sku_props[2].pid}:${v2Item.vid};${sku_props[3].pid}:${v3Item.vid}`;
+                  filterSku = skus.filter(
+                    (item) => item.props_ids === propPath
+                  );
                   if (filterSku.length > 0) {
-                    skuId = filterSku[0].skuid
-                    price = filterSku[0].sale_price
-                    promotion_price = filterSku[0].sale_price
-                    quantity = filterSku[0].stock
+                    skuId = filterSku[0].skuid;
+                    price = filterSku[0].sale_price;
+                    promotion_price = filterSku[0].sale_price;
+                    quantity = filterSku[0].stock;
                   }
                 }
 
@@ -650,7 +741,7 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
                     ? pItem.imageUrl.replace("https:", "").replace("http:", "")
                     : vItem.imageUrl
                     ? vItem.imageUrl.replace("https:", "").replace("http:", "")
-                    : v2Item.imageUrl.replace("https:", "")
+                    : v2Item.imageUrl.replace("https:", "");
 
                   tempOption.push({
                     key: skuId,
@@ -658,7 +749,10 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
                     price: price ? price : 0,
                     promotion_price: promotion_price ? promotion_price : 0,
                     stock: quantity ? quantity : 0,
-                    image: imageUrl && imageUrl.includes("https") ? imageUrl : `https:${imageUrl}`,
+                    image:
+                      imageUrl && imageUrl.includes("https")
+                        ? imageUrl
+                        : `https:${imageUrl}`,
                     attributes: [
                       {
                         typeName: sku_props[0].name,
@@ -688,7 +782,7 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
                     disabled: skuId ? false : true,
                     active: skuId ? true : false,
                     korValue: `${pItem.korValueName} ${vItem.korValueName} ${v2Item.korValueName} ${v3Item.korValueName}`,
-                  })
+                  });
                 }
               }
             }
@@ -700,7 +794,7 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
       //   console.log("skus", item)
       // }
 
-      tempProp = sku_props
+      tempProp = sku_props;
 
       // for(const sku of sku_base.skus){
 
@@ -735,13 +829,15 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
 
       // }
     } else {
- 
       for (const item of skus.filter((item) => Number(item.stock) > 0)) {
         tempOption.push({
           key: item.skuid,
           value: "单一商品",
           korValue: "단일상품",
-          image: tempMainImages && tempMainImages.length > 0 ? tempMainImages[0] : null,
+          image:
+            tempMainImages && tempMainImages.length > 0
+              ? tempMainImages[0]
+              : null,
           price: item.sale_price,
           stock: item.stock,
           disabled: false,
@@ -752,7 +848,7 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
               attributeValueName: "단일상품",
             },
           ],
-        })
+        });
       }
       // tempOption.push({
       //   key: "1",
@@ -770,115 +866,116 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
     // for(const item of sku_props) {
     //   console.log("item", item)
     // }
-    
+
     let tempTempOption = tempOption.filter((item) => {
       if (item.korValue.includes("고객")) {
-        return false
+        return false;
       }
       if (item.korValue.includes("커스텀")) {
-        return false
+        return false;
       }
       if (item.korValue.includes("연락")) {
-        return false
+        return false;
       }
       if (item.korValue.includes("문의")) {
-        return false
+        return false;
       }
       if (item.korValue.includes("주문")) {
-        return false
+        return false;
       }
       if (item.korValue.includes("참고")) {
-        return false
+        return false;
       }
       if (item.korValue.includes("이벤트")) {
-        return false
+        return false;
       }
       if (item.korValue.includes("맞춤")) {
-        return false
+        return false;
       }
       if (item.korValue.includes("상담")) {
-        return false
+        return false;
       }
       if (item.korValue.includes("사용자")) {
-        return false
+        return false;
       }
       if (item.korValue.includes("옵션")) {
-        return false
+        return false;
       }
-      if (item.korValue.includes("사진") && !item.korValue.includes("사진 색상")) {
-        return false
+      if (
+        item.korValue.includes("사진") &&
+        !item.korValue.includes("사진 색상")
+      ) {
+        return false;
       }
       if (item.korValue.includes("비고")) {
-        return false
+        return false;
       }
       if (item.korValue.includes("무료")) {
-        return false
+        return false;
       }
       if (item.korValue.includes("Express")) {
-        return false
+        return false;
       }
       if (item.korValue.includes("예약")) {
-        return false
+        return false;
       }
       if (item.korValue.includes("메시지")) {
-        return false
+        return false;
       }
       if (item.korValue.includes("서비스")) {
-        return false
+        return false;
       }
       if (item.korValue.includes("구독")) {
-        return false
+        return false;
       }
       if (item.korValue.includes("경품")) {
-        return false
+        return false;
       }
       if (item.korValue.includes(">>>")) {
-        return false
+        return false;
       }
       if (item.korValue.includes("사전 구매")) {
-        return false
+        return false;
       }
       if (item.korValue.includes("택배")) {
-        return false
+        return false;
       }
       if (item.korValue.includes("보내기")) {
-        return false
+        return false;
       }
       if (item.korValue.includes("불가")) {
-        return false
+        return false;
       }
-      return true
-    })
+      return true;
+    });
 
-    if(tempTempOption.length !== 0){
-      tempOption = tempTempOption
+    if (tempTempOption.length !== 0) {
+      tempOption = tempTempOption;
     }
-
   } catch (e) {
-    console.log("eeee", e)
+    console.log("eeee", e);
     try {
       const { title, mainImages, price, salePrice, content } = await getDetail({
         itemId,
         userID,
         url,
-      })
+      });
 
       const optionValue = await getOptions({
         itemId,
-      })
-      console.log("optionValue", optionValue)
-      ;(tempTitle = title), (tempOption = optionValue.options)
+      });
+      console.log("optionValue", optionValue);
+      (tempTitle = title), (tempOption = optionValue.options);
       tempMainImages =
         mainImages && mainImages.length > 0
           ? mainImages
-          : optionValue.tempMainImages.map((item) => item.image)
-      tempOptionImages = optionValue.tempMainImages
-      tempProp = optionValue.prop
+          : optionValue.tempMainImages.map((item) => item.image);
+      tempOptionImages = optionValue.tempMainImages;
+      tempProp = optionValue.prop;
     } catch (e) {
-      console.log("에러", e)
+      console.log("에러", e);
     }
   } finally {
-
     return {
       title: tempTitle,
       options: tempOption.filter((item) => !item.image.includes("undefined")),
@@ -887,43 +984,46 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
       prop: tempProp,
       videoUrl,
       videoGif,
-      attribute: tempProductProps
-    }
+      attribute: tempProductProps,
+    };
   }
-}
-
+};
 
 const getContent = async ({ userID, itemId, detailmages }) => {
-  let content = []
+  let content = [];
   try {
-    let response = await ItemDescriptionV2({ userID, item_id: itemId, detailmages })
+    let response = await ItemDescriptionV2({
+      userID,
+      item_id: itemId,
+      detailmages,
+    });
     content = response.map((item) => {
-      return item.includes("http") ? item : `https:${item}`
-    })
+      return item.includes("http") ? item : `https:${item}`;
+    });
   } catch (e) {
-    console.log("getContent", e)
+    console.log("getContent", e);
   } finally {
-    return content
+    return content;
   }
-}
+};
 
 const getDetail = async ({ itemId, userID, url }) => {
-  const detail = {}
+  const detail = {};
   try {
-    const response = await ItemDetails({ num_iid: itemId })
+    const response = await ItemDetails({ num_iid: itemId });
 
     if (response && response.result.status.msg === "success") {
-      const { item } = response.result
+      const { item } = response.result;
 
-      detail.title = item.title
+      detail.title = item.title;
       detail.mainImages = item.images.map((item) =>
         item.includes("http") ? item : `https:${item}`
-      )
+      );
 
-      detail.price = item.price
-      detail.salePrice = item.promotion_price
+      detail.price = item.price;
+      detail.salePrice = item.promotion_price;
     } else {
-      console.log("getDetail - response", response)
+      console.log("getDetail - response", response);
 
       // const browser = await startBrowser()
       // const page = await browser.newPage()
@@ -1041,8 +1141,8 @@ const getDetail = async ({ itemId, userID, url }) => {
     //   console.log("getDetail - response", itemId, response)
     // }
   } catch (e) {
-    console.log("getDetail", e)
+    console.log("getDetail", e);
   } finally {
-    return detail
+    return detail;
   }
-}
+};

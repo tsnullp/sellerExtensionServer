@@ -16,6 +16,8 @@ const TempProductSchema = mongoose.Schema({
   price: Number,
   salePrice: Number,
   content: [String],
+  html: String,
+  videoUrl: String,
   description: String, // 제품설명
   suggestedUse: String, // 제품 사용법
   ingredients: String, //  포함된 다른 성분들

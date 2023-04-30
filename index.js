@@ -1,40 +1,48 @@
-const express = require("express")
-const http = require("https")
-const database = require("./database")
-const { AmazonAsin, sleep, regExp_test } = require("./lib/userFunc")
-const bodyParser = require("body-parser")
-const cors = require("cors")
-const moment = require("moment")
-const User = require("./models/User")
-const Market = require("./models/Market")
-const MarketOrder = require("./models/MarketOrder")
-const DeliveryInfo = require("./models/DeliveryInfo")
-const AmazonCollection = require("./models/AmazonCollection")
-const TempProduct = require("./models/TempProduct")
-const ShippingPrice = require("./models/ShippingPrice")
-const Product = require("./models/Product")
-const Cookie = require("./models/Cookie")
-const { iHerbCode } = require("./api/iHerb")
-const findAmazonDetailAPIsimple = require("./puppeteer/getAmazonItemAPIsimple")
-const { findIherbDetailAPI, findIherbDetailSimple } = require("./puppeteer/getIherbItemAPIsimple")
-const {getFirstBdgOrder} = require("./puppeteer/getFirstBdgOrder")
-const findTaobaoDetailAPIsimple = require("./puppeteer/getTaobaoItemAPIsimple")
-const findAliExpressDetailAPIsimple = require("./puppeteer/getAliExpressItemAPisimple")
-const getVVIC = require("./puppeteer/getVVICAPI")
-const updateCafe24 = require("./puppeteer/updateCafe24")
-const {Cafe24ListOrders, Cafe24RegisterShipments, Cafe24UpdateShipments} = require("./api/Market")
-const mongoose = require("mongoose")
-const ObjectId = mongoose.Types.ObjectId
+const express = require("express");
+const http = require("https");
+const database = require("./database");
+const { AmazonAsin, sleep, regExp_test } = require("./lib/userFunc");
+const bodyParser = require("body-parser");
+const cors = require("cors");
+const moment = require("moment");
+const User = require("./models/User");
+const Market = require("./models/Market");
+const MarketOrder = require("./models/MarketOrder");
+const DeliveryInfo = require("./models/DeliveryInfo");
+const AmazonCollection = require("./models/AmazonCollection");
+const TempProduct = require("./models/TempProduct");
+const ShippingPrice = require("./models/ShippingPrice");
+const Product = require("./models/Product");
+const Cookie = require("./models/Cookie");
+const { iHerbCode } = require("./api/iHerb");
+const axios = require("axios");
+const findAmazonDetailAPIsimple = require("./puppeteer/getAmazonItemAPIsimple");
+const {
+  findIherbDetailAPI,
+  findIherbDetailSimple,
+} = require("./puppeteer/getIherbItemAPIsimple");
+const { getFirstBdgOrder } = require("./puppeteer/getFirstBdgOrder");
+const findTaobaoDetailAPIsimple = require("./puppeteer/getTaobaoItemAPIsimple");
+const findAliExpressDetailAPIsimple = require("./puppeteer/getAliExpressItemAPisimple");
+const getVVIC = require("./puppeteer/getVVICAPI");
+const updateCafe24 = require("./puppeteer/updateCafe24");
+const {
+  Cafe24ListOrders,
+  Cafe24RegisterShipments,
+  Cafe24UpdateShipments,
+} = require("./api/Market");
+const mongoose = require("mongoose");
+const ObjectId = mongoose.Types.ObjectId;
 const {
   CoupnagGET_PRODUCT_BY_PRODUCT_ID,
   CoupnagUPDATE_PRODUCT_QUANTITY_BY_ITEM,
   CoupnagUPDATE_PRODUCT_PRICE_BY_ITEM,
   CoupnagUPDATE_PARTIAL_PRODUCT,
-} = require("./api/Market")
-const cron = require("node-cron")
-const _ = require("lodash")
-const { resolve } = require("path")
-const { reject } = require("lodash")
+} = require("./api/Market");
+const cron = require("node-cron");
+const _ = require("lodash");
+const { resolve } = require("path");
+const { reject } = require("lodash");
 // jtsjna@gmail.com
 
 // cron.schedule("0 0,15 * * *", () => {
@@ -53,30 +61,32 @@ const { reject } = require("lodash")
 //   http.get("https://sellerextension.herokuapp.com/")
 // }, 600000)
 
-database()
+database();
 
-const PORT = process.env.PORT || 3300
-const app = express()
-app.use(express.json({ limit: "50mb" }))
-app.use(express.urlencoded({ limit: "50mb", extended: false }))
+const PORT = process.env.PORT || 3300;
+const app = express();
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: false }));
 
-app.use(cors())
-app.use(bodyParser.json())
+app.use(cors());
+app.use(bodyParser.json());
 
-app.use(bodyParser.urlencoded({ extended: true }))
-app.get("/", (req, res) => res.send("Hello World!!"))
+app.use(bodyParser.urlencoded({ extended: true }));
+app.get("/", (req, res) => res.send("Hello World!!"));
 
-app.listen(PORT, () => console.log(`Example app listening at http://localhost:${PORT}`))
+app.listen(PORT, () =>
+  console.log(`Example app listening at http://localhost:${PORT}`)
+);
 
 app.post("/taobao/cookie", async (req, res) => {
   try {
-    const { nick, cookie } = req.body
-    console.log("nick", nick)
+    const { nick, cookie } = req.body;
+    console.log("nick", nick, cookie);
     if (!nick || nick.length === 0) {
       res.json({
         message: "fail",
-      })
-      return
+      });
+      return;
     }
     await Cookie.findOneAndUpdate(
       {
@@ -92,41 +102,41 @@ app.post("/taobao/cookie", async (req, res) => {
       {
         upsert: true,
       }
-    )
+    );
     res.json({
       message: "success",
-    })
+    });
   } catch (e) {
-    console.log("/taobao/cookie", e)
+    console.log("/taobao/cookie", e);
     res.json({
       message: "fail",
-    })
+    });
   }
-})
+});
 
 // 로그인
 app.post("/seller/login", async (req, res) => {
-  console.log("req.body", req.body)
+  console.log("req.body", req.body);
   try {
     if (!req.body.email || req.body.email.length === 0) {
       res.json({
         code: "ERROR",
         message: "이메일주소를 입력해주세요.",
-      })
-      return
+      });
+      return;
     }
 
     if (!req.body.password || req.body.password.length === 0) {
       res.json({
         code: "ERROR",
         message: "패스워드를 입력해주세요.",
-      })
-      return
+      });
+      return;
     }
 
     const response = await User.findOne({
       email: req.body.email,
-    })
+    });
     if (response) {
       if (response.password === req.body.password) {
         res.json({
@@ -137,51 +147,51 @@ app.post("/seller/login", async (req, res) => {
             admin: response.grade === "1",
             avatar: response.avatar,
           },
-        })
+        });
       } else {
         res.json({
           code: "ERROR",
           message: "패스워드가 일치하지 않습니다.",
-        })
+        });
       }
     } else {
       res.json({
         code: "ERROR",
         message: "등록된 사용자가 없습니다.",
-      })
+      });
     }
   } catch (e) {
-    res.json({ code: "ERROR" })
+    res.json({ code: "ERROR" });
   }
-})
+});
 
 app.post("/amazon/isRegister", async (req, res) => {
   try {
-    const { detailUrl, user } = req.body
-    console.log("detailUrl, use", detailUrl, user)
-    const asin = AmazonAsin(detailUrl)
+    const { detailUrl, user } = req.body;
+    console.log("detailUrl, use", detailUrl, user);
+    const asin = AmazonAsin(detailUrl);
     // 0: 실패, 1: 등록됨, 2: 수집요청전, 3: 수집요청후, 4: 수집완료, 5t 수집실패
     if (!asin || !user) {
       res.json({
         registerType: 0,
         detailUrl,
-      })
-      return
+      });
+      return;
     }
 
     const userInfo = await User.findOne({
       email: user,
-    })
+    });
 
     if (!userInfo) {
       res.json({
         registerType: 0,
         detailUrl,
-      })
-      return
+      });
+      return;
     }
 
-    let product = null
+    let product = null;
     if (
       detailUrl.includes("taobao.com") ||
       detailUrl.includes("tmall.com") ||
@@ -191,95 +201,95 @@ app.post("/amazon/isRegister", async (req, res) => {
         userID: ObjectId(userInfo._id),
         "basic.good_id": asin,
         isDelete: false,
-      })
+      });
     } else {
       product = await Product.findOne({
         userID: ObjectId(userInfo._id),
         "options.key": asin,
         isDelete: false,
-      })
+      });
     }
 
     if (product) {
       res.json({
         registerType: 1,
         detailUrl,
-      })
-      return
+      });
+      return;
     }
     const tempProduct = await TempProduct.findOne({
       userID: ObjectId(userInfo._id),
       good_id: asin,
-    })
+    });
 
     // 수집완료
     if (tempProduct && tempProduct.options.length > 0) {
       res.json({
         registerType: 4,
         detailUrl,
-      })
-      return
+      });
+      return;
     } else if (tempProduct && tempProduct.options.length === 0) {
       // 수집실패
       res.json({
         registerType: 5,
         detailUrl,
-      })
-      return
+      });
+      return;
     }
 
     const tempCollection = await AmazonCollection.findOne({
       userID: ObjectId(userInfo._id),
       asin,
-    })
+    });
     if (tempCollection) {
       if (tempCollection.isDelete) {
         // 삭제
         res.json({
           registerType: 6,
           detailUrl,
-        })
-        return
+        });
+        return;
       } else {
         // 수집대기
         res.json({
           registerType: 3,
           detailUrl,
-        })
-        return
+        });
+        return;
       }
     } else {
       // 아무것도 아님
       res.json({
         registerType: 2,
         detailUrl,
-      })
-      return
+      });
+      return;
     }
   } catch (e) {
-    console.log("/amazon/isRegister", e)
+    console.log("/amazon/isRegister", e);
   }
-})
+});
 
 app.post("/amazon/isRegisters", async (req, res) => {
   try {
-    const { user, items } = req.body
+    const { user, items } = req.body;
 
     const userInfo = await User.findOne({
       email: user,
-    })
-    
+    });
+
     if (!userInfo) {
-      res.json([])
-      return
+      res.json([]);
+      return;
     }
 
-    let response = []
-    
-    if (items && Array.isArray(items) && items.length > 0) {
-      const asinArr = items.map((item) => AmazonAsin(item))
+    let response = [];
 
-      let product = null
+    if (items && Array.isArray(items) && items.length > 0) {
+      const asinArr = items.map((item) => AmazonAsin(item));
+
+      let product = null;
       if (
         items[0].includes("taobao.com") ||
         items[0].includes("tmall.com") ||
@@ -299,7 +309,7 @@ app.post("/amazon/isRegisters", async (req, res) => {
               "basic.good_id": 1,
             },
           },
-        ])
+        ]);
       } else {
         product = await Product.aggregate([
           {
@@ -326,7 +336,7 @@ app.post("/amazon/isRegisters", async (req, res) => {
             },
           },
           { $unwind: "$options" },
-        ])
+        ]);
       }
 
       const tempProducts = await TempProduct.aggregate([
@@ -342,7 +352,7 @@ app.post("/amazon/isRegisters", async (req, res) => {
             options: 1,
           },
         },
-      ])
+      ]);
 
       const tempCollections = await AmazonCollection.aggregate([
         {
@@ -357,14 +367,14 @@ app.post("/amazon/isRegisters", async (req, res) => {
             isDelete: 1,
           },
         },
-      ])
+      ]);
 
       // 0: 실패, 1: 등록됨, 2: 수집요청, 3: 수집대기, 4: 수집완려, 5: 수집실패, 6: 삭제
       for (const detailUrl of items) {
-        const asin = AmazonAsin(detailUrl)
+        const asin = AmazonAsin(detailUrl);
 
         if (!asin) {
-          continue
+          continue;
         }
 
         if (
@@ -375,124 +385,125 @@ app.post("/amazon/isRegisters", async (req, res) => {
               items[0].includes("aliexpress.com") ||
               items[0].includes("vvic.com")
             ) {
-              
-              return pItem.basic.good_id === asin
+              return pItem.basic.good_id === asin;
             } else {
-              return pItem.options.key === asin
+              return pItem.options.key === asin;
             }
-            return false
+            return false;
           }).length > 0
         ) {
           // 등록됨
           response.push({
             registerType: 1,
             detailUrl,
-          })
+          });
         } else {
-          const temp = tempProducts.filter((tItem) => tItem.good_id === asin)
+          const temp = tempProducts.filter((tItem) => tItem.good_id === asin);
           if (temp.length > 0) {
-            const tempProduct = temp[0]
+            const tempProduct = temp[0];
             if (tempProduct.options.length > 0) {
               // 수집완료
               response.push({
                 registerType: 4,
                 detailUrl,
-              })
+              });
             } else {
               // 수집실패
               response.push({
                 registerType: 5,
                 detailUrl,
-              })
+              });
             }
           } else {
-            const tempColl = tempCollections.filter((tItem) => tItem.asin === asin)
+            const tempColl = tempCollections.filter(
+              (tItem) => tItem.asin === asin
+            );
             if (tempColl.length > 0) {
               if (tempColl[0].isDelete) {
                 // 삭제
                 response.push({
                   registerType: 6,
                   detailUrl,
-                })
+                });
               } else {
                 // 수집대기
                 response.push({
                   registerType: 3,
                   detailUrl,
-                })
+                });
               }
             } else {
               // 아무것도 아님
               response.push({
                 registerType: 2,
                 detailUrl,
-              })
+              });
             }
           }
         }
       }
 
-      res.json(response)
-      return
+      res.json(response);
+      return;
     } else {
-      res.json([])
-      return
+      res.json([]);
+      return;
     }
   } catch (e) {
-    console.log("/amazon/isRegisters", e)
-    res.json([])
+    console.log("/amazon/isRegisters", e);
+    res.json([]);
   }
-})
+});
 
 app.post("/amazon/registerItem", async (req, res) => {
   try {
-    const { detailUrl, user, image, title } = req.body
-    const asin = AmazonAsin(detailUrl)
-    console.log("detailUrl", detailUrl)
-    console.log("image", image)
-    console.log("title", title)
+    const { detailUrl, user, image, title, keyword } = req.body;
+    const asin = AmazonAsin(detailUrl);
+    console.log("detailUrl", detailUrl);
+    console.log("image", image);
+    console.log("title", title);
     // 0: 실패, 1: 등록됨, 2: 수집요청, 3: 수집대기
-    if (!asin || !user || !image || !title || !detailUrl) {
+    if (!asin || !user || !detailUrl) {
       res.json({
         registerType: 0,
         detailUrl,
-      })
-      return
+      });
+      return;
     }
 
     const userInfo = await User.findOne({
       email: user,
-    })
+    });
     if (!userInfo) {
       res.json({
         registerType: 1,
         detailUrl,
-      })
-      return
+      });
+      return;
     }
 
     const product = await Product.findOne({
       userID: ObjectId(userInfo._id),
       "options.key": asin,
       isDelete: false,
-    })
+    });
     if (product) {
       res.json({
         registerType: 1,
         detailUrl,
-      })
-      return
+      });
+      return;
     } else {
       const tempProduct = await TempProduct.findOne({
         userID: ObjectId(userInfo._id),
         good_id: asin,
-      })
+      });
       if (tempProduct && tempProduct.options.length === 0) {
         // 실패 했던 거 다시 수집 대기로 변경
         await TempProduct.remove({
           userID: ObjectId(userInfo._id),
           good_id: asin,
-        })
+        });
         await AmazonCollection.findOneAndUpdate(
           {
             userID: ObjectId(userInfo._id),
@@ -505,6 +516,7 @@ app.post("/amazon/registerItem", async (req, res) => {
               detailUrl,
               title,
               image,
+              keyword,
               isDelete: false,
               lastUpdate: moment().toDate(),
             },
@@ -513,32 +525,32 @@ app.post("/amazon/registerItem", async (req, res) => {
             upsert: true,
             new: true,
           }
-        )
+        );
         res.json({
           registerType: 3,
           detailUrl,
-        })
-        return
+        });
+        return;
       }
 
       const tempCollection = await AmazonCollection.findOne({
         userID: ObjectId(userInfo._id),
         asin,
         isDelete: { $ne: true },
-      })
+      });
 
       if (tempCollection) {
         // 수집완료 -> 다시 수집
         await AmazonCollection.remove({
           userID: ObjectId(userInfo._id),
           asin,
-        })
+        });
 
         res.json({
           registerType: 2,
           detailUrl,
-        })
-        return
+        });
+        return;
       } else {
         // 수집요청
         await AmazonCollection.findOneAndUpdate(
@@ -553,6 +565,7 @@ app.post("/amazon/registerItem", async (req, res) => {
               detailUrl,
               title,
               image,
+              keyword,
               isDelete: false,
               lastUpdate: moment().toDate(),
             },
@@ -561,46 +574,44 @@ app.post("/amazon/registerItem", async (req, res) => {
             upsert: true,
             new: true,
           }
-        )
+        );
 
         res.json({
           registerType: 3,
           detailUrl,
-        })
-        return
+        });
+        return;
       }
     }
   } catch (e) {
-    console.log("/amazon/registerItem", e)
+    console.log("/amazon/registerItem", e);
     res.json({
       registerType: 0,
       detailUrl,
-    })
+    });
   }
-})
+});
 
 app.post("/amazon/getCollectionItem", async (req, res) => {
   try {
-    
-    const { user } = req.body
-    
+    const { user } = req.body;
+
     const userInfo = await User.findOne({
       email: user,
-    })
-    
+    });
+
     if (!userInfo) {
-      res.json([])
-      return
+      res.json([]);
+      return;
     }
-    
+
     const products = await AmazonCollection.find({
       userID: ObjectId(userInfo._id),
       isDelete: { $ne: true },
-    })
-    
-    let asinArr = products.map((item) => item.asin)
-    
-    
+    });
+
+    let asinArr = products.map((item) => item.asin);
+
     // const registerProducts = await Product.find({
     //   userID: ObjectId(userInfo._id),
     //   isDelete: false,
@@ -612,55 +623,53 @@ app.post("/amazon/getCollectionItem", async (req, res) => {
           userID: ObjectId(userInfo._id),
           isDelete: false,
           "basic.good_id": { $in: asinArr },
-        }
+        },
       },
       {
         $project: {
           "options.key": 1,
-          "basic.good_id": 1
-        }
-      }
-    ])
-    
+          "basic.good_id": 1,
+        },
+      },
+    ]);
+
     const tempArr = await TempProduct.aggregate([
       {
         $match: {
           userID: ObjectId(userInfo._id),
           good_id: { $in: asinArr },
-          
-        }
-      }
-    ])
+        },
+      },
+    ]);
 
-    
-    const productArr = []
+    const productArr = [];
     for (const item of products) {
-      let isRegister = false
+      let isRegister = false;
       for (const rItem of registerProducts) {
-        if (rItem.options.filter((fItem) => fItem.key === item.asin).length > 0) {
-          isRegister = true
-          break
+        if (
+          rItem.options.filter((fItem) => fItem.key === item.asin).length > 0
+        ) {
+          isRegister = true;
+          break;
         }
         if (rItem.basic.good_id === item.asin) {
-          isRegister = true
-          break
+          isRegister = true;
+          break;
         }
       }
       if (!isRegister) {
-        const temp = tempArr.filter((fItem) => fItem.good_id === item.asin)
+        const temp = tempArr.filter((fItem) => fItem.good_id === item.asin);
         if (temp.length > 0) {
-          item.isDone = true
+          item.isDone = true;
           if (temp[0].options.length === 0) {
-            console.log("실패")
-            item.isFail = true
+            console.log("실패");
+            item.isFail = true;
           }
         }
 
-        productArr.push(item)
-        
+        productArr.push(item);
       }
     }
-   
     res.json(
       productArr.map((item) => {
         return {
@@ -668,82 +677,94 @@ app.post("/amazon/getCollectionItem", async (req, res) => {
           detailUrl: item.detailUrl,
           title: item.title,
           image: item.image,
+          keyword: item.keyword,
           isDone: item.isDone ? true : false,
           isFail: item.isFail ? true : false,
-        }
+        };
       })
-    )
+    );
   } catch (e) {
-    console.log("/amazon/getCollectionItem", e)
-    res.json([])
+    console.log("/amazon/getCollectionItem", e);
+    res.json([]);
   }
-})
+});
 
 app.post("/amazon/collectionItems", async (req, res) => {
   try {
-    const { user } = req.body
+    const { user } = req.body;
 
     const userInfo = await User.findOne({
       email: user,
-    })
+    });
     if (!userInfo) {
       res.json({
         message: "fail",
-      })
-      return
+      });
+      return;
     }
     const registerProducts = await TempProduct.aggregate([
       {
         $match: {
-          userID: ObjectId(userInfo._id)
-        }
+          userID: ObjectId(userInfo._id),
+        },
       },
       {
         $project: {
-          good_id: 1
-        }
-      }
-    ])
-    let goodIDs = registerProducts.map(item => item.good_id)
+          good_id: 1,
+        },
+      },
+    ]);
+    let goodIDs = registerProducts.map((item) => item.good_id);
     const products = await AmazonCollection.find({
       userID: ObjectId(userInfo._id),
       isDelete: { $ne: true },
-      asin: {$nin: goodIDs}
-    })
-    console.log("prodcuts", products.length)
+      asin: { $nin: goodIDs },
+    });
+    console.log("prodcuts", products.length);
     setTimeout(async () => {
       try {
-        let i = 1
+        let i = 1;
         for (const item of products) {
-          console.log("item.detailUrl", i++ , " -  ", products.length, " - " , item.detailUrl)
+          console.log(
+            "item.detailUrl",
+            i++,
+            " -  ",
+            products.length,
+            " - ",
+            item.detailUrl
+          );
           try {
-            let product = null
-            if (item.detailUrl.includes("taobao.com") || item.detailUrl.includes("tmall.com") || item.detailUrl.includes("vvic.com")) {
+            let product = null;
+            if (
+              item.detailUrl.includes("taobao.com") ||
+              item.detailUrl.includes("tmall.com") ||
+              item.detailUrl.includes("vvic.com")
+            ) {
               product = await Product.findOne({
                 userID: ObjectId(userInfo._id),
                 "basic.good_id": item.asin,
                 isDelete: false,
-              })
+              });
             } else {
               product = await Product.findOne({
                 userID: ObjectId(userInfo._id),
                 "options.key": item.asin,
                 isDelete: false,
-              })
+              });
             }
 
             if (!product) {
               const tempProduct = await TempProduct.findOne({
                 userID: ObjectId(userInfo._id),
                 good_id: item.asin,
-              })
+              });
               if (!tempProduct) {
                 if (item.detailUrl.includes("amazon.com")) {
                   // 아마존
                   let detailItem = await findAmazonDetailAPIsimple({
                     url: item.detailUrl,
                     userID: ObjectId(userInfo._id),
-                  })
+                  });
                   if (detailItem) {
                     await TempProduct.findOneAndUpdate(
                       {
@@ -780,29 +801,29 @@ app.post("/amazon/collectionItems", async (req, res) => {
                         upsert: true,
                         new: true,
                       }
-                    )
+                    );
                   }
                 } else if (item.detailUrl.includes("iherb.com")) {
                   // 아이허브
-                  console.log("item.detailUrl", item.detailUrl)
-                  const asin = AmazonAsin(item.detailUrl)
+                  console.log("item.detailUrl", item.detailUrl);
+                  const asin = AmazonAsin(item.detailUrl);
                   if (!asin) {
-                    continue
+                    continue;
                   }
-                  const host = item.detailUrl.replace(`/${asin}`, "/")
-                  const response = await iHerbCode({ url: item.detailUrl })
+                  const host = item.detailUrl.replace(`/${asin}`, "/");
+                  const response = await iHerbCode({ url: item.detailUrl });
                   for (const pid of response) {
                     let detailItem = await findIherbDetailAPI({
                       url: `${host}${pid}`,
                       userID: ObjectId(userInfo._id),
-                    })
+                    });
                     if (detailItem) {
-                      console.log("detailITEm", detailItem)
+                      console.log("detailITEm", detailItem);
                       if (detailItem.prohibited === true) {
                         await AmazonCollection.remove({
                           userID: ObjectId(userInfo._id),
                           asin,
-                        })
+                        });
                       } else {
                         await TempProduct.findOneAndUpdate(
                           {
@@ -845,7 +866,7 @@ app.post("/amazon/collectionItems", async (req, res) => {
                             upsert: true,
                             new: true,
                           }
-                        )
+                        );
                       }
                     }
                   }
@@ -855,7 +876,8 @@ app.post("/amazon/collectionItems", async (req, res) => {
                   let detailItem = await findAliExpressDetailAPIsimple({
                     url: item.detailUrl.replace("https:ko", "https://ko"),
                     userID: ObjectId(userInfo._id),
-                  })
+                    keyword: item.keyword,
+                  });
                   // console.log("detailItem", detailItem)
                   if (detailItem) {
                     await TempProduct.findOneAndUpdate(
@@ -877,12 +899,17 @@ app.post("/amazon/collectionItems", async (req, res) => {
                           price: detailItem.price,
                           salePrice: detailItem.salePrice,
                           content: detailItem.content,
+                          html: detailItem.html,
+                          videoUrl: data.videoUrl,
                           shipPrice: detailItem.shipPrice, // 배송비
                           deliverDate: detailItem.deliverDate, // 배송일
                           purchaseLimitNumMax: detailItem.purchaseLimitNumMax, // 구매수량
                           deliverCompany: detailItem.deliverCompany,
                           options: detailItem.options,
-                          detailUrl: detailItem.detailUrl.replace("https:ko", "https://ko"),
+                          detailUrl: detailItem.detailUrl.replace(
+                            "https:ko",
+                            "https://ko"
+                          ),
                           isPrime: detailItem.isPrime,
                           korTitle: detailItem.korTitle,
                           titleArray: detailItem.titleArray,
@@ -895,7 +922,7 @@ app.post("/amazon/collectionItems", async (req, res) => {
                         upsert: true,
                         new: true,
                       }
-                    )
+                    );
                   }
                 } else if (
                   item.detailUrl.includes("taobao.com") ||
@@ -906,9 +933,14 @@ app.post("/amazon/collectionItems", async (req, res) => {
                   let detailItem = await findTaobaoDetailAPIsimple({
                     url: item.detailUrl,
                     userID: ObjectId(userInfo._id),
-                  })
+                    keyword: item.keyword,
+                  });
 
-                  if (detailItem && detailItem.options && detailItem.options.length > 0) {
+                  if (
+                    detailItem &&
+                    detailItem.options &&
+                    detailItem.options.length > 0
+                  ) {
                     await TempProduct.findOneAndUpdate(
                       {
                         userID: ObjectId(userInfo._id),
@@ -946,19 +978,23 @@ app.post("/amazon/collectionItems", async (req, res) => {
                         upsert: true,
                         new: true,
                       }
-                    )
+                    );
                   }
                 } else if (item.detailUrl.includes("vvic.com")) {
-                  const asin = AmazonAsin(item.detailUrl)
+                  const asin = AmazonAsin(item.detailUrl);
                   if (!asin) {
-                    console.log("asin 없음")
-                    continue
+                    console.log("asin 없음");
+                    continue;
                   }
                   // console.log("detailUrl", item.detailUrl)
-                  let detailItem = await getVVIC({url: item.detailUrl, userID: userInfo._id})
+                  let detailItem = await getVVIC({
+                    url: item.detailUrl,
+                    userID: userInfo._id,
+                    keyword: item.keyword,
+                  });
                   // console.log("detailItem", detailItem)
-                  if(!detailItem){
-                    console.log("없음 --><", asin)
+                  if (!detailItem) {
+                    console.log("없음 --><", asin);
                     await AmazonCollection.findOneAndUpdate(
                       {
                         userID: ObjectId(userInfo._id),
@@ -973,9 +1009,13 @@ app.post("/amazon/collectionItems", async (req, res) => {
                       {
                         upsert: true,
                       }
-                    )
-                  } else if (detailItem && detailItem.options && detailItem.options.length > 0) {
-                    console.log("detailItem.korTitle", detailItem.korTitle)
+                    );
+                  } else if (
+                    detailItem &&
+                    detailItem.options &&
+                    detailItem.options.length > 0
+                  ) {
+                    console.log("detailItem.korTitle", detailItem.korTitle);
                     await TempProduct.findOneAndUpdate(
                       {
                         userID: ObjectId(userInfo._id),
@@ -1004,131 +1044,181 @@ app.post("/amazon/collectionItems", async (req, res) => {
                         upsert: true,
                         new: true,
                       }
-                    )
+                    );
                   } else {
-                    console.log("옵션 없음", item.detailUrl)
+                    console.log("옵션 없음", item.detailUrl);
                   }
                 }
               }
             }
           } catch (e) {
-            console.log("collectionItems", e)
+            console.log("collectionItems", e);
           }
         }
       } catch (e) {
-        console.log("errir00", e)
+        console.log("errir00", e);
       }
-      console.log("---끝 ----")
-    }, 1000)
+      console.log("---끝 ----");
+    }, 1000);
     res.json({
       message: "success",
-    })
+    });
   } catch (e) {
-    console.log("/amazon/collectionItems", e)
+    console.log("/amazon/collectionItems", e);
     res.json({
       message: "fail",
-    })
+    });
   }
-})
+});
 
 app.post("/amazon/deleteCollectionItems", async (req, res) => {
   try {
-    const { user } = req.body
- 
+    const { user, asin } = req.body;
+
     const userInfo = await User.findOne({
       email: user,
-    })
-    if (!userInfo) {
+    });
+    if (!userInfo || !Array.isArray(asin)) {
       res.json({
         message: "fail",
-      })
-      return
+      });
+      return;
     }
 
     const products = await AmazonCollection.find({
       userID: ObjectId(userInfo._id),
       isDelete: { $ne: true },
-    })
+      asin: {
+        $in: asin,
+      },
+    });
 
-    const promiseArr = products.map(item => {
+    const promiseArr = products.map((item) => {
       return new Promise(async (resolve, reject) => {
         try {
           await AmazonCollection.deleteOne({
             userID: ObjectId(userInfo._id),
             asin: item.asin,
-          })
-          resolve()
-        } catch(e){
-          console.log("무슨 에러", e)
-          reject(e)
+          });
+          resolve();
+        } catch (e) {
+          console.log("무슨 에러", e);
+          reject(e);
         }
-      })
-    })
-    await Promise.all(promiseArr)
-    
+      });
+    });
+    await Promise.all(promiseArr);
 
-    
     res.json({
       message: "success",
-    })
+    });
   } catch (e) {
-    console.log("/amazon/isRegister", e)
-    res.json([])
+    console.log("/amazon/isRegister", e);
+    res.json([]);
   }
-})
+});
 
 app.post("/amazon/deleteCollectionItem", async (req, res) => {
   try {
-    const { user, asin } = req.body
+    const { user, asin } = req.body;
 
     const userInfo = await User.findOne({
       email: user,
-    })
+    });
     if (!userInfo && asin) {
       res.json({
         message: "fail",
-      })
-      return
+      });
+      return;
     }
     await AmazonCollection.remove({
       userID: ObjectId(userInfo._id),
       asin,
-    })
+    });
     res.json({
       message: "success",
-    })
+    });
   } catch (e) {
-    console.log("/amazon/isRegister", e)
-    res.json([])
+    console.log("/amazon/isRegister", e);
+    res.json([]);
   }
-})
+});
 
+app.post("/amazon/modifyKeyword", async (req, res) => {
+  try {
+    const { user, keyword, asin } = req.body;
+    console.log("user, keyword, asin", user, keyword, asin);
+    const userInfo = await User.findOne({
+      email: user,
+    });
+    if (!userInfo && asin) {
+      res.json({
+        message: "fail",
+      });
+      return;
+    }
+    const promiseArr = asin.map((item) => {
+      return new Promise(async (resolve, reject) => {
+        try {
+          await AmazonCollection.findOneAndUpdate(
+            {
+              userID: ObjectId(userInfo._id),
+              asin: item,
+            },
+            {
+              $set: {
+                keyword,
+              },
+            }
+          );
+          resolve();
+        } catch (e) {
+          console.log("무슨 에러", e);
+          reject(e);
+        }
+      });
+    });
+    await Promise.all(promiseArr);
+
+    res.json({
+      message: "success",
+    });
+  } catch (e) {
+    console.log("/amazon/isRegister", e);
+    res.json([]);
+  }
+});
 app.post("/amazon/allRegisterItem", async (req, res) => {
   try {
+    if (!Array.isArray(req.body)) {
+      res.json({
+        message: "fail",
+      });
+    }
     setTimeout(async () => {
-      for (const { detailUrl, user, image, title } of req.body) {
+      for (const { detailUrl, user, image, title, keyword } of req.body) {
         try {
-          const asin = AmazonAsin(detailUrl)
+          const asin = AmazonAsin(detailUrl);
           if (!asin || !user) {
-            continue
+            continue;
           }
           const userInfo = await User.findOne({
             email: user,
-          })
+          });
           if (!userInfo) {
-            continue
+            continue;
           }
 
           const product = await Product.findOne({
             userID: ObjectId(userInfo._id),
             "options.key": asin,
             isDelete: false,
-          })
+          });
           if (!product) {
             const tempCollection = await AmazonCollection.findOne({
               userID: ObjectId(userInfo._id),
               asin,
-            })
+            });
 
             if (!tempCollection) {
               await AmazonCollection.findOneAndUpdate(
@@ -1143,6 +1233,7 @@ app.post("/amazon/allRegisterItem", async (req, res) => {
                     detailUrl,
                     title,
                     image,
+                    keyword,
                     isDelete: false,
                     lastUpdate: moment().toDate(),
                   },
@@ -1151,56 +1242,57 @@ app.post("/amazon/allRegisterItem", async (req, res) => {
                   upsert: true,
                   new: true,
                 }
-              )
+              );
             }
           }
         } catch (e) {
-          console.log("eerr", e)
+          console.log("eerr", e);
         }
       }
-    }, 1000)
+    }, 1000);
 
     res.json({
       message: "success",
-    })
+    });
   } catch (e) {
-    console.log("/amazon/registerItem", e)
+    console.log("/amazon/registerItem", e);
     res.json({
       message: "fail",
-    })
+    });
   }
-})
+});
 
 app.post("/amazon/aliText", async (req, res) => {
   try {
-    const { url } = req.body
-    console.log("url", url)
+    const { url } = req.body;
+    console.log("url", url);
     let detailItem = await findAliExpressDetailAPIsimple({
       url,
       userID: ObjectId("5f1947bd682563be2d22f008"),
-    })
-    console.log("detailItem", detailItem)
+    });
+    console.log("detailItem", detailItem);
     res.json({
       message: "success",
-    })
+    });
   } catch (e) {
-    console.log("error", e)
+    console.log("error", e);
     res.json({
       message: "fail",
-    })
+    });
   }
-})
+});
 
 app.post("/ali/cookie", async (req, res) => {
   try {
-    const { xman_t } = req.body
-    if (!xman_t || !xman_t.includes("==") || xman_t.length < 100) {
+    const { xman_t } = req.body;
+
+    if (!xman_t || xman_t.length < 100) {
       res.json({
         message: "fail",
-      })
-      return
+      });
+      return;
     }
-    console.log("xman_t", xman_t)
+    console.log("xman_t", xman_t);
     await Cookie.findOneAndUpdate(
       {
         name: "xman_t",
@@ -1213,236 +1305,274 @@ app.post("/ali/cookie", async (req, res) => {
         },
       },
       { upsert: true, new: true }
-    )
+    );
 
     res.json({
       message: "success",
-    })
+    });
   } catch (e) {
-    console.log("error", e)
+    console.log("error", e);
     res.json({
       message: "fail",
-    })
+    });
   }
-})
+});
 
 app.post("/bdg/orderList", async (req, res) => {
   try {
-    const { user, cookie } = req.body
-    
-    
+    const { user, cookie } = req.body;
+
     const userInfo = await User.findOne({
       email: user,
-    }).lean()
+    }).lean();
 
     if (!userInfo) {
       res.json({
-        message: false
-      })
-      return
+        message: false,
+      });
+      return;
     }
-    
-    if(userInfo.group){
+
+    if (userInfo.group) {
       const userGroups = await User.find({
-        group: userInfo.group
-      })
+        group: userInfo.group,
+      });
 
-      const startDate = moment().subtract(2, "month").format("YYYY-MM-DD")
-      const endDate = moment().format("YYYY-MM-DD")
+      const startDate = moment().subtract(2, "month").format("YYYY-MM-DD");
+      const endDate = moment().format("YYYY-MM-DD");
 
-      
-    const response = await getFirstBdgOrder({userInfo, cookie})
-    
-    if(response && response.result && response.result.list.length > 0){
-      
-      for(const item of response.result.list){
-        // console.log("item-->", item)
-        const promiseArr = userGroups.map(user => {
-          return new Promise(async (resolve, reject) => {
-            try {
-              const market = await Market.findOne(
-                {
-                  userID: ObjectId(user._id)
-                }
-              )
-              const cafe24OrderResponse = await Cafe24ListOrders({mallID : market.cafe24.mallID,
-                orderState: "상품준비",
-                startDate, endDate
-              })
-  
-              const temp = await DeliveryInfo.findOne({
-                userID: ObjectId(user._id),
-                orderNo: item.od_code  // 주문번호
-              })
+      const response = await getFirstBdgOrder({ userInfo, cookie });
 
-              let orderItems = item.in_order.map((mItem, i) => {
-                
-                let taobaoOrderNo = null
-                if(item.in_order_fo && item.in_order_fo[i]){
-                  taobaoOrderNo = item.in_order_fo[i]
-                } else if(Array.isArray(item.in_order_fo) && item.in_order_fo[0]) {
-                  taobaoOrderNo = item.in_order_fo[0]
-                }
-                let taobaoTrackingNo = null
-                if(item.in_invoice && item.in_invoice[0] && item.in_invoice[0][i]){
-                  taobaoTrackingNo = item.in_invoice[0][i]
-                } else if(Array.isArray(item.in_invoice) && item.in_invoice[0]) {
-                  taobaoTrackingNo = item.in_invoice[0][0]
-                }
-                let 오픈마켓주문번호 = null
-                if(temp && temp.orderItems[i] && temp.orderItems[i].오픈마켓주문번호.trim().length > 0) {
-                  오픈마켓주문번호 = temp.orderItems[i].오픈마켓주문번호.replace("`", "").replace("′", "").trim()
-                } else {
-                  오픈마켓주문번호 = mItem
-                }
-                
-                return {
-                  taobaoOrderNo,
-                  taobaoTrackingNo,
-                  오픈마켓주문번호
-                }
-              })
-              
-              if(temp && temp.orderItems.length <= item.in_order.length){
-                // 디비 내용을 따라 가야함
-                orderItems = temp.orderItems
-              }
-              const deliveySave = await DeliveryInfo.findOneAndUpdate(
-                {
+      if (response && response.result && response.result.list.length > 0) {
+        for (const item of response.result.list) {
+          // console.log("item-->", item)
+          const promiseArr = userGroups.map((user) => {
+            return new Promise(async (resolve, reject) => {
+              try {
+                const market = await Market.findOne({
                   userID: ObjectId(user._id),
-                  orderNo: item.od_code  // 주문번호
-                },
-                {
-                  $set: {
+                });
+                const cafe24OrderResponse = await Cafe24ListOrders({
+                  mallID: market.cafe24.mallID,
+                  orderState: "상품준비",
+                  startDate,
+                  endDate,
+                });
+
+                const temp = await DeliveryInfo.findOne({
+                  userID: ObjectId(user._id),
+                  orderNo: item.od_code, // 주문번호
+                });
+
+                let orderItems = item.in_order.map((mItem, i) => {
+                  let taobaoOrderNo = null;
+                  if (item.in_order_fo && item.in_order_fo[i]) {
+                    taobaoOrderNo = item.in_order_fo[i];
+                  } else if (
+                    Array.isArray(item.in_order_fo) &&
+                    item.in_order_fo[0]
+                  ) {
+                    taobaoOrderNo = item.in_order_fo[0];
+                  }
+                  let taobaoTrackingNo = null;
+                  if (
+                    item.in_invoice &&
+                    item.in_invoice[0] &&
+                    item.in_invoice[0][i]
+                  ) {
+                    taobaoTrackingNo = item.in_invoice[0][i];
+                  } else if (
+                    Array.isArray(item.in_invoice) &&
+                    item.in_invoice[0]
+                  ) {
+                    taobaoTrackingNo = item.in_invoice[0][0];
+                  }
+                  let 오픈마켓주문번호 = null;
+                  if (
+                    temp &&
+                    temp.orderItems[i] &&
+                    temp.orderItems[i].오픈마켓주문번호.trim().length > 0
+                  ) {
+                    오픈마켓주문번호 = temp.orderItems[i].오픈마켓주문번호
+                      .replace("`", "")
+                      .replace("′", "")
+                      .trim();
+                  } else {
+                    오픈마켓주문번호 = mItem;
+                  }
+
+                  return {
+                    taobaoOrderNo,
+                    taobaoTrackingNo,
+                    오픈마켓주문번호,
+                  };
+                });
+
+                if (temp && temp.orderItems.length <= item.in_order.length) {
+                  // 디비 내용을 따라 가야함
+                  orderItems = temp.orderItems;
+                }
+                const deliveySave = await DeliveryInfo.findOneAndUpdate(
+                  {
                     userID: ObjectId(user._id),
-                    orderSeq: item.od_id,
-                    orderNo: item.od_code,  // 주문번호
-                    상태: item.od_status,
-                    수취인주소: `${item.od_addr} ${item.od_addr_detail}`,
-                    수취인우편번호: item.od_zip,
-                    수취인이름: item.od_name,
-                    수취인연락처: item.od_hp,
-                    개인통관부호: item.od_customs_code,
-                    orderItems,
-                    무게: Number(item.od_weight),
-                    배송비용: Number(item.order_price),
-                    shippingNumber: item.od_invoice,
-                    // customs,
-                    // deliveryTracking,
-                    isDelete: item.od_status === "신청취소"  || item.od_status === "반송완료"  ? true : false
-                  }
-                },
-                { upsert: true, new:true }
-              )
+                    orderNo: item.od_code, // 주문번호
+                  },
+                  {
+                    $set: {
+                      userID: ObjectId(user._id),
+                      orderSeq: item.od_id,
+                      orderNo: item.od_code, // 주문번호
+                      상태: item.od_status,
+                      수취인주소: `${item.od_addr} ${item.od_addr_detail}`,
+                      수취인우편번호: item.od_zip,
+                      수취인이름: item.od_name,
+                      수취인연락처: item.od_hp,
+                      개인통관부호: item.od_customs_code,
+                      orderItems,
+                      무게: Number(item.od_weight),
+                      배송비용: Number(item.order_price),
+                      shippingNumber: item.od_invoice,
+                      // customs,
+                      // deliveryTracking,
+                      isDelete:
+                        item.od_status === "신청취소" ||
+                        item.od_status === "반송완료"
+                          ? true
+                          : false,
+                    },
+                  },
+                  { upsert: true, new: true }
+                );
 
-              await MarketOrder.findOneAndUpdate(
-                {
+                await MarketOrder.findOneAndUpdate(
+                  {
+                    userID: ObjectId(user._id),
+                    orderId: item.od_code,
+                  },
+                  {
+                    $set: {
+                      invoiceNumber: item.od_courier,
+                      deliveryCompanyName: "경동택배",
+                    },
+                  },
+                  { upsert: true }
+                );
+
+                const deliveryTemp = await DeliveryInfo.findOne({
                   userID: ObjectId(user._id),
-                  orderId: item.od_code
-                },
-                {
-                  $set: {
-                    invoiceNumber: item.od_courier,
-                    deliveryCompanyName: "경동택배"
-                  }
-                },
-                { upsert: true }
-              )
+                  orderNo: item.od_code,
+                });
 
-              const deliveryTemp = await DeliveryInfo.findOne({
-                userID: ObjectId(user._id),
-                orderNo: item.od_code
-              })
+                if (deliveryTemp && deliveryTemp.orderItems) {
+                  try {
+                    const tempOrderItmes = _.uniqBy(
+                      deliveryTemp.orderItems,
+                      "오픈마켓주문번호"
+                    );
 
-              
-              if(deliveryTemp && deliveryTemp.orderItems){
-                try {
-                  
-                  const tempOrderItmes = _.uniqBy(
-                    deliveryTemp.orderItems, "오픈마켓주문번호"
-                  )
-                  
-                  for (const orderItem of tempOrderItmes) {
-                   
-                    
-                    const tempCafe24Order = cafe24OrderResponse.filter(fItem => fItem.market_order_info.toString() === orderItem.오픈마켓주문번호.toString())
-                  
-                    if(tempCafe24Order.length > 0){
-                      const marketOrder = await MarketOrder.findOne({
-                        userID: ObjectId(user._id),
-                        orderId: orderItem.오픈마켓주문번호,
-                      })
-                      
-                      if(!deliveryTemp.isDelete){
-                        for(const item of tempCafe24Order){
-                          try {
-                            const response = await Cafe24RegisterShipments({
-                              mallID: market.cafe24.mallID,
-                              order_id: item.order_id,
-                              tracking_no: deliveySave.shippingNumber,
-                              shipping_company_code: marketOrder && marketOrder.deliveryCompanyName === "경동택배" ? "0039" : "0006",
-                              order_item_code: item.items.map(item => item.order_item_code),
-                              shipping_code: item.receivers[0].shipping_code
-                            })
-                            console.log("resonse-->", response)
-                            
-                            await sleep(500)
-                            const response1 = await Cafe24UpdateShipments({
-                              mallID: market.cafe24.mallID,
-                              input: [{
+                    for (const orderItem of tempOrderItmes) {
+                      const tempCafe24Order = cafe24OrderResponse.filter(
+                        (fItem) =>
+                          fItem.market_order_info.toString() ===
+                          orderItem.오픈마켓주문번호.toString()
+                      );
+
+                      if (tempCafe24Order.length > 0) {
+                        const marketOrder = await MarketOrder.findOne({
+                          userID: ObjectId(user._id),
+                          orderId: orderItem.오픈마켓주문번호,
+                        });
+
+                        if (!deliveryTemp.isDelete) {
+                          for (const item of tempCafe24Order) {
+                            try {
+                              const response = await Cafe24RegisterShipments({
+                                mallID: market.cafe24.mallID,
+                                order_id: item.order_id,
+                                tracking_no: deliveySave.shippingNumber,
+                                shipping_company_code:
+                                  marketOrder &&
+                                  marketOrder.deliveryCompanyName === "경동택배"
+                                    ? "0039"
+                                    : "0006",
+                                order_item_code: item.items.map(
+                                  (item) => item.order_item_code
+                                ),
                                 shipping_code: item.receivers[0].shipping_code,
-                                order_id: item.order_id
-                              }]
-                            })
-                            console.log("resonse1-->", response1)
-                            await sleep(500)
-                          } catch (e) {
-                            console.log("에러", e)
+                              });
+                              console.log("resonse-->", response);
+
+                              await sleep(500);
+                              const response1 = await Cafe24UpdateShipments({
+                                mallID: market.cafe24.mallID,
+                                input: [
+                                  {
+                                    shipping_code:
+                                      item.receivers[0].shipping_code,
+                                    order_id: item.order_id,
+                                  },
+                                ],
+                              });
+                              console.log("resonse1-->", response1);
+                              await sleep(500);
+                            } catch (e) {
+                              console.log("에러", e);
+                            }
                           }
-                          
                         }
                       }
-                      
                     }
-                    
+                  } catch (e) {
+                    console.log("무슨 에러", e);
                   }
-                } catch (e) {
-                  console.log("무슨 에러", e)
                 }
+
+                await sleep(500);
+                resolve();
+              } catch (e) {
+                console.log("무슨 에러", e);
+                reject(e);
               }
+            });
+          });
 
-
-              await sleep(500)
-              resolve()
-            } catch(e){
-              console.log("무슨 에러", e)
-              reject(e)
-            }
-          })
-        })
-        
-        await Promise.all(promiseArr)
-      }
-        
-
-        
-        
+          await Promise.all(promiseArr);
+        }
       }
     }
     res.json({
       message: true,
-    })
-    
+    });
   } catch (e) {
-    console.log("/bdg/orderList", e)
+    console.log("/bdg/orderList", e);
     res.json({
-      message: false
-    })
+      message: false,
+    });
   }
-})
+});
+
+app.post("/taobao/getSimbaUrl", async (req, res) => {
+  try {
+    const { url } = req.body;
+    // console.log("uir", url);
+    const response = await axios({
+      method: "GET",
+      url,
+    });
+    let temp = response.data.toString().split('localStorage.x5referer = "')[1];
+    let temp1 = temp.split(`"`)[0];
+    // console.log("response", temp1);
+    res.json({
+      message: temp1,
+    });
+  } catch (e) {
+    console.log("---", e);
+    return null;
+  }
+});
 
 const IherbPriceSync = async () => {
-  console.time("IHERBPRICESYNC")
+  console.time("IHERBPRICESYNC");
   const products = await Product.aggregate([
     {
       $match: {
@@ -1459,11 +1589,11 @@ const IherbPriceSync = async () => {
         ],
       },
     },
-  ])
-  console.log("products", products.length)
+  ]);
+  console.log("products", products.length);
   for (const product of products) {
-    let changePrice = false
-    let chagneStock = false
+    let changePrice = false;
+    let chagneStock = false;
     try {
       const tempProduct = await Product.findOne(
         {
@@ -1472,19 +1602,19 @@ const IherbPriceSync = async () => {
         {
           isAutoPrice: 1,
         }
-      )
+      );
       if (tempProduct.isAutoPrice) {
         let detailItem = await findIherbDetailSimple({
           url: product.basic.url,
           // userID: ObjectId(item.userID)
-        })
-        console.log("detailItem", detailItem)
+        });
+        console.log("detailItem", detailItem);
         const market = await Market.findOne({
           userID: ObjectId(product.userID),
-        })
+        });
 
-        const deliveryChargeOnReturn = market.coupang.deliveryChargeOnReturn
-        const returnCharge = market.coupang.returnCharge
+        const deliveryChargeOnReturn = market.coupang.deliveryChargeOnReturn;
+        const returnCharge = market.coupang.returnCharge;
 
         const marginInfo = await ShippingPrice.aggregate([
           {
@@ -1498,50 +1628,51 @@ const IherbPriceSync = async () => {
               title: 1,
             },
           },
-        ])
+        ]);
 
         if (detailItem) {
           if (detailItem.stock === 0) {
-            console.log("재고 없음 상품명 : ", product.product.korTitle)
+            console.log("재고 없음 상품명 : ", product.product.korTitle);
           }
-          const salePrice = getIherbSalePrice(detailItem.price, marginInfo)
+          const salePrice = getIherbSalePrice(detailItem.price, marginInfo);
 
           for (const pItem of product.options) {
             if (pItem.key === detailItem.asin) {
               if (pItem.salePrice !== salePrice) {
-                changePrice = true
+                changePrice = true;
               }
               if (pItem.stock !== detailItem.stock) {
-                chagneStock = true
+                chagneStock = true;
               }
               if (changePrice || chagneStock) {
-                console.log("=========================")
-                console.log("상품명 : ", product.product.korTitle)
-                console.log("기존가격 : ", pItem.salePrice)
-                console.log("변경가격 : ", salePrice)
-                console.log("기존재고 : ", pItem.stock)
-                console.log("변경재고 : ", detailItem.stock)
-                console.log("=========================")
+                console.log("=========================");
+                console.log("상품명 : ", product.product.korTitle);
+                console.log("기존가격 : ", pItem.salePrice);
+                console.log("변경가격 : ", salePrice);
+                console.log("기존재고 : ", pItem.stock);
+                console.log("변경재고 : ", detailItem.stock);
+                console.log("=========================");
               }
 
-              pItem.salePrice = salePrice
-              pItem.productPrice = salePrice
-              pItem.stock = detailItem.stock
+              pItem.salePrice = salePrice;
+              pItem.productPrice = salePrice;
+              pItem.stock = detailItem.stock;
             }
           }
 
           const productResponse = await CoupnagGET_PRODUCT_BY_PRODUCT_ID({
             userID: product.userID,
             productID: product.product.coupang.productID,
-          })
+          });
 
           if (productResponse && productResponse.code === "SUCCESS") {
             for (const pItem of product.options) {
               const filterArr = productResponse.data.items.filter(
                 (fItem) =>
                   fItem.vendorItemId &&
-                  (fItem.itemName === pItem.korValue || fItem.itemName === pItem.korKey)
-              )
+                  (fItem.itemName === pItem.korValue ||
+                    fItem.itemName === pItem.korKey)
+              );
 
               if (filterArr.length > 0) {
                 if (changePrice) {
@@ -1549,7 +1680,8 @@ const IherbPriceSync = async () => {
                     userID: product.userID,
                     sellerProductId: productResponse.data.sellerProductId,
                     parameter: {
-                      sellerProductId: productResponse.data.sellerProductId.toString(),
+                      sellerProductId:
+                        productResponse.data.sellerProductId.toString(),
                       deliveryChargeOnReturn:
                         deliveryChargeOnReturn > salePrice / 2
                           ? Math.floor((salePrice / 2) * 0.1) * 10
@@ -1559,23 +1691,25 @@ const IherbPriceSync = async () => {
                           ? Math.floor((salePrice / 2) * 0.1) * 10
                           : returnCharge,
                     },
-                  })
+                  });
 
-                  console.log("responsePartial", responsePartial)
+                  // console.log("responsePartial", responsePartial)
 
-                  const responsePrice = await CoupnagUPDATE_PRODUCT_PRICE_BY_ITEM({
-                    userID: product.userID,
-                    vendorItemId: filterArr[0].vendorItemId,
-                    price: salePrice,
-                  })
+                  const responsePrice =
+                    await CoupnagUPDATE_PRODUCT_PRICE_BY_ITEM({
+                      userID: product.userID,
+                      vendorItemId: filterArr[0].vendorItemId,
+                      price: salePrice,
+                    });
 
-                  console.log("response", responsePrice)
+                  // console.log("response", responsePrice)
 
                   await CoupnagUPDATE_PARTIAL_PRODUCT({
                     userID: product.userID,
                     sellerProductId: productResponse.data.sellerProductId,
                     parameter: {
-                      sellerProductId: productResponse.data.sellerProductId.toString(),
+                      sellerProductId:
+                        productResponse.data.sellerProductId.toString(),
                       deliveryChargeOnReturn:
                         deliveryChargeOnReturn > salePrice / 2
                           ? Math.floor((salePrice / 2) * 0.1) * 10
@@ -1585,17 +1719,18 @@ const IherbPriceSync = async () => {
                           ? Math.floor((salePrice / 2) * 0.1) * 10
                           : returnCharge,
                     },
-                  })
+                  });
                 }
 
                 if (chagneStock) {
-                  const responseQuantity = await CoupnagUPDATE_PRODUCT_QUANTITY_BY_ITEM({
-                    userID: product.userID,
-                    vendorItemId: filterArr[0].vendorItemId,
-                    quantity: detailItem.stock,
-                  })
-                  pItem.stock = detailItem.stock
-                  console.log("responseQuantity", responseQuantity)
+                  const responseQuantity =
+                    await CoupnagUPDATE_PRODUCT_QUANTITY_BY_ITEM({
+                      userID: product.userID,
+                      vendorItemId: filterArr[0].vendorItemId,
+                      quantity: detailItem.stock,
+                    });
+                  pItem.stock = detailItem.stock;
+                  console.log("responseQuantity", responseQuantity);
                 }
               }
             }
@@ -1612,7 +1747,7 @@ const IherbPriceSync = async () => {
                     options: product.options,
                   },
                 }
-              )
+              );
             }
           }
 
@@ -1622,7 +1757,8 @@ const IherbPriceSync = async () => {
             product.product.cafe24.mallID &&
             product.product.cafe24.shop_no
           ) {
-            product.product.cafe24_product_no = product.product.cafe24.product_no
+            product.product.cafe24_product_no =
+              product.product.cafe24.product_no;
 
             const cafe24Response = await updateCafe24({
               isSingle: true,
@@ -1635,80 +1771,84 @@ const IherbPriceSync = async () => {
               },
               userID: product.userID,
               writerID: product.writerID,
-            })
-            console.log("cafe24Response, ", cafe24Response)
+            });
+            console.log("cafe24Response, ", cafe24Response);
           }
           // }
         }
       }
     } catch (e) {
-      console.log("errirooo", e)
+      console.log("errirooo", e);
     }
-    await sleep(1000)
+    await sleep(1000);
   }
 
-  console.timeEnd("IHERBPRICESYNC")
-  console.log("끝----")
-}
+  console.timeEnd("IHERBPRICESYNC");
+  console.log("끝----");
+};
 
 const getIherbSalePrice = (price, marginInfo) => {
-  let weightPrice = 0
+  let weightPrice = 0;
 
   if (price < 20000) {
-    weightPrice = 5000
+    weightPrice = 5000;
   } else {
-    weightPrice = 0
+    weightPrice = 0;
   }
- 
-  let margin = 30
-  let marginArr = marginInfo.filter((fItem) => fItem.title >= Number(price))
+
+  let margin = 30;
+  let marginArr = marginInfo.filter((fItem) => fItem.title >= Number(price));
 
   if (marginArr.length > 0) {
-    margin = Number(marginArr[0].price)
+    margin = Number(marginArr[0].price);
   } else {
-    margin = Number(marginInfo[marginInfo.length - 1].price)
+    margin = Number(marginInfo[marginInfo.length - 1].price);
   }
-  let addPrice = addIherbPriceCalc(price, weightPrice, margin)
-  let salePrice = Math.ceil((Number(price) + Number(addPrice) + Number(weightPrice)) * 0.1) * 10
+  let addPrice = addIherbPriceCalc(price, weightPrice, margin);
+  let salePrice =
+    Math.ceil((Number(price) + Number(addPrice) + Number(weightPrice)) * 0.1) *
+    10;
 
-  return salePrice
-}
+  return salePrice;
+};
 
 const addIherbPriceCalc = (price, weightPrice, margin) => {
   const addPrice = -(
     ((margin + 11) * Number(price) + weightPrice * margin + 11 * weightPrice) /
     (margin - 89)
-  )
-  return addPrice
-}
+  );
+  return addPrice;
+};
 
 const getPermutations = function (arr, selectNumber) {
-  const results = []
-  if (selectNumber === 1) return arr.map((el) => [el])
+  const results = [];
+  if (selectNumber === 1) return arr.map((el) => [el]);
   // n개중에서 1개 선택할 때(nP1), 바로 모든 배열의 원소 return. 1개선택이므로 순서가 의미없음.
 
   arr.forEach((fixed, index, origin) => {
-    const rest = [...origin.slice(0, index), ...origin.slice(index + 1)]
+    const rest = [...origin.slice(0, index), ...origin.slice(index + 1)];
     // 해당하는 fixed를 제외한 나머지 배열
-    const permutations = getPermutations(rest, selectNumber - 1)
+    const permutations = getPermutations(rest, selectNumber - 1);
     // 나머지에 대해서 순열을 구한다.
-    const attached = permutations.map((el) => [fixed, ...el])
+    const attached = permutations.map((el) => [fixed, ...el]);
     //  돌아온 순열에 떼 놓은(fixed) 값 붙이기
-    results.push(...attached)
+    results.push(...attached);
     // 배열 spread syntax 로 모두다 push
-  })
+  });
 
-  return results // 결과 담긴 results return
-}
+  return results; // 결과 담긴 results return
+};
 
 // IherbPriceSync()
 
 const getVVICItems = async () => {
   try {
-    await getVVIC({url: "https://www.vvic.com/item/634952642f99950008b96b27"})
+    await getVVIC({
+      url: "https://www.vvic.com/item/634952642f99950008b96b27",
+    });
   } catch (e) {
-    console.log("getVVICItems.",e)
+    console.log("getVVICItems.", e);
   }
-}
+};
 
 // getVVICItems()

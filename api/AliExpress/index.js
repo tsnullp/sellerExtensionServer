@@ -26,18 +26,19 @@ exports.GetAliProduct = async ({ url }) => {
       },
     })
 
-    const temp = content.split("window.runParams = {")[1].trim().replace("data", `"data"`)
+    const temp = content.split("window.runParams = {")[1].trim()
+    .replace("data: ", "")
     // .replace("csrfToken", `"csrfToken"`)
     // .replace("abVersion", `"abVersion"`)
     // .replace("abtestMap", `"abtestMap"`)
     // .replace(/'/gi, `"`)
-    const temp2 = temp.split("csrfToken")[0].trim()
-    temp3 = `{${temp2.slice(0, temp2.length - 1)}}`
+    const temp2 = temp.split("csrfToken:")[0].trim()
+    temp3 = temp2.slice(0, temp2.length -1)
     return JSON.parse(temp3)
   } catch (e) {
     try {
       temp3 = temp3.split("</script>")[0]
-      temp3 = `{${temp3.slice(0, temp3.length -1)}}`
+      temp3 = temp3.slice(0, temp3.length -1)
       return JSON.parse(temp3)   
     } catch(e) {
       console.log("GetAliProduct", temp3)

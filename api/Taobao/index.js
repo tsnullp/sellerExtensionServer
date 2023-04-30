@@ -3,7 +3,7 @@ const moment = require("moment")
 const axios = require("axios")
 const User = require("../../models/User")
 const _ = require("lodash")
-const {imageCheck, getAppDataPath} = require("../../lib/userFunc")
+const {imageCheck, getAppDataPath, getOcrText} = require("../../lib/userFunc")
 const fs = require("fs")
 const path = require("path")
 const {Cafe24UploadLocalImage} = require("../Market/index")
@@ -159,15 +159,30 @@ exports.ItemSKUV2 = async ({ userID, item_id }) => {
 
 
     //TODO:
-    // let mainImages = []
+    for(const item of response.data.data.main_imgs){
+      let mainObj = {}
+      try {
+        await imageCheck(item)
+        mainObj.image = item
+        if(platform === "darwin" ) {
+          const text = await getOcrText(item)
+          mainObj.textLength = text.length
+        }
+        
    
-    console.log("response", response.data)
+      } catch(e){
+        console.log("d----- ", e)
+      }finally {
+        mainImages.push(mainObj)
+      }
+    }
     
-    // mainImages = _.sortBy(mainImages.filter(item => item.image), "textLength")
+    // console.log("111111")
+    mainImages = _.sortBy(mainImages.filter(item => item.image), "textLength")
    
     
 
-    // response.data.data.main_imgs = mainImages.map(item => item.image)
+    response.data.data.main_imgs = mainImages.map(item => item.image)
 
     const appDataDirPath = getAppDataPath()
     

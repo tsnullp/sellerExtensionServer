@@ -1,6 +1,6 @@
 const { CategoryPredict } = require("../api/Market")
 const { NaverKeywordRel } = require("../api/Naver")
-const { sleep, regExp_test, ranking, DimensionArray } = require("../lib/userFunc")
+const { sleep, regExp_test, ranking, DimensionArray, getSbth } = require("../lib/userFunc")
 const { searchKeywordCategory } = require("./categorySourcing")
 const axios = require("axios")
 const qs = require("querystring")
@@ -357,25 +357,40 @@ const searchLensImage = async ({url}) => {
     if(!initialState.imageSearch.searchResult || initialState.imageSearch.searchResult.size.h < 400){
       return searchKeyword
     }
-    const similarImages = initialState.imageSearch.searchResult.similarImages
+
+    const id = initialState.imageSearch.searchResult.id
+
+
+    const contentCrop = await axios.get(
+      `https://msearch.shopping.naver.com/api/search/image/crop?from=shoppinglensurl&height=${initialState.imageSearch.searchResult.size.h}&id=${id}&width=${initialState.imageSearch.searchResult.size.w}&x=9&y=18`,
+      {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Linux; Android 8.0.0; SM-G955U Build/R16NW) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Mobile Safari/537.36",
+          "sec-fetch-site": "same-origin",
+          "sec-fetch-mode": "cors",
+          "Accept-Encoding": "gzip, deflate, br",
+          Connection: "keep-alive",
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+          Expires: "0",
+          referer: `https://msearch.shopping.naver.com/search/image`,
+          sbth: getSbth()
+        },
+      }
+    )
+
+    const similarImages = contentCrop.data.searchResponse.similarImages
     const products = similarImages.filter(item => item.score >= 0.94).map(item => item.productTitle.split("{")[0].replace(/,/, "").trim())
 
-    // let arrayKeyword = []
-    // console.log("products", url, products.length)
-    // console.log("products uniq", _.uniq(products).length)
-    for(const title of _.uniq(products)){
-      searchKeyword.push(...title.split(" "))
-      // const {nluTerms} = await searchKeywordCategory({keyword: title})
-      // await sleep(300)
-      // if(nluTerms) {
-      //   searchKeyword.push(...nluTerms.filter(item => item.type !== "브랜드").map(item => item.keyword))
-      // }
+    if(contentCrop.data.searchResponse.card && contentCrop.data.searchResponse.card.entryName){
+      searchKeyword.push(...contentCrop.data.searchResponse.card.entryName.split(" "))
+    } else {
+      for(const title of _.uniq(products)){
+        searchKeyword.push(...title.split(" "))
+      }
     }
-   
-    // const rankKeyword = ranking(arrayKeyword, 1)
     
-    // searchKeyword = rankKeyword.map(item => item.name)
-    // console.log("searchKeyword", searchKeyword)
   } catch (e) {
     console.log("쇼핑렌즈 --- @@@ ", url)
     console.log("searchLensKeyword", e)
