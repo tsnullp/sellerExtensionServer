@@ -14,6 +14,7 @@ const TempProduct = require("./models/TempProduct");
 const ShippingPrice = require("./models/ShippingPrice");
 const Product = require("./models/Product");
 const Cookie = require("./models/Cookie");
+const TaobaoOrder = require("./models/TaobaoOrder");
 const { iHerbCode } = require("./api/iHerb");
 const axios = require("axios");
 const findAmazonDetailAPIsimple = require("./puppeteer/getAmazonItemAPIsimple");
@@ -1551,6 +1552,61 @@ app.post("/bdg/orderList", async (req, res) => {
   }
 });
 
+app.post("/taobao/orders", async (req, res) => {
+  try {
+    const { user, orders } = req.body;
+
+    const userInfo = await User.findOne({
+      email: user,
+    }).lean();
+
+    if (!userInfo) {
+      res.json({
+        message: false,
+      });
+      return;
+    }
+
+    if (userInfo.group) {
+      const userGroups = await User.find({
+        group: userInfo.group,
+      });
+
+      for (const user of userGroups) {
+        for (const item of orders) {
+          await TaobaoOrder.findOneAndUpdate(
+            {
+              orderNumber: item.orderNumber,
+              userID: ObjectId(user._id),
+            },
+            {
+              $set: {
+                orderNumber: item.orderNumber,
+                userID: ObjectId(user._id),
+                orderDate: item.orderDate,
+                orderTime: item.orderTime,
+                orders: item.orders,
+                purchaseAmount: item.purchaseAmount,
+                shippingFee: item.shippingFee,
+                quantity: item.quantity,
+                shippingStatus: item.shippingStatus,
+              },
+            },
+            { upsert: true }
+          );
+        }
+      }
+    }
+    res.json({
+      message: true,
+    });
+  } catch (e) {
+    console.log("/bdg/orderList", e);
+    res.json({
+      message: false,
+    });
+  }
+});
 app.post("/taobao/getSimbaUrl", async (req, res) => {
   try {
     const { url } = req.body;
