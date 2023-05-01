@@ -277,9 +277,6 @@ const start = async ({ url, title, userID, keyword }) => {
           const rankKeyword = await ranking(
             [
               ...ObjItem.korTitle.split(" "),
-              ...nluTerms
-                .filter((item) => item.type !== "브랜드")
-                .map((item) => item.keyword),
               ...mainImageKeywords,
               ...contentKeywords,
             ],

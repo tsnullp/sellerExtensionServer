@@ -901,7 +901,7 @@ app.post("/amazon/collectionItems", async (req, res) => {
                           salePrice: detailItem.salePrice,
                           content: detailItem.content,
                           html: detailItem.html,
-                          videoUrl: data.videoUrl,
+                          videoUrl: detailItem.videoUrl,
                           shipPrice: detailItem.shipPrice, // 배송비
                           deliverDate: detailItem.deliverDate, // 배송일
                           purchaseLimitNumMax: detailItem.purchaseLimitNumMax, // 구매수량
