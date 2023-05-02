@@ -148,7 +148,7 @@ const start = async ({
                   tempTitle += `${item.name} `;
                 }
               } else {
-                if (!tempTitle.includes(tItem)) {
+                if (!tempTitle.includes(item.name)) {
                   tempTitle += `${item.name} `;
                 }
               }
