@@ -81,7 +81,7 @@ app.listen(PORT, () =>
 app.post("/taobao/cookie", async (req, res) => {
   try {
     const { nick, cookie } = req.body;
-    console.log("nick", nick, cookie);
+
     if (!nick || nick.length === 0) {
       res.json({
         message: "fail",
@@ -1324,7 +1324,6 @@ app.post("/ali/cookie", async (req, res) => {
       });
       return;
     }
-    console.log("xman_t", xman_t);
     await Cookie.findOneAndUpdate(
       {
         name: "xman_t",

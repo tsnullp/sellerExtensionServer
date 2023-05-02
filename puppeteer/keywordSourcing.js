@@ -399,21 +399,26 @@ const searchLensImage = async ({ url }) => {
       }
     );
 
-    const similarImages = contentCrop.data.searchResponse.similarImages;
-    const products = similarImages
-      .filter((item) => item.score >= 0.94)
-      .map((item) => item.productTitle.split("{")[0].replace(/,/, "").trim());
-
     if (
-      contentCrop.data.searchResponse.card &&
-      contentCrop.data.searchResponse.card.entryName
+      contentCrop.data.searchResponse &&
+      contentCrop.data.searchResponse.similarImages &&
+      Array.isArray(contentCrop.data.searchResponse.similarImages)
     ) {
-      searchKeyword.push(
-        ...contentCrop.data.searchResponse.card.entryName.split(" ")
-      );
-    } else {
-      for (const title of _.uniq(products)) {
-        searchKeyword.push(...title.split(" "));
+      const products = contentCrop.data.searchResponse.similarImages
+        .filter((item) => item.score >= 0.94)
+        .map((item) => item.productTitle.split("{")[0].replace(/,/, "").trim());
+
+      if (
+        contentCrop.data.searchResponse.card &&
+        contentCrop.data.searchResponse.card.entryName
+      ) {
+        searchKeyword.push(
+          ...contentCrop.data.searchResponse.card.entryName.split(" ")
+        );
+      } else {
+        for (const title of _.uniq(products)) {
+          searchKeyword.push(...title.split(" "));
+        }
       }
     }
   } catch (e) {

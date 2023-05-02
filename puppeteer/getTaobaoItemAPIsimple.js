@@ -134,7 +134,7 @@ const start = async ({
 
           let tempTitle = keyword ? `${keyword} ` : "";
           for (const item of rankKeyword) {
-            if (tempTitle.length < 50) {
+            if (tempTitle.length < 35) {
               if (item.count === 1) {
                 let isAdded = false;
                 for (const tItem of ObjItem.korTitle.split(" ")) {

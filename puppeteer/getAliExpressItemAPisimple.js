@@ -3,10 +3,17 @@ const ShippingPrice = require("../models/ShippingPrice");
 const Brand = require("../models/Brand");
 const cheerio = require("cheerio");
 const { GetAliProduct, GetDetailHtml } = require("../api/AliExpress");
-const { regExp_test, ranking, sleep, getOcrText } = require("../lib/userFunc");
+const {
+  regExp_test,
+  ranking,
+  sleep,
+  getOcrText,
+  imageCheck,
+} = require("../lib/userFunc");
 const { papagoTranslate } = require("./translate");
 const { getMainKeyword, searchLensImage } = require("./keywordSourcing");
 const _ = require("lodash");
+const sharp = require("sharp");
 const { searchKeywordCategory } = require("../puppeteer/categorySourcing");
 
 const start = async ({ url, title, userID, keyword }) => {
@@ -51,6 +58,7 @@ const start = async ({ url, title, userID, keyword }) => {
           let deliverDate = null;
           let purchaseLimitNumMax = 0;
           let deliverCompany = null;
+
           if (
             shippingModule &&
             shippingModule.freightCalculateInfo &&
@@ -64,35 +72,6 @@ const start = async ({ url, title, userID, keyword }) => {
               shippingModule.freightCalculateInfo.freight.deliveryDateDisplay;
             deliverCompany =
               shippingModule.freightCalculateInfo.freight.company;
-          } else if (
-            shippingModule &&
-            shippingModule.generalFreightInfo &&
-            shippingModule.generalFreightInfo.originalLayoutResultList &&
-            Array.isArray(
-              shippingModule.generalFreightInfo.originalLayoutResultList
-            ) &&
-            shippingModule.generalFreightInfo.originalLayoutResultList.length >
-              0
-          ) {
-            const utParams = JSON.parse(
-              shippingModule.generalFreightInfo.originalLayoutResultList[0]
-                .bizData.utParams
-            );
-
-            deliverCompany =
-              shippingModule.generalFreightInfo.originalLayoutResultList[0]
-                .bizData.deliveryProviderName;
-            if (
-              shippingModule.generalFreightInfo.originalLayoutResultList[0]
-                .bizData.shippingFee === "free"
-            ) {
-              shipPrice = 0;
-            } else {
-              shipPrice =
-                shippingModule.generalFreightInfo.originalLayoutResultList[0]
-                  .bizData.displayAmount;
-            }
-            deliverDate = utParams.deliveryDate;
           }
 
           if (quantityModule && quantityModule.purchaseLimitNumMax) {
@@ -107,21 +86,32 @@ const start = async ({ url, title, userID, keyword }) => {
             let shippingObj =
               shippingModule.generalFreightInfo.originalLayoutResultList[0]
                 .bizData;
-            ObjItem.shipPrice = shippingObj.displayAmount
+            shipPrice = shippingObj.displayAmount
               ? shippingObj.displayAmount
               : 0;
-            ObjItem.deliverDate = shippingObj.deliveryDate
+            deliverDate = shippingObj.deliveryDate
               ? shippingObj.deliveryDate
               : null;
-            ObjItem.deliverCompany = shippingObj.company
-              ? shippingObj.company
-              : null;
+            deliverCompany = shippingObj.company ? shippingObj.company : null;
+            // let deliveryDay = 10000
+            // for(const item of shippingModule.generalFreightInfo.originalLayoutResultList.filter(fItem => fItem.bizData.shipToCode === "KR")){
+            //   if(item.bizData.deliveryDayMax < deliveryDay){
+            //     deliveryDay = item.bizData.deliveryDayMax
+            //     shippingObj = item.bizData
+            //   }
+            // }
+            // console.log("--> shippingObj --> ", shippingObj)
+            // if(shippingObj){
+            //   ObjItem.shipPrice = shippingObj.displayAmount ? shippingObj.displayAmount : 0
+            //   ObjItem.deliverDate = shippingObj.deliveryDate ? shippingObj.deliveryDate : null
+            //   ObjItem.deliverCompany = shippingObj.company ? shippingObj.company : null
+            // }
           }
 
-          // ObjItem.shipPrice = shipPrice
-          // ObjItem.deliverDate = deliverDate
+          ObjItem.shipPrice = shipPrice;
+          ObjItem.deliverDate = deliverDate;
           ObjItem.purchaseLimitNumMax = purchaseLimitNumMax;
-          // ObjItem.deliverCompany = deliverCompany
+          ObjItem.deliverCompany = deliverCompany;
 
           if (!title || title.length === 0) {
             ObjItem.korTitle = titleModule.subject.trim();
@@ -286,7 +276,7 @@ const start = async ({ url, title, userID, keyword }) => {
 
           let tempTitle = keyword ? `${keyword} ` : "";
           for (const item of rankKeyword) {
-            if (tempTitle.length < 50) {
+            if (tempTitle.length < 35) {
               if (item.count === 1) {
                 let isAdded = false;
                 for (const tItem of ObjItem.korTitle.split(" ")) {
@@ -432,8 +422,8 @@ const start = async ({ url, title, userID, keyword }) => {
                         name: kItem.propertyValueDisplayName,
                         korValueName: kItem.propertyValueDisplayName,
                         image: kItem.skuPropertyImagePath
-                          ? kItem.skuPropertyImagePath
-                          : "https://gi.esmplus.com/jts0509/noimage.jpg",
+                          ? kItem.skuPropertyImagePath.split("_")[0]
+                          : null,
                       };
                     }),
                 };
@@ -452,7 +442,7 @@ const start = async ({ url, title, userID, keyword }) => {
                       korValueName: kItem.propertyValueDisplayName,
                       image: kItem.skuPropertyImagePath
                         ? kItem.skuPropertyImagePath
-                        : "https://gi.esmplus.com/jts0509/noimage.jpg",
+                        : null,
                     };
                   }),
                 };
@@ -462,6 +452,39 @@ const start = async ({ url, title, userID, keyword }) => {
           // 번역
           for (const pItems of ObjItem.prop) {
             for (const vItem of pItems.values) {
+              if (vItem.image) {
+                const imageCheckValue = await imageCheck(vItem.image);
+                if (
+                  imageCheckValue &&
+                  (imageCheckValue.width < 400 || imageCheckValue.height < 400)
+                ) {
+                  console.log("imageCheckValue", imageCheckValue);
+                  try {
+                    const imageRespone = await axios({
+                      method: "GET",
+                      url: vItem.image,
+                      responseType: "arraybuffer",
+                    });
+                    const image = Buffer.from(imageRespone.data);
+                    await sharp(image)
+                      .resize(500, 500)
+                      .toFile(path.join(appDataDirPath, "temp", "resize.jpg"));
+                    const bitmap = fs.readFileSync(
+                      path.join(appDataDirPath, "temp", "resize.jpg")
+                    );
+                    const base64 = new Buffer(bitmap).toString("base64");
+                    const imageUrlResponse = await Cafe24UploadLocalImage({
+                      base64Image: `base64,${base64}`,
+                    });
+                    console.log("imageUrlResponse", imageUrlResponse);
+                    if (imageUrlResponse) {
+                      value.image = imageUrlResponse;
+                    }
+                  } catch (e) {
+                    // value.imageUrl = null
+                  }
+                }
+              }
               vItem.korValueName = await papagoTranslate(
                 vItem.name.trim(),
                 "en",
@@ -549,8 +572,13 @@ const start = async ({ url, title, userID, keyword }) => {
               }
               if (item.skuVal.skuAmount) {
                 price = Number(item.skuVal.skuAmount.value) + shipPrice;
-                promotion_price =
-                  Number(item.skuVal.skuActivityAmount.value) + shipPrice;
+                if (item.skuVal.skuActivityAmount) {
+                  promotion_price =
+                    Number(item.skuVal.skuActivityAmount.value) + shipPrice;
+                } else {
+                  promotion_price =
+                    Number(item.skuVal.skuAmount.value) + shipPrice;
+                }
               }
               if (
                 purchaseLimitNumMax === 1 ||
@@ -572,13 +600,11 @@ const start = async ({ url, title, userID, keyword }) => {
               }
               return {
                 key: item.skuPropIds,
-                propPath: item.skuAttr.split("#")[0],
+                propPath: item.skuAttr,
                 price,
                 promotion_price,
                 stock: item.skuVal.inventory,
-                image: image
-                  ? image
-                  : "https://gi.esmplus.com/jts0509/noimage.jpg",
+                image: image ? image : null,
                 disabled: Number(item.skuVal.inventory) === 0,
                 active: Number(item.skuVal.inventory) > 0,
                 value,
