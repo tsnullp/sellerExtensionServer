@@ -1,50 +1,50 @@
-const mongoose = require("mongoose")
-
+const mongoose = require("mongoose");
 
 const UserSchema = mongoose.Schema({
   adminUser: {
-    type: mongoose.Schema.Types.ObjectId
+    type: mongoose.Schema.Types.ObjectId,
   },
   grade: {
-    type: String
+    type: String,
   },
   email: {
     type: String,
     trim: true,
     unique: true,
-    sparse: true
+    sparse: true,
   },
+  name: String,
   nickname: {
     type: String,
-    trim: true
+    trim: true,
   },
-  password:{
-    type: String
+  password: {
+    type: String,
   },
   admin: {
     type: Boolean,
-    sparce: true
+    sparce: true,
   },
   avatar: {
     type: String,
-    sparce: true
+    sparce: true,
   },
   providers: {
     type: [
       {
         provider: {
-          type: String
+          type: String,
         },
         id: {
-          type: String
+          type: String,
         },
-        _id: false
-      }
-    ]
-  }
-})
+        _id: false,
+      },
+    ],
+  },
+});
 
 // model
-const User = mongoose.model("User", UserSchema)
+const User = mongoose.model("User", UserSchema);
 
-module.exports = User
+module.exports = User;

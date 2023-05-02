@@ -42,8 +42,7 @@ const {
 } = require("./api/Market");
 const cron = require("node-cron");
 const _ = require("lodash");
-const { resolve } = require("path");
-const { reject } = require("lodash");
+
 // jtsjna@gmail.com
 
 // cron.schedule("0 0,15 * * *", () => {
@@ -112,6 +111,38 @@ app.post("/taobao/cookie", async (req, res) => {
     res.json({
       message: "fail",
     });
+  }
+});
+
+app.post("/seller/userGroup", async (req, res) => {
+  try {
+    const { user } = req.body;
+
+    const userInfo = await User.findOne({
+      email: user,
+    }).lean();
+
+    if (!userInfo) {
+      res.json({
+        message: false,
+      });
+      return;
+    }
+    console.log("userInfo.group", userInfo.group);
+    if (userInfo.group) {
+      const userGroups = await User.find({
+        group: userInfo.group,
+      });
+      console.log("userGroups", userGroups);
+      res.json({
+        message: "success",
+        list: userGroups,
+      });
+    } else {
+      res.json({ code: "ERROR" });
+    }
+  } catch (e) {
+    res.json({ code: "ERROR" });
   }
 });
 
