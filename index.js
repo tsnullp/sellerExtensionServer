@@ -128,12 +128,12 @@ app.post("/seller/userGroup", async (req, res) => {
       });
       return;
     }
-    console.log("userInfo.group", userInfo.group);
+
     if (userInfo.group) {
       const userGroups = await User.find({
         group: userInfo.group,
       });
-      console.log("userGroups", userGroups);
+
       res.json({
         message: "success",
         list: userGroups,
@@ -694,7 +694,6 @@ app.post("/amazon/getCollectionItem", async (req, res) => {
         if (temp.length > 0) {
           item.isDone = true;
           if (temp[0].options.length === 0) {
-            console.log("실패");
             item.isFail = true;
           }
         }

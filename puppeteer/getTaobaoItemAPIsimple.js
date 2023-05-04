@@ -5,7 +5,13 @@ const {
   ItemDescriptionV2,
   ItemDetails,
 } = require("../api/Taobao");
-const { AmazonAsin, sleep, ranking, regExp_test } = require("../lib/userFunc");
+const {
+  AmazonAsin,
+  sleep,
+  ranking,
+  regExp_test,
+  DimensionArray,
+} = require("../lib/userFunc");
 const { papagoTranslate } = require("./translate");
 const { getMainKeyword } = require("./keywordSourcing");
 const { searchLensImage } = require("../puppeteer/keywordSourcing");
@@ -81,38 +87,50 @@ const start = async ({
           ObjItem.attribute = attribute;
 
           let mainImageKeywords = [];
-          const promiseMainImages = ObjItem.mainImages.map((image) => {
-            return new Promise(async (resolve, reject) => {
-              try {
-                const keywords = await searchLensImage({ url: image });
-                mainImageKeywords.push(...keywords);
-                await sleep(500);
-                // console.log("keywrods----->", keywords)
-                resolve();
-              } catch (e) {
-                reject(e);
-              }
-            });
-          });
-          await Promise.all(promiseMainImages);
-          // console.log("mainImageKeywords ---- ", mainImageKeywords)
 
-          let contentKeywords = [];
-          const promiseContentKeywords = ObjItem.content
-            .filter((image) => image.includes("http") && image.includes(".jpg"))
-            .map((image) => {
+          for (const mainImages of DimensionArray(ObjItem.mainImages, 5)) {
+            const promiseMainImages = mainImages.map((image) => {
               return new Promise(async (resolve, reject) => {
                 try {
                   const keywords = await searchLensImage({ url: image });
-                  contentKeywords.push(...keywords);
+                  mainImageKeywords.push(...keywords);
                   await sleep(500);
+                  // console.log("keywrods----->", keywords)
                   resolve();
                 } catch (e) {
                   reject(e);
                 }
               });
             });
-          await Promise.all(promiseContentKeywords);
+            await Promise.all(promiseMainImages);
+            await sleep(1000);
+          }
+
+          // console.log("mainImageKeywords ---- ", mainImageKeywords)
+
+          let contentKeywords = [];
+
+          for (const contents of DimensionArray(ObjItem.content, 5)) {
+            const promiseContentKeywords = contents
+              .filter(
+                (image) => image.includes("http") && image.includes(".jpg")
+              )
+              .map((image) => {
+                return new Promise(async (resolve, reject) => {
+                  try {
+                    const keywords = await searchLensImage({ url: image });
+                    contentKeywords.push(...keywords);
+                    await sleep(500);
+                    resolve();
+                  } catch (e) {
+                    reject(e);
+                  }
+                });
+              });
+            await Promise.all(promiseContentKeywords);
+            await sleep(1000);
+          }
+
           // console.log("contentKeywords ---- ", contentKeywords)
 
           let rankKeyword = await ranking(

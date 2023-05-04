@@ -143,7 +143,7 @@ const start = async ({ url, title, userID, keyword }) => {
                   url: image.split("?")[0],
                 });
                 mainImageKeywords.push(...keywords);
-                await sleep(500);
+                await sleep(1500);
                 // console.log("keywrods----->", keywords)
                 resolve();
               } catch (e) {
@@ -223,7 +223,7 @@ const start = async ({ url, title, userID, keyword }) => {
                     url: image.split("?")[0],
                   });
                   contentKeywords.push(...keywords);
-                  await sleep(500);
+                  await sleep(1500);
                   resolve();
                 } catch (e) {
                   reject(e);

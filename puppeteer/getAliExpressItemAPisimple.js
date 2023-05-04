@@ -9,6 +9,7 @@ const {
   sleep,
   getOcrText,
   imageCheck,
+  DimensionArray,
 } = require("../lib/userFunc");
 const { papagoTranslate } = require("./translate");
 const { getMainKeyword, searchLensImage } = require("./keywordSourcing");
@@ -41,7 +42,6 @@ const start = async ({ url, title, userID, keyword }) => {
         try {
           const response = await GetAliProduct({ url: url.split("?")[0] });
           const {
-            pageModule,
             commonModule,
             descriptionModule,
             imageModule,
@@ -160,21 +160,25 @@ const start = async ({ url, title, userID, keyword }) => {
           // if (ObjItem.mainKeyword.length === 0) {
           //   ObjItem.mainKeyword = await getMainKeyword(ObjItem.korTitle, true)
           // }
+
           let mainImageKeywords = [];
-          const promiseMainImages = ObjItem.mainImages.map((image) => {
-            return new Promise(async (resolve, reject) => {
-              try {
-                const keywords = await searchLensImage({ url: image });
-                mainImageKeywords.push(...keywords);
-                await sleep(500);
-                // console.log("keywrods----->", keywords)
-                resolve();
-              } catch (e) {
-                reject(e);
-              }
+          for (const mainImages of DimensionArray(ObjItem.mainImages, 5)) {
+            const promiseMainImages = mainImages.map((image) => {
+              return new Promise(async (resolve, reject) => {
+                try {
+                  const keywords = await searchLensImage({ url: image });
+                  mainImageKeywords.push(...keywords);
+                  await sleep(500);
+                  // console.log("keywrods----->", keywords)
+                  resolve();
+                } catch (e) {
+                  reject(e);
+                }
+              });
             });
-          });
-          await Promise.all(promiseMainImages);
+            await Promise.all(promiseMainImages);
+            await sleep(1000);
+          }
 
           let mainImages = [];
           for (const item of imageModule.imagePathList) {
@@ -246,21 +250,29 @@ const start = async ({ url, title, userID, keyword }) => {
           }
 
           let contentKeywords = [];
-          const promiseContentKeywords = ObjItem.content
-            .filter((image) => image.includes("http") && image.includes(".jpg"))
-            .map((image) => {
-              return new Promise(async (resolve, reject) => {
-                try {
-                  const keywords = await searchLensImage({ url: image });
-                  contentKeywords.push(...keywords);
-                  await sleep(500);
-                  resolve();
-                } catch (e) {
-                  reject(e);
-                }
+
+          for (const contents of DimensionArray(ObjItem.content, 5)) {
+            const promiseContentKeywords = contents
+              .filter(
+                (image) =>
+                  image && image.includes("http") && image.includes(".jpg")
+              )
+              .map((image) => {
+                return new Promise(async (resolve, reject) => {
+                  try {
+                    const keywords = await searchLensImage({ url: image });
+                    contentKeywords.push(...keywords);
+                    await sleep(500);
+                    resolve();
+                  } catch (e) {
+                    reject(e);
+                  }
+                });
               });
-            });
-          await Promise.all(promiseContentKeywords);
+            await Promise.all(promiseContentKeywords);
+            await sleep(1000);
+          }
+
           // console.log("contentKeywords ---- ", contentKeywords)
 
           // const {nluTerms} = await searchKeywordCategory({keyword: ObjItem.korTitle})
@@ -395,24 +407,44 @@ const start = async ({ url, title, userID, keyword }) => {
           //   console.log("skuPropertyValues:", property.skuPropertyValues)
           // }
 
-          ObjItem.prop = productSKUPropertyList
-            // .filter(item => item.skuPropertyName !== "배송지")
-            .map((item) => {
-              // console.log("item-->", item)
+          if (productSKUPropertyList && Array.isArray(productSKUPropertyList)) {
+            ObjItem.prop = productSKUPropertyList
+              // .filter(item => item.skuPropertyName !== "배송지")
+              .map((item) => {
+                // console.log("item-->", item)
 
-              if (item.skuPropertyId === 200007763) {
-                // 배송지
-                return {
-                  pid: item.skuPropertyId.toString(),
-                  korTypeName: item.skuPropertyName,
-                  values: item.skuPropertyValues
-                    .filter(
-                      (fItem) =>
-                        fItem.propertyValueId === 201336100 ||
-                        fItem.propertyValueName === "CN"
-                    )
-                    // 중국
-                    .map((kItem) => {
+                if (item.skuPropertyId === 200007763) {
+                  // 배송지
+                  return {
+                    pid: item.skuPropertyId.toString(),
+                    korTypeName: item.skuPropertyName,
+                    values: item.skuPropertyValues
+                      .filter(
+                        (fItem) =>
+                          fItem.propertyValueId === 201336100 ||
+                          fItem.propertyValueName === "CN"
+                      )
+                      // 중국
+                      .map((kItem) => {
+                        // console.log("vid: ", item.skuPropertyId, " - ", kItem.propertyValueId)
+                        // console.log("name: ", kItem.propertyValueDisplayName)
+                        // console.log("korValueName: ", kItem.propertyValueName)
+                        // console.log("image: ", kItem.skuPropertyImagePath)
+                        return {
+                          vid: kItem.propertyValueId.toString(),
+                          name: kItem.propertyValueDisplayName,
+                          korValueName: kItem.propertyValueDisplayName,
+                          image: kItem.skuPropertyImagePath
+                            ? kItem.skuPropertyImagePath.split("_")[0]
+                            : null,
+                        };
+                      }),
+                  };
+                } else {
+                  return {
+                    pid: item.skuPropertyId.toString(),
+                    korTypeName: item.skuPropertyName,
+                    values: item.skuPropertyValues.map((kItem) => {
                       // console.log("vid: ", item.skuPropertyId, " - ", kItem.propertyValueId)
                       // console.log("name: ", kItem.propertyValueDisplayName)
                       // console.log("korValueName: ", kItem.propertyValueName)
@@ -422,32 +454,27 @@ const start = async ({ url, title, userID, keyword }) => {
                         name: kItem.propertyValueDisplayName,
                         korValueName: kItem.propertyValueDisplayName,
                         image: kItem.skuPropertyImagePath
-                          ? kItem.skuPropertyImagePath.split("_")[0]
+                          ? kItem.skuPropertyImagePath
                           : null,
                       };
                     }),
-                };
-              } else {
-                return {
-                  pid: item.skuPropertyId.toString(),
-                  korTypeName: item.skuPropertyName,
-                  values: item.skuPropertyValues.map((kItem) => {
-                    // console.log("vid: ", item.skuPropertyId, " - ", kItem.propertyValueId)
-                    // console.log("name: ", kItem.propertyValueDisplayName)
-                    // console.log("korValueName: ", kItem.propertyValueName)
-                    // console.log("image: ", kItem.skuPropertyImagePath)
-                    return {
-                      vid: kItem.propertyValueId.toString(),
-                      name: kItem.propertyValueDisplayName,
-                      korValueName: kItem.propertyValueDisplayName,
-                      image: kItem.skuPropertyImagePath
-                        ? kItem.skuPropertyImagePath
-                        : null,
-                    };
-                  }),
-                };
-              }
-            });
+                  };
+                }
+              });
+          } else {
+            ObjItem.prop = [
+              {
+                korTypeName: "종류",
+                values: [
+                  {
+                    name: "단일상품",
+                    korValueName: "단일상품",
+                    image: null,
+                  },
+                ],
+              },
+            ];
+          }
 
           // 번역
           for (const pItems of ObjItem.prop) {
