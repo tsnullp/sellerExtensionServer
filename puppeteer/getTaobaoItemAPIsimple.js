@@ -1,26 +1,18 @@
-const {
-  ItemSKU,
-  ItemSKUV2,
-  ItemDescription,
-  ItemDescriptionV2,
-  ItemDetails,
-} = require("../api/Taobao");
+const { ItemSKUV2, ItemDescriptionV2, ItemDetails } = require("../api/Taobao");
 const {
   AmazonAsin,
   sleep,
   ranking,
-  regExp_test,
   DimensionArray,
 } = require("../lib/userFunc");
 const { papagoTranslate } = require("./translate");
-const { getMainKeyword } = require("./keywordSourcing");
 const { searchLensImage } = require("../puppeteer/keywordSourcing");
-const { searchKeywordCategory } = require("../puppeteer/categorySourcing");
 
 const start = async ({
   url,
   cnTitle,
   userID,
+  group,
   orginalTitle,
   detailmages,
   keyword,
@@ -53,7 +45,7 @@ const start = async ({
             itemId: ObjItem.good_id,
             detailmages,
           });
-
+          console.log("getContent");
           const {
             title,
             options,
@@ -69,6 +61,7 @@ const start = async ({
             url,
             // mainImage: Array.isArray(mainImages) && mainImages.length > 0 ? mainImages[0] : null
           });
+          console.log("getOptionsV2");
           if (title) {
             ObjItem.korTitle = await papagoTranslate(title.trim());
           } else {
@@ -86,98 +79,100 @@ const start = async ({
 
           ObjItem.attribute = attribute;
 
-          let mainImageKeywords = [];
+          if (group === "1") {
+            let mainImageKeywords = [];
 
-          for (const mainImages of DimensionArray(ObjItem.mainImages, 5)) {
-            const promiseMainImages = mainImages.map((image) => {
-              return new Promise(async (resolve, reject) => {
-                try {
-                  const keywords = await searchLensImage({ url: image });
-                  mainImageKeywords.push(...keywords);
-                  await sleep(500);
-                  // console.log("keywrods----->", keywords)
-                  resolve();
-                } catch (e) {
-                  reject(e);
-                }
-              });
-            });
-            await Promise.all(promiseMainImages);
-            await sleep(1000);
-          }
-
-          // console.log("mainImageKeywords ---- ", mainImageKeywords)
-
-          let contentKeywords = [];
-
-          for (const contents of DimensionArray(ObjItem.content, 5)) {
-            const promiseContentKeywords = contents
-              .filter(
-                (image) => image.includes("http") && image.includes(".jpg")
-              )
-              .map((image) => {
+            for (const mainImages of DimensionArray(ObjItem.mainImages, 5)) {
+              const promiseMainImages = mainImages.map((image) => {
                 return new Promise(async (resolve, reject) => {
                   try {
                     const keywords = await searchLensImage({ url: image });
-                    contentKeywords.push(...keywords);
+                    mainImageKeywords.push(...keywords);
                     await sleep(500);
+                    // console.log("keywrods----->", keywords)
                     resolve();
                   } catch (e) {
                     reject(e);
                   }
                 });
               });
-            await Promise.all(promiseContentKeywords);
-            await sleep(1000);
-          }
+              await Promise.all(promiseMainImages);
+              await sleep(500);
+            }
 
-          // console.log("contentKeywords ---- ", contentKeywords)
+            console.log("mainImageKeywords ---- ", mainImageKeywords);
 
-          let rankKeyword = await ranking(
-            [
-              ...ObjItem.korTitle.split(" "),
-              ...ObjItem.korTitle.split(" "),
-              ...mainImageKeywords,
-              ...contentKeywords,
-            ],
-            1
-          );
-          // const { nluTerms } = await searchKeywordCategory({ keyword: ObjItem.korTitle })
-          // let rankKeyword = []
-          // if (nluTerms) {
-          //   rankKeyword = await ranking([...nluTerms.filter(item => item.type !== "브랜드").map(item => item.keyword), ...mainImageKeywords, ...contentKeywords], 1)
-          // } else {
-          //   rankKeyword = await ranking([...ObjItem.korTitle.split(" "), ...mainImageKeywords, ...contentKeywords], 1)
-          // }
+            let contentKeywords = [];
 
-          let tempTitle = keyword ? `${keyword} ` : "";
-          for (const item of rankKeyword) {
-            if (tempTitle.length < 35) {
-              if (item.count === 1) {
-                let isAdded = false;
-                for (const tItem of ObjItem.korTitle.split(" ")) {
-                  if (!tempTitle.includes(tItem)) {
-                    tempTitle += `${tItem} `;
-                    isAdded = true;
-                    break;
+            for (const contents of DimensionArray(ObjItem.content, 5)) {
+              const promiseContentKeywords = contents
+                .filter(
+                  (image) => image.includes("http") && image.includes(".jpg")
+                )
+                .map((image) => {
+                  return new Promise(async (resolve, reject) => {
+                    try {
+                      const keywords = await searchLensImage({ url: image });
+                      contentKeywords.push(...keywords);
+                      await sleep(500);
+                      resolve();
+                    } catch (e) {
+                      reject(e);
+                    }
+                  });
+                });
+              await Promise.all(promiseContentKeywords);
+              await sleep(500);
+            }
+
+            console.log("contentKeywords ---- ", contentKeywords);
+
+            let rankKeyword = await ranking(
+              [
+                ...ObjItem.korTitle.split(" "),
+                ...ObjItem.korTitle.split(" "),
+                ...mainImageKeywords,
+                ...contentKeywords,
+              ],
+              1
+            );
+            // const { nluTerms } = await searchKeywordCategory({ keyword: ObjItem.korTitle })
+            // let rankKeyword = []
+            // if (nluTerms) {
+            //   rankKeyword = await ranking([...nluTerms.filter(item => item.type !== "브랜드").map(item => item.keyword), ...mainImageKeywords, ...contentKeywords], 1)
+            // } else {
+            //   rankKeyword = await ranking([...ObjItem.korTitle.split(" "), ...mainImageKeywords, ...contentKeywords], 1)
+            // }
+
+            let tempTitle = keyword ? `${keyword} ` : "";
+            for (const item of rankKeyword) {
+              if (tempTitle.length < 40) {
+                if (item.count === 1) {
+                  let isAdded = false;
+                  for (const tItem of ObjItem.korTitle.split(" ")) {
+                    if (!tempTitle.includes(tItem)) {
+                      tempTitle += `${tItem} `;
+                      isAdded = true;
+                      break;
+                    }
                   }
-                }
-                if (!isAdded) {
-                  tempTitle += `${item.name} `;
-                }
-              } else {
-                if (!tempTitle.includes(item.name)) {
-                  tempTitle += `${item.name} `;
+                  if (!isAdded) {
+                    tempTitle += `${item.name} `;
+                  }
+                } else {
+                  if (!tempTitle.includes(item.name)) {
+                    tempTitle += `${item.name} `;
+                  }
                 }
               }
             }
-          }
 
-          // tempTitle = regExp_test(tempTitle)
-          ObjItem.korTitle = tempTitle
-            .split(" ")
-            .filter((item) => item.trim().length > 0)
-            .join(" ");
+            // tempTitle = regExp_test(tempTitle)
+            ObjItem.korTitle = tempTitle
+              .split(" ")
+              .filter((item) => item.trim().length > 0)
+              .join(" ");
+          }
 
           resolve();
         } catch (e) {
@@ -222,15 +217,8 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
   let videoGif = null;
   let tempProductProps = [];
   try {
-    console.time(itemId);
     const response = await ItemSKUV2({ userID, item_id: itemId });
 
-    if (response.skus) {
-      console.log(itemId, "getOptionsV2 끝", response.skus.length);
-    } else {
-      console.log("getOptionsV2 실패");
-    }
-    console.timeEnd(itemId);
     const {
       title,
       sku_props,
@@ -283,7 +271,6 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
 
     if (sku_props && sku_props.length > 0) {
       let ii = 0;
-      console.time(`${itemId} 번역`);
 
       const promiseArray = sku_props.map((item) => {
         return new Promise(async (resolve, reject) => {
@@ -343,8 +330,7 @@ const getOptionsV2 = async ({ itemId, userID, url }) => {
       });
 
       await Promise.all(promiseArray);
-      console.timeEnd(`${itemId} 번역`);
-      console.log("sku_props.length", sku_props.length);
+
       // for (const item of sku_props) {
       //   item.korTypeName = await korTranslate(item.prop_name.trim(), userID )
       //   tempOptionImages = []

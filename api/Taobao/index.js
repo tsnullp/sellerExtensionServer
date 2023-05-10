@@ -151,6 +151,7 @@ exports.ItemSKUV2 = async ({ userID, item_id }) => {
           "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VybmFtZSI6InppdGFuZTM4IiwiQ29taWQiOm51bGwsIlJvbGVpZCI6bnVsbCwiaXNzIjoidG1hcGkiLCJzdWIiOiJ6aXRhbmUzOCIsImF1ZCI6WyIiXX0.csSgsUbe-9VruviWYF-AXKaZDP_mO8pFiyKNFSe0N1s";
       }
     }
+    console.log("ItemSKUV2 시작");
     const options = {
       method: "GET",
       url: "http://api.tmapi.top/taobao/item_detail",
@@ -159,31 +160,33 @@ exports.ItemSKUV2 = async ({ userID, item_id }) => {
     const response = await axios({
       ...options,
     });
-
+    console.log("ItemSKUV2 끝");
     //TODO:
-    let mainImages = [];
-    for (const item of response.data.data.main_imgs) {
-      let mainObj = {};
-      try {
-        await imageCheck(item);
-        mainObj.image = item;
+    // let mainImages = [];
+    // for (const item of response.data.data.main_imgs) {
+    //   let mainObj = {};
+    //   try {
+    //     console.log("imageCheck 시작");
+    //     await imageCheck(item);
+    //     mainObj.image = item;
+    //     console.log("imageCheck 끝");
+    //     // const text = await getOcrText(item);
+    //     // mainObj.textLength = text.length;
+    //     console.log("getOcrText 끝");
+    //   } catch (e) {
+    //     console.log("d----- ", e);
+    //   } finally {
+    //     mainImages.push(mainObj);
+    //   }
+    // }
 
-        const text = await getOcrText(item);
-        mainObj.textLength = text.length;
-      } catch (e) {
-        console.log("d----- ", e);
-      } finally {
-        mainImages.push(mainObj);
-      }
-    }
+    // console.log("mainImages 끝");
+    // mainImages = _.sortBy(
+    //   mainImages.filter((item) => item.image),
+    //   "textLength"
+    // );
 
-    // console.log("111111")
-    mainImages = _.sortBy(
-      mainImages.filter((item) => item.image),
-      "textLength"
-    );
-
-    response.data.data.main_imgs = mainImages.map((item) => item.image);
+    // response.data.data.main_imgs = mainImages.map((item) => item.image);
 
     const appDataDirPath = getAppDataPath();
 
@@ -228,6 +231,7 @@ exports.ItemSKUV2 = async ({ userID, item_id }) => {
                   value.imageUrl = imageUrlResponse;
                 }
               } catch (e) {
+                console.log("이미지", e);
                 // value.imageUrl = null
               }
             }

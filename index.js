@@ -756,14 +756,6 @@ app.post("/amazon/collectionItems", async (req, res) => {
       try {
         let i = 1;
         for (const item of products) {
-          console.log(
-            "item.detailUrl",
-            i++,
-            " -  ",
-            products.length,
-            " - ",
-            item.detailUrl
-          );
           try {
             let product = null;
             if (
@@ -959,11 +951,13 @@ app.post("/amazon/collectionItems", async (req, res) => {
                   item.detailUrl.includes("taobao.com") ||
                   item.detailUrl.includes("tmall.com")
                 ) {
+                  console.log("타오바오");
                   // 타오바오
                   // console.log("item.detailUrl", item.detailUrl)
                   let detailItem = await findTaobaoDetailAPIsimple({
                     url: item.detailUrl,
                     userID: ObjectId(userInfo._id),
+                    group: userInfo.grade,
                     keyword: item.keyword,
                   });
 
@@ -1009,6 +1003,14 @@ app.post("/amazon/collectionItems", async (req, res) => {
                         upsert: true,
                         new: true,
                       }
+                    );
+                  } else {
+                    console.log(
+                      "타오바오 실패",
+                      " -  ",
+                      products.length,
+                      " - ",
+                      item.detailUrl
                     );
                   }
                 } else if (item.detailUrl.includes("vvic.com")) {
@@ -1085,6 +1087,14 @@ app.post("/amazon/collectionItems", async (req, res) => {
           } catch (e) {
             console.log("collectionItems", e);
           }
+          console.log(
+            "item.detailUrl",
+            i++,
+            " -  ",
+            products.length,
+            " - ",
+            item.detailUrl
+          );
         }
       } catch (e) {
         console.log("errir00", e);
