@@ -3229,11 +3229,11 @@ const updateCoupang = async ({
         returnZipCode: coupang.returnZipCode,
         returnAddress: coupang.returnAddress,
         returnAddressDetail: coupang.returnAddressDetail,
-        // returnCharge: coupang.returnCharge,
-        returnCharge:
-          coupang.returnCharge > minSalePrice / 2
-            ? Math.floor((minSalePrice / 2) * 0.1) * 10
-            : coupang.returnCharge,
+        returnCharge: returnCharge,
+        // returnCharge:
+        //   coupang.returnCharge > minSalePrice / 2
+        //     ? Math.floor((minSalePrice / 2) * 0.1) * 10
+        //     : coupang.returnCharge,
         afterServiceInformation: coupang.afterServiceInformation,
         afterServiceContactNumber: coupang.afterServiceContactNumber,
         outboundShippingPlaceCode: coupang.outboundShippingPlaceCode,
@@ -3536,10 +3536,11 @@ const updateCoupang = async ({
         returnZipCode: coupang.returnZipCode,
         returnAddress: coupang.returnAddress,
         returnAddressDetail: coupang.returnAddressDetail,
-        returnCharge:
-          coupang.returnCharge > minSalePrice / 2
-            ? Math.floor((minSalePrice / 2) * 0.1) * 10
-            : coupang.returnCharge,
+        returnCharge: returnCharge,
+        // returnCharge:
+        //   coupang.returnCharge > minSalePrice / 2
+        //     ? Math.floor((minSalePrice / 2) * 0.1) * 10
+        //     : coupang.returnCharge,
         afterServiceInformation: coupang.afterServiceInformation,
         afterServiceContactNumber: coupang.afterServiceContactNumber,
         outboundShippingPlaceCode: coupang.outboundShippingPlaceCode,
