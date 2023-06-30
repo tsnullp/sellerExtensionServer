@@ -1,16 +1,16 @@
-const mongoose = require("mongoose")
-const moment = require("moment")
+const mongoose = require("mongoose");
+const moment = require("moment");
 
 const ProductSchema = mongoose.Schema({
   userID: {
     type: mongoose.Schema.Types.ObjectId,
-    index: true
+    index: true,
   },
   writerID: mongoose.Schema.Types.ObjectId,
   isDelete: {
     type: Boolean,
     default: false,
-    index: true
+    index: true,
   },
   basic: {
     dataID: String,
@@ -22,11 +22,12 @@ const ProductSchema = mongoose.Schema({
     title: String,
     korTitle: {
       type: String,
-      index : true,
+      index: true,
     },
     price: String,
     salePrice: String,
-
+    videoUrl: String,
+    videoGif: String,
     mainImages: [String],
     content: [String],
     options: [
@@ -45,16 +46,16 @@ const ProductSchema = mongoose.Schema({
         stock: String,
         image: String,
         disabled: Boolean,
-        active: Boolean
-      }
+        active: Boolean,
+      },
     ],
     attribute: [
       {
         key: String,
         value: String,
         korKey: String,
-        korValue: String
-      }
+        korValue: String,
+      },
     ],
     categoryCode: Number,
     naverCategoryCode: Number,
@@ -68,8 +69,8 @@ const ProductSchema = mongoose.Schema({
         basicUnit: String,
         usableUnits: [String],
         groupNumber: String,
-        exposed: String
-      }
+        exposed: String,
+      },
     ],
     noticeCategories: [
       {
@@ -78,24 +79,24 @@ const ProductSchema = mongoose.Schema({
           {
             noticeCategoryDetailName: String,
             required: String,
-            content: String
-          }
-        ]
-      }
+            content: String,
+          },
+        ],
+      },
     ],
     requiredDocumentNames: [
       {
         templateName: String,
-        required: String
-      }
+        required: String,
+      },
     ],
     certifications: [
       {
         certificationType: String,
         name: String,
         dataType: String,
-        required: String
-      }
+        required: String,
+      },
     ],
     afterServiceInformation: String,
     afterServiceContactNumber: String,
@@ -114,8 +115,8 @@ const ProductSchema = mongoose.Schema({
           phoneNumber2: String,
           returnZipCode: String,
           returnAddress: String,
-          returnAddressDetail: String
-        }
+          returnAddressDetail: String,
+        },
       ],
       remoteInfos: [
         {
@@ -123,13 +124,13 @@ const ProductSchema = mongoose.Schema({
           deliveryCode: String,
           jeju: Number,
           notJeju: Number,
-          usable: Boolean
-        }
+          usable: Boolean,
+        },
       ],
       deliveryCompanyCode: String,
       deliveryChargeType: String,
       deliveryCharge: Number,
-      outboundShippingTimeDay: Number
+      outboundShippingTimeDay: Number,
     },
     returnCenter: {
       deliveryChargeOnReturn: Number,
@@ -146,9 +147,9 @@ const ProductSchema = mongoose.Schema({
           phoneNumber2: String,
           returnZipCode: String,
           returnAddress: String,
-          returnAddressDetail: String
-        }
-      ]
+          returnAddressDetail: String,
+        },
+      ],
     },
     invoiceDocument: String,
     maximumBuyForPerson: Number,
@@ -161,11 +162,11 @@ const ProductSchema = mongoose.Schema({
         relatedKeyword: [
           {
             name: String,
-            count: Number
-          }
-        ]
-      }
-    ]
+            count: Number,
+          },
+        ],
+      },
+    ],
   },
   product: {
     exchange: Number, // 환율
@@ -179,11 +180,18 @@ const ProductSchema = mongoose.Schema({
 
     korTitle: {
       type: String,
-      index : true
+      index: true,
     },
+    korTitleArray: [String],
+    deli_pri_cupang: Number,
+    deli_pri_naver: Number,
+    deli_pri_11s: Number,
+    deli_pri_emsplus: Number,
     mainImages: [String],
     price: String,
     salePrice: String,
+    gifHtml: String,
+    videoHtml: String,
     topHtml: String,
     clothesHtml: String,
     isClothes: Boolean,
@@ -200,18 +208,30 @@ const ProductSchema = mongoose.Schema({
     deliveryChargeType: String,
     deliveryCharge: Number,
     deliveryChargeOnReturn: Number,
+    naver: {
+      originProductNo: String,
+      smartstoreChannelProductNo: String,
+      message: String,
+    },
+    sk11st: {
+      productNo: String,
+      message: String,
+    },
     cafe24: {
       mallID: String,
       shop_no: Number,
       product_no: Number,
       product_code: String,
       custom_product_code: String,
-      mainImage: String
+      mainImage: String,
+      product_nos: [Number],
+      product_codes: [String],
+      custom_product_codes: [String],
     },
     coupang: {
       productID: {
         type: String,
-        index: true
+        index: true,
       },
       message: String,
       status: String,
@@ -220,10 +240,10 @@ const ProductSchema = mongoose.Schema({
           createdAt: String,
           status: String,
           createdBy: String,
-          comment: String
-        }
-      ]
-    }
+          comment: String,
+        },
+      ],
+    },
   },
   prop: [
     {
@@ -235,14 +255,13 @@ const ProductSchema = mongoose.Schema({
           vid: String,
           name: String,
           korValueName: String,
-          image: String
-        }
-      ]
-    }
+          image: String,
+        },
+      ],
+    },
   ],
   options: [
     {
-     
       margin: Number,
       weightPrice: Number,
       addPrice: Number,
@@ -260,17 +279,17 @@ const ProductSchema = mongoose.Schema({
       active: Boolean,
       base: {
         type: Boolean,
-        default: false
+        default: false,
       },
       attributes: [
         {
           attributeTypeName: String,
           attributeValueName: String,
           required: String,
-        }
+        },
       ],
       cafe24: {
-        variant_code: String
+        variant_code: String,
       },
       coupang: {
         sellerProductItemId: String, // 등록상품 ID
@@ -278,12 +297,12 @@ const ProductSchema = mongoose.Schema({
         //상품을 묶어서 관리하는데 사용됩니다.
         vendorItemId: {
           type: String, // 옵션 ID
-          index: true
+          index: true,
         },
         //쿠팡의 가장 작은 상품 단위로 변경되지 않고 가장 작은 단위이기 때문에 주로 key로 활용됩니다.
-        itemId: String
-      }
-    }
+        itemId: String,
+      },
+    },
   ],
   coupang: {
     displayCategoryCode: Number,
@@ -308,15 +327,15 @@ const ProductSchema = mongoose.Schema({
       {
         noticeCategoryName: String, // 상품고시정보카테고리명
         noticeCategoryDetailName: String, // 상품고시정보카테고리상세명
-        content: String // 내용
-      }
+        content: String, // 내용
+      },
     ],
     attributes: [
       {
         attributeTypeName: String, // 옵션타입명
-        attributeValueName: String //옵션값
-      }
-    ]
+        attributeValueName: String, //옵션값
+      },
+    ],
   },
 
   coupangUpdatedAt: Date,
@@ -324,37 +343,38 @@ const ProductSchema = mongoose.Schema({
   initCreatedAt: Date,
   isWinner: {
     type: Boolean,
-    default: false
+    default: false,
   },
   isNaver: {
     type: Boolean,
-    default: false
+    default: false,
   },
   isCoupang: {
     type: Boolean,
-    default: false
+    default: false,
   },
   isBatch: {
     type: Boolean,
-    default: false
+    default: false,
   },
   isSoEasy: {
     type: Boolean,
-    default: false
+    default: false,
   },
   isAutoPrice: {
     type: Boolean,
-    default: false
+    default: false,
   },
   createdAt: {
     type: Date,
     default: () => moment().toDate(),
-    index: true
-  }
-})
+    index: true,
+  },
+  isContentTranslate: Boolean,
+});
 
 ProductSchema.index({
-  "product.korTitle": "text"
-})
+  "product.korTitle": "text",
+});
 
-module.exports = mongoose.model("Product", ProductSchema)
+module.exports = mongoose.model("Product", ProductSchema);
