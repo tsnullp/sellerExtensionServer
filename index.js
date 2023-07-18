@@ -26,6 +26,8 @@ const { getFirstBdgOrder } = require("./puppeteer/getFirstBdgOrder");
 const findTaobaoDetailAPIsimple = require("./puppeteer/getTaobaoItemAPIsimple");
 const findAliExpressDetailAPIsimple = require("./puppeteer/getAliExpressItemAPisimple");
 const getVVIC = require("./puppeteer/getVVICAPI");
+const getRakuten = require("./puppeteer/getRakutenAPI");
+const getRakutenSimple = require("./puppeteer/getRakutenAPISimple");
 const {
   Cafe24ListOrders,
   Cafe24RegisterShipments,
@@ -723,7 +725,8 @@ app.post("/amazon/collectionItems", async (req, res) => {
             if (
               item.detailUrl.includes("taobao.com") ||
               item.detailUrl.includes("tmall.com") ||
-              item.detailUrl.includes("vvic.com")
+              item.detailUrl.includes("vvic.com") ||
+              item.detailUrl.includes("item.rakuten.co.jp")
             ) {
               product = await Product.findOne({
                 userID: ObjectId(userInfo._id),
@@ -1027,6 +1030,78 @@ app.post("/amazon/collectionItems", async (req, res) => {
                           mainImages: detailItem.mainImages,
                           price: detailItem.price,
                           salePrice: detailItem.salePrice,
+                          content: detailItem.content,
+                          options: detailItem.options,
+                          detailUrl: item.detailUrl,
+                          korTitle: detailItem.korTitle,
+                          prop: detailItem.prop,
+                          lastUpdate: moment().toDate(),
+                        },
+                      },
+                      {
+                        upsert: true,
+                        new: true,
+                      }
+                    );
+                  } else {
+                    console.log("옵션 없음", item.detailUrl);
+                  }
+                } else if (item.detailUrl.includes("item.rakuten.co.jp")) {
+                  const asin = AmazonAsin(item.detailUrl);
+                  if (!asin) {
+                    console.log("asin 없음");
+                    continue;
+                  }
+
+                  let detailItem = await getRakuten({
+                    url: item.detailUrl,
+                    userID: userInfo._id,
+                    keyword: item.keyword,
+                  });
+                  // console.log("detailItem -- ", detailItem);
+                  if (!detailItem) {
+                    await AmazonCollection.findOneAndUpdate(
+                      {
+                        userID: ObjectId(userInfo._id),
+                        asin,
+                      },
+                      {
+                        $set: {
+                          isDelete: true,
+                          lastUpdate: moment().toDate(),
+                        },
+                      },
+                      {
+                        upsert: true,
+                      }
+                    );
+                  } else if (
+                    detailItem &&
+                    detailItem.options &&
+                    detailItem.options.length > 0 &&
+                    detailItem.options.length !==
+                      detailItem.options.filter((item) => item.stock === 0)
+                        .length
+                  ) {
+                    await TempProduct.findOneAndUpdate(
+                      {
+                        userID: ObjectId(userInfo._id),
+                        good_id: detailItem.good_id,
+                      },
+                      {
+                        $set: {
+                          userID: ObjectId(userInfo._id),
+                          categoryID: detailItem.categoryID,
+                          good_id: detailItem.good_id,
+                          brand: detailItem.brand,
+                          manufacture: detailItem.manufacture,
+                          modelName: detailItem.modelName,
+                          title: detailItem.title,
+                          keyword: detailItem.keyword,
+                          mainImages: detailItem.mainImages,
+                          price: detailItem.price,
+                          salePrice: detailItem.salePrice,
+                          html: detailItem.html,
                           content: detailItem.content,
                           options: detailItem.options,
                           detailUrl: item.detailUrl,
@@ -1628,6 +1703,89 @@ app.post("/taobao/getSimbaUrl", async (req, res) => {
   }
 });
 
+const RakutenPriceSync = async () => {
+  console.time("RakutenPriceSync");
+
+  const excahgeRate = await ExchangeRate.aggregate([
+    {
+      $match: {
+        JPY_송금보내실때: { $ne: null },
+      },
+    },
+    {
+      $sort: {
+        날짜: -1,
+      },
+    },
+    {
+      $limit: 1,
+    },
+  ]);
+
+  let exchange =
+    Number(excahgeRate[0].JPY_송금보내실때.replace(/,/gi, "") || 1000) + 10;
+
+  exchange = exchange / 100;
+
+  const products = await Product.aggregate([
+    {
+      $match: {
+        // userID: ObjectId("5f1947bd682563be2d22f008"),
+        // "options.key": {$in: asinArr},
+        isDelete: false,
+        "product.naver.smartstoreChannelProductNo": { $ne: null },
+        $or: [
+          // {
+          //   "basic.url": { $regex: `.*amazon.com.*`}
+          // },
+          {
+            "basic.url": { $regex: `.*item.rakuten.co.jp.*` },
+          },
+        ],
+      },
+    },
+  ]);
+  for (const product of products) {
+    // console.log("product.options", product.options);
+    //
+    const response = await getRakutenSimple({
+      url: product.basic.url,
+      userID: product.userID,
+    });
+    // console.log("response", response);
+    if (response && response.options && Array.isArray(response.options)) {
+      for (const option of response.options) {
+        const findOption = _.find(product.options, { key: option.key });
+        // console.log("findOption --> ", findOption);
+        console.log("가격", findOption.price, option.price);
+        console.log("재고", findOption.stock, option.stock);
+
+        console.log("111", exchange);
+        let salePrice =
+          Math.ceil(
+            ((option.price * exchange + Number(findOption.weightPrice)) /
+              ((100 - findOption.margin) / 100)) *
+              0.1
+          ) *
+            10 -
+          product.product.deliveryFee;
+
+        console.log("salePrice", findOption.salePrice, salePrice);
+
+        if (findOption.price !== option.price) {
+          console.log("가격 틀림");
+        }
+        if (findOption.stock !== option.stock) {
+          console.log("재고 틀림");
+        }
+        await sleep(1000);
+      }
+    }
+    await sleep(2000);
+  }
+  console.timeEnd("RakutenPriceSync");
+  console.log("끝----");
+};
 const IherbPriceSync = async () => {
   console.time("IHERBPRICESYNC");
   const products = await Product.aggregate([
@@ -1897,6 +2055,7 @@ const getPermutations = function (arr, selectNumber) {
 };
 
 // IherbPriceSync()
+// RakutenPriceSync();
 
 const getVVICItems = async () => {
   try {

@@ -286,3 +286,26 @@ const getToken = async ({ userID }) => {
     return null;
   }
 };
+
+exports.NaverProductModel = async ({ userID, name }) => {
+  try {
+    const token = await getToken({ userID });
+    if (!token) {
+      return null;
+    }
+    const response = await axios({
+      url: `https://api.commerce.naver.com/external/v1/product-models?name=${encodeURI(
+        name
+      )}`,
+      method: "GET",
+      headers: {
+        Authorization: `${token.token_type} ${token.access_token}`,
+        "content-type": "application/json",
+      },
+    });
+
+    return response.data.contents;
+  } catch (e) {
+    console.log("NaverProductModel", e);
+  }
+};
