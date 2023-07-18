@@ -408,6 +408,10 @@ exports.get11stProduct = async ({
       product.bottomHtml
     }`;
 
+    let salePrice = optionValue.filter(
+      (item) => item.active && !item.disabled
+    )[0].salePrice;
+
     const productBody = {
       abrdBuyPlace: "D",
       selMthdCd: "01",
@@ -433,12 +437,9 @@ exports.get11stProduct = async ({
       selPrdClfCd: "0:100",
       aplBgnDy: moment().format("YYYY/MM/DD"),
       aplEndDy: "2999/12/31",
-      selPrc: optionValue.filter((item) => item.active && !item.disabled)[0]
-        .salePrice,
+      selPrc: salePrice,
       cuponcheck: "Y",
-      dscAmtPercnt: optionValue.filter(
-        (item) => item.active && !item.disabled
-      )[0].salePrice,
+      dscAmtPercnt: salePrice,
       cupnDscMthdCd: "01",
       optSelectYn: "Y",
       txtColCnt: "1",
