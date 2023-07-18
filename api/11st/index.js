@@ -450,7 +450,8 @@ exports.get11stProduct = async ({
         .map((item) => {
           return {
             useYn: "Y",
-            colOptPrice: item.salePrice - minPrice - deli_pri_11st,
+            colOptPrice:
+              Math.ceil((item.salePrice - minPrice - deli_pri_11st) * 0.1) * 10,
             colValue0:
               item.korKey && item.korKey.length > 0
                 ? item.korKey
@@ -474,10 +475,12 @@ exports.get11stProduct = async ({
       outsideYnOut: "Y",
       addrSeqIn: inboundarea,
       rtngdDlvCst:
-        salePrice - minPrice <= 200000 ? salePrice - minPrice : 200000,
+        salePrice - minPrice <= 200000
+          ? Math.ceil((salePrice - minPrice) * 0.1) * 10
+          : 200000,
       exchDlvCst:
         (salePrice - minPrice) * 2 <= 400000
-          ? (salePrice - minPrice) * 2
+          ? Math.ceil((salePrice - minPrice) * 2 * 0.1) * 10
           : 400000,
       asDetail: basicInfo.afterServiceInformation,
       rtngExchDetail: "상품 상세페이지 참조",
