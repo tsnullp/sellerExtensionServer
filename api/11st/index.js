@@ -295,26 +295,118 @@ exports.get11stProduct = async ({
       };
     }
 
-    const minOption = _.minBy(options, "salePrice");
-    const maxOption = _.maxBy(options, "salePrice");
+    let shipping_price = 0;
+    let optionValue = options
+      .filter((item) => item.active && !item.disabled)
+      .filter((i, index) => index < 100)
+      .map((item) => {
+        if (item.weightPrice > shipping_price) {
+          shipping_price = item.weightPrice;
+        }
+        return item;
+      })
+      .sort((a, b) => a.salePrice - b.salePrice);
 
-    const salePrice =
-      (minOption.salePrice + maxOption.salePrice - deli_pri_11st) * 2; // 판매가
-    const discountPrice = salePrice - minOption.salePrice - deli_pri_11st; // 판매가 - 최저가
+    let baseIndex = 0;
+    let inValidArr = [];
 
-    const optionValue = options.filter((item) => item.active && !item.disabled);
+    optionValue.forEach((item) => {
+      let salePrice = item.salePrice;
+
+      let minPassablePrice =
+        Math.ceil((salePrice - (salePrice * 50) / 100) * 0.1) * 10;
+      let maxPassablePrice =
+        Math.floor((salePrice + (salePrice * 100) / 100) * 0.1) * 10 - 10;
+
+      const inValid = [];
+
+      optionValue
+        .filter((item) => item.active && !item.disabled)
+        .forEach((item1) => {
+          if (
+            item1.price < minPassablePrice ||
+            item1.price > maxPassablePrice
+          ) {
+            inValid.push(item1);
+          }
+        });
+      inValidArr.push(inValid.length);
+    });
+
+    const minValue = Math.min.apply(null, inValidArr);
+    baseIndex = inValidArr.indexOf(minValue);
+
+    let basePrice = options[0].salePrice;
+    let minPrice = basePrice - basePrice * 0.5;
+    let maxPrice = basePrice + basePrice * 1;
+
+    optionValue
+      .filter((item) => item.active && !item.disabled)
+      .map((item, index) => {
+        if (index === baseIndex) {
+          item.base = true;
+          basePrice = item.salePrice;
+          minPrice = basePrice - basePrice * 0.5;
+          maxPrice = basePrice + basePrice * 1;
+        } else {
+          item.base = false;
+        }
+      });
+
+    // console.log("baseIndex", baseIndex);
+    // console.log("basePrice", basePrice);
+    // console.log("minPrice", minPrice);
+    // console.log("maxPrice", maxPrice);
+    // console.log(
+    //   "수정전",
+    //   options.filter((item) => item.active && !item.disabled).length
+    // );
+
+    optionValue.map((item) => {
+      if (item.salePrice >= minPrice && item.salePrice <= maxPrice) {
+        item.active = true;
+      } else {
+        item.active = false;
+      }
+    });
+
+    // console.log(
+    //   "수정후",
+    //   options.filter((item) => item.active && !item.disabled).length
+    // );
+
+    ////////////////////////////
 
     const basicInfo = await Basic.findOne({
       userID,
     });
 
+    let optionHtml = ``;
+
+    for (const item of optionValue.filter(
+      (item) => item.active && !item.disabled
+    )) {
+      optionHtml += `
+        <p style="text-align: center;" >
+        <div style="text-align: center; font-size: 20px; font-weight: 700; color: white; background: #0090FF !important; padding: 10px; border-radius: 15px;">
+        ${item.korKey ? `${item.korKey}: ${item.korValue}` : item.korValue}
+        </div>
+        <img src="${
+          item.image
+        }_800x800.jpg" style="width: 100%; max-width: 800px; display: block; margin: 0 auto; " />
+        <p style="text-align: center;" >
+        <br />
+        </p>
+        `;
+    }
+
     const htmlContent = `${product.gifHtml ? product.gifHtml : ""}${
       product.topHtml
     }${product.isClothes && product.clothesHtml ? product.clothesHtml : ""}${
       product.isShoes && product.shoesHtml ? product.shoesHtml : ""
-    }${product.videoHtml ? product.videoHtml : ""}${product.optionHtml}${
-      product.html
-    }${product.bottomHtml}`;
+    }${product.videoHtml ? product.videoHtml : ""}${optionHtml}${product.html}${
+      product.bottomHtml
+    }`;
 
     const productBody = {
       abrdBuyPlace: "D",
@@ -341,23 +433,30 @@ exports.get11stProduct = async ({
       selPrdClfCd: "0:100",
       aplBgnDy: moment().format("YYYY/MM/DD"),
       aplEndDy: "2999/12/31",
-      selPrc: salePrice,
+      selPrc: optionValue.filter((item) => item.active && !item.disabled)[0]
+        .salePrice,
       cuponcheck: "Y",
-      dscAmtPercnt: discountPrice,
+      dscAmtPercnt: optionValue.filter(
+        (item) => item.active && !item.disabled
+      )[0].salePrice,
       cupnDscMthdCd: "01",
       optSelectYn: "Y",
       txtColCnt: "1",
       prdExposeClfCd: "00",
       colTitle: "종류",
-      ProductOption: optionValue.map((item) => {
-        return {
-          useYn: "Y",
-          colOptPrice: item.salePrice - minOption.salePrice - deli_pri_11st,
-          colValue0:
-            item.korKey && item.korKey.length > 0 ? item.korKey : item.korValue,
-          colCount: item.stock,
-        };
-      }),
+      ProductOption: optionValue
+        .filter((item) => item.active && !item.disabled)
+        .map((item) => {
+          return {
+            useYn: "Y",
+            colOptPrice: item.salePrice - minPrice - deli_pri_11st,
+            colValue0:
+              item.korKey && item.korKey.length > 0
+                ? item.korKey
+                : item.korValue,
+            colCount: item.stock,
+          };
+        }),
       prdSelQty: 1000,
       selMinLimitTypCd: "00",
       gblDlvYn: "N",
@@ -374,12 +473,10 @@ exports.get11stProduct = async ({
       outsideYnOut: "Y",
       addrSeqIn: inboundarea,
       rtngdDlvCst:
-        salePrice - minOption.salePrice <= 200000
-          ? salePrice - minOption.salePrice
-          : 200000,
+        salePrice - minPrice <= 200000 ? salePrice - minPrice : 200000,
       exchDlvCst:
-        (salePrice - minOption.salePrice) * 2 <= 400000
-          ? (salePrice - minOption.salePrice) * 2
+        (salePrice - minPrice) * 2 <= 400000
+          ? (salePrice - minPrice) * 2
           : 400000,
       asDetail: basicInfo.afterServiceInformation,
       rtngExchDetail: "상품 상세페이지 참조",

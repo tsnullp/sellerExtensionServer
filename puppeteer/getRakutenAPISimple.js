@@ -204,14 +204,13 @@ const start = async ({ url, userID }) => {
         if (results && Array.isArray(results) && results.length > 0) {
           ObjItem.deliveryFee = results[0].fees.finalFee;
 
-          console.log("ObjItem.deliveryFee", ObjItem.deliveryFee);
+          // console.log("ObjItem.deliveryFee", ObjItem.deliveryFee);
         }
       }
     } catch (e) {}
   } catch (e) {
     console.log("findRakutenAPISimple - ", e);
   } finally {
-    console.log("rrrrr");
     return {
       ...ObjItem,
       options: ObjItem.options.map((item) => {

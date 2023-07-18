@@ -169,6 +169,7 @@ const ProductSchema = mongoose.Schema({
     ],
   },
   product: {
+    deliveryFee: Number,
     exchange: Number, // 환율
     shippingFee: Number, //  해외배송비
     profit: Number, // 마진율

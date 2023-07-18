@@ -55,6 +55,8 @@ const {
   skModifyOption,
 } = require("./api/11st");
 
+const { NaverOriginProducts, NaverModifyOption } = require("./api/Naver");
+
 const cron = require("node-cron");
 const _ = require("lodash");
 
@@ -1704,87 +1706,242 @@ app.post("/taobao/getSimbaUrl", async (req, res) => {
 });
 
 const RakutenPriceSync = async () => {
-  console.time("RakutenPriceSync");
-
-  const excahgeRate = await ExchangeRate.aggregate([
-    {
-      $match: {
-        JPY_송금보내실때: { $ne: null },
-      },
-    },
-    {
-      $sort: {
-        날짜: -1,
-      },
-    },
-    {
-      $limit: 1,
-    },
-  ]);
-
-  let exchange =
-    Number(excahgeRate[0].JPY_송금보내실때.replace(/,/gi, "") || 1000) + 10;
-
-  exchange = exchange / 100;
-
-  const products = await Product.aggregate([
-    {
-      $match: {
-        // userID: ObjectId("5f1947bd682563be2d22f008"),
-        // "options.key": {$in: asinArr},
-        isDelete: false,
-        "product.naver.smartstoreChannelProductNo": { $ne: null },
-        $or: [
-          // {
-          //   "basic.url": { $regex: `.*amazon.com.*`}
-          // },
-          {
-            "basic.url": { $regex: `.*item.rakuten.co.jp.*` },
+  const SyncFun = async () => {
+    while (true) {
+      const excahgeRate = await ExchangeRate.aggregate([
+        {
+          $match: {
+            JPY_송금보내실때: { $ne: null },
           },
-        ],
-      },
-    },
-  ]);
-  for (const product of products) {
-    // console.log("product.options", product.options);
-    //
-    const response = await getRakutenSimple({
-      url: product.basic.url,
-      userID: product.userID,
-    });
-    // console.log("response", response);
-    if (response && response.options && Array.isArray(response.options)) {
-      for (const option of response.options) {
-        const findOption = _.find(product.options, { key: option.key });
-        // console.log("findOption --> ", findOption);
-        console.log("가격", findOption.price, option.price);
-        console.log("재고", findOption.stock, option.stock);
+        },
+        {
+          $sort: {
+            날짜: -1,
+          },
+        },
+        {
+          $limit: 1,
+        },
+      ]);
 
-        console.log("111", exchange);
-        let salePrice =
-          Math.ceil(
-            ((option.price * exchange + Number(findOption.weightPrice)) /
-              ((100 - findOption.margin) / 100)) *
-              0.1
-          ) *
-            10 -
-          product.product.deliveryFee;
+      let exchange =
+        Number(excahgeRate[0].JPY_송금보내실때.replace(/,/gi, "") || 1000) + 10;
 
-        console.log("salePrice", findOption.salePrice, salePrice);
+      exchange = exchange / 100;
 
-        if (findOption.price !== option.price) {
-          console.log("가격 틀림");
-        }
-        if (findOption.stock !== option.stock) {
-          console.log("재고 틀림");
-        }
-        await sleep(1000);
+      const products = await Product.aggregate([
+        {
+          $match: {
+            // userID: ObjectId("5f1947bd682563be2d22f008"),
+            // "options.key": {$in: asinArr},
+            isDelete: false,
+            "product.naver.smartstoreChannelProductNo": { $ne: null },
+            $or: [
+              // {
+              //   "basic.url": { $regex: `.*amazon.com.*`}
+              // },
+              {
+                "basic.url": { $regex: `.*item.rakuten.co.jp.*` },
+              },
+            ],
+          },
+        },
+      ]);
+      for (const product of products) {
+        try {
+          // console.log("product.options", product.options);
+          //
+          const response = await getRakutenSimple({
+            url: product.basic.url,
+            userID: product.userID,
+          });
+          // console.log("response", response);
+          if (response && response.options && Array.isArray(response.options)) {
+            let changePrice = false;
+            let changeStock = false;
+            for (const option of response.options) {
+              try {
+                const findOption = _.find(product.options, { key: option.key });
+                // console.log("findOption --> ", findOption);
+                // console.log("가격", findOption.price, option.price);
+                // console.log("재고", findOption.stock, option.stock);
+
+                // console.log("111", exchange);
+                let salePrice =
+                  Math.ceil(
+                    ((option.price * exchange +
+                      Number(findOption.weightPrice)) /
+                      ((100 - findOption.margin) / 100)) *
+                      0.1
+                  ) *
+                    10 -
+                  product.product.deliveryFee;
+
+                // console.log("salePrice", findOption.salePrice, salePrice);
+
+                if (findOption.price !== option.price) {
+                  changePrice = true;
+                  // console.log("가격 틀림");
+                  findOption.price = option.price;
+                  findOption.salePrice = salePrice;
+                }
+                if (findOption.stock !== option.stock) {
+                  changeStock = true;
+                  findOption.stock = option.stock;
+                  // console.log("재고 틀림");
+                }
+                // await sleep(1000);
+              } catch (e) {}
+            }
+
+            if (changePrice || changeStock) {
+              const minOption = _.minBy(product.options, "salePrice");
+              const maxOption = _.maxBy(product.options, "salePrice");
+
+              const salePrice = (minOption.salePrice + maxOption.salePrice) * 2; // 판매가
+              const discountPrice = salePrice - minOption.salePrice; // 판매가 - 최저가
+
+              const optionValue = product.options.filter(
+                (item) => item.active && !item.disabled
+              );
+
+              let optionCombinationGroupNames = {};
+              let optionCombinations = [];
+
+              if (
+                (!optionValue[0].korKey ||
+                  (optionValue[0].korKey &&
+                    optionValue[0].korKey.length === 0)) &&
+                product.prop &&
+                Array.isArray(product.prop) &&
+                product.prop.length > 0 &&
+                optionValue.length > 0 &&
+                optionValue[0].propPath !== null
+              ) {
+                for (let i = 0; i < product.prop.length; i++) {
+                  optionCombinationGroupNames[`optionGroupName${i + 1}`] =
+                    product.prop[i].korTypeName;
+                }
+                for (const item of optionValue) {
+                  let combinationValue = {};
+
+                  const propPathes = item.propPath
+                    .split(";")
+                    .filter((fItem) => fItem.trim().length > 0);
+                  for (let p = 0; p < propPathes.length; p++) {
+                    const propKeyArr = propPathes[p].split(":");
+                    if (propKeyArr.length === 2) {
+                      const propObj = _.find(product.prop, {
+                        pid: propKeyArr[0],
+                      });
+                      if (propObj) {
+                        const propValue = _.find(propObj.values, {
+                          vid: propKeyArr[1],
+                        });
+                        if (propValue) {
+                          combinationValue[`optionName${p + 1}`] =
+                            propValue.korValueName
+                              .replace(/\*/gi, "x")
+                              .replace(/\?/gi, " ")
+                              .replace(/\"/gi, " ")
+                              .replace(/\</gi, " ")
+                              .replace(/\>/gi, " ");
+                        }
+                      }
+                    }
+                  }
+                  if (Object.keys(combinationValue).length > 0) {
+                    combinationValue.stockQuantity = item.stock; //재고
+                    combinationValue.price =
+                      item.salePrice - minOption.salePrice;
+                    optionCombinations.push(combinationValue);
+                  }
+                }
+              } else {
+                optionCombinationGroupNames.optionGroupName1 = "종류";
+                optionCombinations = optionValue.map((item) => {
+                  return {
+                    optionName1:
+                      item.korKey && item.korKey.length > 0
+                        ? item.korKey
+                        : item.korValue
+                            .replace(/\*/gi, "x")
+                            .replace(/\?/gi, " ")
+                            .replace(/\"/gi, " ")
+                            .replace(/\</gi, " ")
+                            .replace(/\>/gi, " "),
+                    stockQuantity: item.stock,
+                    price: item.salePrice - minOption.salePrice,
+                  };
+                });
+              }
+
+              // console.log("optionCombinationGroupNames", optionCombinationGroupNames);
+              // console.log("optionCombinations", optionCombinations);
+              const naverProduct = await NaverOriginProducts({
+                userID: product.userID,
+                originProductNo: product.product.naver.originProductNo,
+              });
+
+              naverProduct.originProduct.salePrice = salePrice;
+              naverProduct.originProduct.stockQuantity = optionValue[0].stock;
+              naverProduct.originProduct.detailAttribute.optionInfo = {
+                optionCombinationSortType: "CREATE",
+                optionCombinationGroupNames,
+                optionCombinations,
+              };
+              naverProduct.originProduct.customerBenefit = {
+                immediateDiscountPolicy: {
+                  discountMethod: {
+                    value: discountPrice,
+                    unitType: "WON",
+                  },
+                  mobileDiscountMethod: {
+                    value: discountPrice,
+                    unitType: "WON",
+                  },
+                },
+              };
+
+              // console.log("naverProduct", naverProduct.originProduct);
+
+              const updateReponse = await NaverModifyOption({
+                userID: product.userID,
+                originProductNo: product.product.naver.originProductNo,
+                product: naverProduct,
+              });
+
+              if (
+                updateReponse &&
+                updateReponse.originProductNo &&
+                updateReponse.originProductNo.toString() ===
+                  product.product.naver.originProductNo
+              ) {
+                await Product.findOneAndUpdate(
+                  {
+                    _id: product._id,
+                  },
+                  {
+                    $set: {
+                      options: product.options,
+                    },
+                  }
+                );
+              }
+
+              console.log("updateReponse", updateReponse);
+              await sleep(1000);
+            }
+          }
+          await sleep(5000);
+        } catch (e) {}
       }
+      console.log("끝----");
+      await sleep(10000);
     }
-    await sleep(2000);
-  }
-  console.timeEnd("RakutenPriceSync");
-  console.log("끝----");
+  };
+
+  SyncFun();
 };
 const IherbPriceSync = async () => {
   console.time("IHERBPRICESYNC");
@@ -2055,7 +2212,7 @@ const getPermutations = function (arr, selectNumber) {
 };
 
 // IherbPriceSync()
-// RakutenPriceSync();
+RakutenPriceSync();
 
 const getVVICItems = async () => {
   try {

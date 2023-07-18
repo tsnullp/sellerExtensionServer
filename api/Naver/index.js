@@ -227,6 +227,57 @@ exports.NaverCreateProduct = async ({ userID, productBody }) => {
   }
 };
 
+exports.NaverOriginProducts = async ({ userID, token, originProductNo }) => {
+  try {
+    let tokenObj = token;
+    if (!tokenObj) {
+      tokenObj = await getToken({ userID });
+
+      if (!tokenObj) {
+        return null;
+      }
+    }
+
+    const response = await axios({
+      url: `https://api.commerce.naver.com/external/v2/products/origin-products/${originProductNo}`,
+      method: "GET",
+      headers: {
+        Authorization: `${tokenObj.token_type} ${tokenObj.access_token}`,
+        "content-type": "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (e) {
+    // console.log("NaverOriginProducts", e);
+    return null;
+  }
+};
+
+exports.NaverModifyOption = async ({ userID, originProductNo, product }) => {
+  const token = await getToken({ userID });
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const response = await axios({
+      url: `https://api.commerce.naver.com/external/v2/products/origin-products/${originProductNo}`,
+      method: "PUT",
+      headers: {
+        Authorization: `${token.token_type} ${token.access_token}`,
+        "content-type": "application/json",
+      },
+      data: JSON.stringify(product),
+    });
+
+    // console.log("response", response);
+    return response.data;
+  } catch (e) {
+    console.log("NaverModifyOption e", e);
+  }
+};
+
 const getToken = async ({ userID }) => {
   try {
     if (!userID) {
@@ -279,7 +330,7 @@ const getToken = async ({ userID }) => {
         return response.data;
       }
     } catch (e) {
-      console.log("getToken", response);
+      console.log("getToken", e.response.data);
     }
   } catch (e) {
     console.log("3333,", e);
