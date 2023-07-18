@@ -413,6 +413,8 @@ exports.get11stProduct = async ({
     )[0].salePrice;
 
     console.log("salePrice", salePrice);
+
+    minPrice = Math.ceil(minPrice * 0.1) * 10;
     console.log("minPrice", minPrice);
     const productBody = {
       abrdBuyPlace: "D",
@@ -456,7 +458,8 @@ exports.get11stProduct = async ({
           return {
             useYn: "Y",
             colOptPrice:
-              Math.ceil((item.salePrice - minPrice - deli_pri_11st) * 0.1) * 10,
+              Math.ceil(item.salePrice * 0.1) * 10 - minPrice - deli_pri_11st,
+            // Math.ceil((item.salePrice - minPrice - deli_pri_11st) * 0.1) * 10,
             colValue0:
               item.korKey && item.korKey.length > 0
                 ? item.korKey
