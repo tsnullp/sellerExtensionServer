@@ -439,7 +439,7 @@ exports.get11stProduct = async ({
       aplEndDy: "2999/12/31",
       selPrc: salePrice,
       cuponcheck: "Y",
-      dscAmtPercnt: salePrice,
+      dscAmtPercnt: 0,
       cupnDscMthdCd: "01",
       optSelectYn: "Y",
       txtColCnt: "1",
