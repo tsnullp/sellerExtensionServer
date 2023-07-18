@@ -2212,7 +2212,7 @@ const getPermutations = function (arr, selectNumber) {
 };
 
 // IherbPriceSync()
-RakutenPriceSync();
+// RakutenPriceSync();
 
 const getVVICItems = async () => {
   try {
