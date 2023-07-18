@@ -412,6 +412,8 @@ exports.get11stProduct = async ({
       (item) => item.active && !item.disabled
     )[0].salePrice;
 
+    console.log("salePrice", salePrice);
+    console.log("minPrice", minPrice);
     const productBody = {
       abrdBuyPlace: "D",
       selMthdCd: "01",
@@ -437,7 +439,7 @@ exports.get11stProduct = async ({
       selPrdClfCd: "0:100",
       aplBgnDy: moment().format("YYYY/MM/DD"),
       aplEndDy: "2999/12/31",
-      selPrc: salePrice,
+      selPrc: minPrice,
       cuponcheck: "N",
       // dscAmtPercnt: 0,
       cupnDscMthdCd: "01",
@@ -447,7 +449,10 @@ exports.get11stProduct = async ({
       colTitle: "종류",
       ProductOption: optionValue
         .filter((item) => item.active && !item.disabled)
+
         .map((item) => {
+          console.log("item.saelPrice", item.salePrice);
+          console.log("iminPrice", minPrice);
           return {
             useYn: "Y",
             colOptPrice:
