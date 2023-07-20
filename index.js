@@ -1743,9 +1743,6 @@ const RakutenPriceSync = async () => {
             isDelete: false,
             "product.naver.smartstoreChannelProductNo": { $ne: null },
             $or: [
-              // {
-              //   "basic.url": { $regex: `.*amazon.com.*`}
-              // },
               {
                 "basic.url": { $regex: `.*item.rakuten.co.jp.*` },
               },
@@ -1783,18 +1780,17 @@ const RakutenPriceSync = async () => {
                     10 -
                   product.product.deliveryFee;
 
-                // console.log("salePrice", findOption.salePrice, salePrice);
+                // console.log("salePrice", salePrice);
 
                 if (findOption.price !== option.price) {
                   changePrice = true;
-                  // console.log("가격 틀림");
+
                   findOption.price = option.price;
                   findOption.salePrice = salePrice;
                 }
                 if (findOption.stock !== option.stock) {
                   changeStock = true;
                   findOption.stock = option.stock;
-                  // console.log("재고 틀림");
                 }
                 // await sleep(1000);
               } catch (e) {}
@@ -1882,8 +1878,12 @@ const RakutenPriceSync = async () => {
                 });
               }
 
-              // console.log("optionCombinationGroupNames", optionCombinationGroupNames);
+              // console.log(
+              //   "optionCombinationGroupNames",
+              //   optionCombinationGroupNames
+              // );
               // console.log("optionCombinations", optionCombinations);
+
               const naverProduct = await NaverOriginProducts({
                 userID: product.userID,
                 originProductNo: product.product.naver.originProductNo,
@@ -1940,7 +1940,9 @@ const RakutenPriceSync = async () => {
             }
           }
           await sleep(30000);
-        } catch (e) {}
+        } catch (e) {
+          console.log("eeeee", e);
+        }
       }
       console.log("끝----");
       await sleep(10000);

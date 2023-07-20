@@ -50,6 +50,9 @@ const start = async ({ url, userID }) => {
       pcFields,
     } = JSON.parse(temp2).api.data.itemInfoSku;
 
+    ObjItem.salePrice =
+      purchaseInfo.purchaseBySellType.normalPurchase.preTaxPrice;
+
     let tempOptions = [];
 
     for (const item of sku) {
