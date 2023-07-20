@@ -44,6 +44,7 @@ const TempProductSchema = mongoose.Schema({
       active: Boolean,
       value: String,
       korValue: String,
+      weight: Number,
       attributes: [
         {
           attributeTypeName: String,

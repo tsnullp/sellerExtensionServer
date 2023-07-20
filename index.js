@@ -193,7 +193,8 @@ app.post("/amazon/isRegister", async (req, res) => {
     if (
       detailUrl.includes("taobao.com") ||
       detailUrl.includes("tmall.com") ||
-      detailUrl.includes("aliexpress.com")
+      detailUrl.includes("aliexpress.com") ||
+      detailUrl.includes("item.rakuten.co.jp")
     ) {
       product = await Product.findOne({
         userID: ObjectId(userInfo._id),
@@ -292,7 +293,8 @@ app.post("/amazon/isRegisters", async (req, res) => {
         items[0].includes("taobao.com") ||
         items[0].includes("tmall.com") ||
         items[0].includes("aliexpress.com") ||
-        items[0].includes("vvic.com")
+        items[0].includes("vvic.com") ||
+        items[0].includes("item.rakuten.co.jp")
       ) {
         product = await Product.aggregate([
           {
@@ -324,6 +326,9 @@ app.post("/amazon/isRegisters", async (req, res) => {
                 },
                 {
                   "basic.url": { $regex: `.*aliexpress.com.*` },
+                },
+                {
+                  "basic.url": { $regex: `.*rakuten.co.jp.*` },
                 },
               ],
             },
@@ -381,7 +386,8 @@ app.post("/amazon/isRegisters", async (req, res) => {
               items[0].includes("taobao.com") ||
               items[0].includes("tmall.com") ||
               items[0].includes("aliexpress.com") ||
-              items[0].includes("vvic.com")
+              items[0].includes("vvic.com") ||
+              items[0].includes("item.rakuten.co.jp")
             ) {
               return pItem.basic.good_id === asin;
             } else {
@@ -1749,7 +1755,7 @@ const RakutenPriceSync = async () => {
       ]);
       for (const product of products) {
         try {
-          // console.log("product.options", product.options);
+          console.log("product 상품명 ", product.product.korTitle);
           //
           const response = await getRakutenSimple({
             url: product.basic.url,
@@ -1933,7 +1939,7 @@ const RakutenPriceSync = async () => {
               await sleep(1000);
             }
           }
-          await sleep(5000);
+          await sleep(30000);
         } catch (e) {}
       }
       console.log("끝----");
@@ -2212,7 +2218,7 @@ const getPermutations = function (arr, selectNumber) {
 };
 
 // IherbPriceSync()
-// RakutenPriceSync();
+RakutenPriceSync();
 
 const getVVICItems = async () => {
   try {

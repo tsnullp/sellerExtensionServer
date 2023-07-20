@@ -412,8 +412,6 @@ exports.get11stProduct = async ({
       (item) => item.active && !item.disabled
     )[0].salePrice;
 
-    console.log("salePrice", salePrice);
-
     const productBody = {
       abrdBuyPlace: "D",
       selMthdCd: "01",
@@ -451,8 +449,6 @@ exports.get11stProduct = async ({
         .filter((item) => item.active && !item.disabled)
 
         .map((item) => {
-          console.log("item.saelPrice", item.salePrice);
-          console.log("iminPrice", minPrice);
           return {
             useYn: "Y",
             colOptPrice:

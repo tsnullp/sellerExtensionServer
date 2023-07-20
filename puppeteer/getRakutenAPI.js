@@ -69,23 +69,25 @@ const start = async ({ url, userID, keyword }) => {
           if (
             modelNames &&
             Array.isArray(modelNames) &&
-            modelNames.length > 0
+            modelNames.length > 0 &&
+            keyword.length > 0
           ) {
             ObjItem.modelName = modelNames[0];
             const modelResponse = await NaverProductModel({
               userID,
               name: ObjItem.modelName,
             });
-
+            // console.log("modelRespons", modelResponse);
             const findModels = modelResponse.filter(
               (item) =>
                 item.manufacturerName &&
                 item.manufacturerName.length > 0 &&
                 item.brandName &&
                 item.brandName.length > 0 &&
+                item.name.includes(keyword) &&
                 item.name.includes(ObjItem.modelName)
             );
-
+            // console.log("findModels", findModels);
             if (
               findModels &&
               Array.isArray(findModels) &&
@@ -95,32 +97,37 @@ const start = async ({ url, userID, keyword }) => {
               ObjItem.categoryID = findModels[0].categoryId;
               ObjItem.brand = findModels[0].brandName;
 
-              if (keyword) {
-                ObjItem.korTitle = ObjItem.korTitle.replace(keyword, "");
-                let korTitleArrr = [keyword];
-                for (const item of ObjItem.korTitle.split(" ")) {
-                  if (!korTitleArrr.includes(item)) {
-                    korTitleArrr.push(item);
-                  }
-                }
-                ObjItem.korTitle = korTitleArrr
-                  .filter((item) => item.trim().length > 0)
-                  .map((item) => item.trim())
-                  .join(" ");
-              }
+              // if (keyword) {
+              //   ObjItem.korTitle = ObjItem.korTitle.replace(keyword, "");
+
+              //   let korTitleArrr = [keyword];
+              //   for (const item of ObjItem.korTitle.split(" ")) {
+              //     if (!korTitleArrr.includes(item)) {
+              //       korTitleArrr.push(item);
+              //     }
+              //   }
+              //   ObjItem.korTitle = korTitleArrr
+              //     .filter((item) => item.trim().length > 0)
+              //     .map((item) => item.trim())
+              //     .join(" ");
+              // }
             } else {
-              if (keyword) {
-                ObjItem.korTitle = ObjItem.korTitle.replace(keyword, "");
-                let korTitleArrr = [keyword];
-                for (const item of ObjItem.korTitle.split(" ")) {
-                  if (!korTitleArrr.includes(item)) {
-                    korTitleArrr.push(item);
-                  }
-                }
-                ObjItem.korTitle = korTitleArrr
-                  .filter((item) => item.trim().length > 0)
-                  .map((item) => item.trim())
-                  .join(" ");
+              // if (keyword) {
+              //   ObjItem.korTitle = ObjItem.korTitle.replace(keyword, "");
+              //   let korTitleArrr = [keyword];
+              //   for (const item of ObjItem.korTitle.split(" ")) {
+              //     if (!korTitleArrr.includes(item)) {
+              //       korTitleArrr.push(item);
+              //     }
+              //   }
+              //   ObjItem.korTitle = korTitleArrr
+              //     .filter((item) => item.trim().length > 0)
+              //     .map((item) => item.trim())
+              //     .join(" ");
+              // }
+
+              if (keyword.length > 0) {
+                ObjItem.brand = keyword;
               }
               let category = await searchNaverKeyword({
                 title: ObjItem.korTitle,
@@ -137,16 +144,17 @@ const start = async ({ url, userID, keyword }) => {
             // const titleArray = ObjItem.korTitle.split(" ");
             // ObjItem.modelName = titleArray[titleArray.length - 1];
             if (keyword) {
-              let korTitleArrr = [keyword];
-              for (const item of ObjItem.korTitle.split(" ")) {
-                if (!korTitleArrr.includes(item)) {
-                  korTitleArrr.push(item);
-                }
-              }
-              ObjItem.korTitle = korTitleArrr
-                .filter((item) => item.trim().length > 0)
-                .map((item) => item.trim())
-                .join(" ");
+              ObjItem.brand = keyword;
+              // let korTitleArrr = [keyword];
+              // for (const item of ObjItem.korTitle.split(" ")) {
+              //   if (!korTitleArrr.includes(item)) {
+              //     korTitleArrr.push(item);
+              //   }
+              // }
+              // ObjItem.korTitle = korTitleArrr
+              //   .filter((item) => item.trim().length > 0)
+              //   .map((item) => item.trim())
+              //   .join(" ");
             }
             let category = await searchNaverKeyword({
               title: ObjItem.korTitle,
@@ -369,7 +377,7 @@ const start = async ({ url, userID, keyword }) => {
               if (results && Array.isArray(results) && results.length > 0) {
                 ObjItem.deliveryFee = results[0].fees.finalFee;
 
-                console.log("ObjItem.deliveryFee", ObjItem.deliveryFee);
+                // console.log("ObjItem.deliveryFee", ObjItem.deliveryFee);
               }
             }
           } catch (e) {}
@@ -388,9 +396,12 @@ const start = async ({ url, userID, keyword }) => {
               $("span.sale_desc").html(),
               "EUC-JP"
             );
-
-            const saleDesc = removeTagsAndConvertNewlines($sale_desc);
-            ObjItem.html += saleDesc;
+            if (!ObjItem.weight) {
+              const weight = extractWeight($sale_desc);
+              ObjItem.weight = weight;
+            }
+            // const saleDesc = removeTagsAndConvertNewlines($sale_desc);
+            // ObjItem.html += saleDesc;
           } catch (e) {}
 
           try {
@@ -398,6 +409,11 @@ const start = async ({ url, userID, keyword }) => {
               $("span.item_desc").html(),
               "EUC-JP"
             );
+
+            if (!ObjItem.weight) {
+              const weight = extractWeight($item_desc);
+              ObjItem.weight = weight;
+            }
 
             const itemDesc = removeTagsAndConvertNewlines($item_desc);
 
@@ -496,6 +512,9 @@ const removeTagsAndConvertNewlines = (html) => {
   result = result.replace(/(<br>\s*){2}/g, "<br>");
 
   result = result.replace(/<p>&nbsp;<\/p>/g, "");
+  // result = result.replace(/<td[^>]*>([\s\S]*?)<\/td>/gi, "");
+  // result = result.replace(/<td(?=.*(&nbsp;|<img)).*?<\/td>/gi, "");
+
   result = result.replace(/<td>&nbsp;<\/td>/g, "");
 
   // 태그 사이의 공백을 제거합니다.
@@ -512,23 +531,41 @@ const removeTagsAndConvertNewlines = (html) => {
   // <tr>과 <td> 사이의 <br> 태그를 제거합니다.
   result = result.replace(/<tr>(?:\s*<br>\s*)*<td/g, "<tr><td");
 
-  console.log("html", html);
+  // console.log("html", html);
   // result = result.replace(/<span>(?:\s*<a ref=\s*)*<\/span>/g, "");
   // result = result.replace(/<div>(?:\s*予約\s*)*<\/div>/g, "");
   // result = result.replace(/<div(?=.*予約).*?<\/div>/g, "");
   // result = result.replace(/<div>(?:\s*重要\s*)*<\/div>/g, "");
-  // result = result.replace(/<div(?:\s*(?:予約|重要|rakuten)\s*)*<\/div>/gi, "");
+  // result = result.replace(/<div(?:\s*(?:予約|重要|rakuten)\s*)*<\/div>/gi, "");a
   result = result.replace(/<ul class="icon">.*?<\/ul>/gs, "");
   result = result.replace(
-    /<div(?=.*(?:予約|重要|rakuten|<a ref|ご注文|お届)).*?<\/div>/gi,
+    /<br(?=.*(?:予約|重要|rakuten|<a ref|<input|ご注文|お届|商品についてのお問い合わせ|この商品を購入された方のレビュー|クーポン|無料|Copyrights|税抜き|楽天デ)).*?<\/br>/gi,
     ""
   );
   result = result.replace(
-    /<p(?=.*(?:予約|重要|rakuten|<a ref|ご注文|お届)).*?<\/p>/gi,
+    /<font(?=.*(?:予約|重要|rakuten|<a ref|<input|ご注文|お届|商品についてのお問い合わせ|この商品を購入された方のレビュー|クーポン|無料|Copyrights|税抜き|楽天デ)).*?<\/font>/gi,
     ""
   );
   result = result.replace(
-    /<span(?=.*(?:予約|重要|rakuten|<a ref|ご注文|お届)).*?<\/span>/gi,
+    /<div(?=.*(?:予約|重要|rakuten|<a ref|<input|ご注文|お届|商品についてのお問い合わせ|この商品を購入された方のレビュー|クーポン|無料|Copyrights|税抜き|楽天デ)).*?<\/div>/gi,
+    ""
+  );
+  result = result.replace(
+    /<p(?=.*(?:予約|重要|rakuten|<a |<input|ご注文|お届|商品についてのお問い合わせ|この商品を購入された方のレビュー|クーポン|無料|Copyrights|税抜き|楽天デ)).*?<\/p>/gi,
+    ""
+  );
+  result = result.replace(
+    /<span(?=.*(?:予約|重要|rakuten|<a ref|<input|ご注文|お届|商品についてのお問い合わせ|この商品を購入された方のレビュー|クーポン|無料|Copyrights|税抜き|楽天デ)).*?<\/span>/gi,
+    ""
+  );
+  result = result.replace(
+    /<table(?=.*(?:予約|重要|rakuten|<a ref|<input|ご注文|お届|商品についてのお問い合わせ|この商品を購入された方のレビュー|クーポン|無料|Copyrights|税抜き|楽天デ)).*?<\/table>/gi,
+    ""
+  );
+
+  ///////
+  result = result.replace(
+    /<table[^>]*>(?:\s|&nbsp;)*<tbody[^>]*>(?:\s|&nbsp;)*<tr[^>]*>(?:\s|&nbsp;)*<td[^>]*>(?:\s|&nbsp;)*<\/td>(?:\s|&nbsp;)*<\/tr>(?:\s|&nbsp;)*<\/tbody>(?:\s|&nbsp;)*<\/table>/gi,
     ""
   );
 
