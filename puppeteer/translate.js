@@ -604,7 +604,7 @@ const papagoTranslate = async (text, source = "zh-CN", target = "ko") => {
           return response.data.message.result.translatedText;
         }
       } catch (e) {
-        // console.log("papago-->", e.data)
+        console.log("papago-->", e.response);
         if (e.response.data.errorCode === "N2MT09") {
           return text;
         }
