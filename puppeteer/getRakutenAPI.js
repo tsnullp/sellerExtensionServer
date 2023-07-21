@@ -59,6 +59,7 @@ const start = async ({ url, userID, keyword }) => {
             purchaseInfo.purchaseBySellType.normalPurchase.preTaxPrice;
           ObjItem.title = iconv.decode(title, "EUC-JP");
           ObjItem.korTitle = await papagoTranslate(ObjItem.title, "auto", "ko");
+
           ObjItem.korTitle = ObjItem.korTitle
             .replace(/국내/gi, "")
             .replace(/무료배송/gi, "");
