@@ -238,7 +238,7 @@ const updateNaver = async ({
         seoInfo: {
           pageTitle: product.korTitle,
           metaDescription: product.korTitle,
-          sellerTags: _.uniq(tag)
+          sellerTags: _.uniqBy(tag, "code")
             .filter((item, i) => i < 10)
             .map((item) => {
               if (item.code) {
