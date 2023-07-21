@@ -286,7 +286,7 @@ const getToken = async ({ userID }) => {
 
     let clientId = "3xL2y5DqrklF3Gmpnd5z6m";
     let clientSecret = "$2a$04$QtYjezKbjnCVbnGC9lFy5.";
-    let timestamp = Number(new Date()) - 1000;
+    let timestamp = Number(new Date()) - 60000;
 
     const market = await Market.findOne({
       userID,
