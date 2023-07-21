@@ -217,6 +217,9 @@ const googleTranslate = async (text) => {
 
 const papagoTranslate = async (text, source = "zh-CN", target = "ko") => {
   try {
+    if (!isNaN(text)) {
+      return text;
+    }
     const findTranslate = await Translate.findOne({
       source,
       target,
