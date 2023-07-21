@@ -604,12 +604,15 @@ const papagoTranslate = async (text, source = "zh-CN", target = "ko") => {
           return response.data.message.result.translatedText;
         }
       } catch (e) {
-        console.log("papago-->", e.response);
+        // console.log("papago-->", e.response);
         if (e.response.data.errorCode === "N2MT09") {
           return text;
         }
       }
     }
+
+    console.log("쿼리 초가");
+    return text;
   } catch (e) {
     console.log("파파고 실패 -->", e);
     return text;
