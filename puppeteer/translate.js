@@ -222,8 +222,12 @@ const papagoTranslate = async (text, source = "zh-CN", target = "ko") => {
       target,
       sourceText: text,
     });
-    if (findTranslate) {
-      return findTranslate.target;
+    if (
+      findTranslate &&
+      findTranslate.targetText &&
+      findTranslate.targetText.length > 0
+    ) {
+      return findTranslate.targetText;
     }
 
     let clients = [
