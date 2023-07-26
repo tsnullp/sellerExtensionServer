@@ -3199,10 +3199,12 @@ app.post("/seller/product", async (req, res) => {
             options,
             userID: user,
             deli_pri_naver: req.body.delivery.naver,
-            attribute: req.body.attribute
-              ? Array.isArray(req.body.attribute)
-              : [],
-            tag: req.body.tag ? Array.isArray(req.body.tag) : [],
+            attribute:
+              req.body.attribute && Array.isArray(req.body.attribute)
+                ? req.body.attribute
+                : [],
+            tag:
+              req.body.tag && Array.isArray(req.body.tag) ? req.body.tag : [],
           });
           resolve();
         } catch (e) {
