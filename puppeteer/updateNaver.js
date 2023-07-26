@@ -18,7 +18,6 @@ const updateNaver = async ({
   attribute,
   tag,
 }) => {
-  console.log("attribute", attribute);
   const returnMessage = {
     originProductNo: null,
     smartstoreChannelProductNo: null,

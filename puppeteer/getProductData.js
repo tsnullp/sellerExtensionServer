@@ -66,6 +66,9 @@ const getData = async ({
       ) {
         duplication = true;
       }
+
+      item.active = true;
+      item.disabled = false;
     }
 
     if (duplication) {
