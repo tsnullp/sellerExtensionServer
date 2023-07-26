@@ -3060,7 +3060,7 @@ app.post("/seller/product", async (req, res) => {
       price: sk11stObjItem.price,
       salePrice: sk11stObjItem.salePrice,
       topHtml: sk11stObjItem.topImage,
-      clothesHtml: coupangsk11stObjItemObjItem.clothesHtml,
+      clothesHtml: sk11stObjItem.clothesHtml,
       isClothes: req.body.isClothes === "Y" ? true : false,
       shoesHtml: sk11stObjItem.shoesHtml,
       isShoes: req.body.isShoes === "Y" ? true : false,
