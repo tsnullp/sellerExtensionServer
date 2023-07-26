@@ -3245,8 +3245,6 @@ app.post("/seller/product", async (req, res) => {
 
     await Promise.all(promiseArray);
 
-    console.log("cafe24Response", responseCafe24);
-
     await Product.findOneAndUpdate(
       {
         _id: ObjectId(tempProduct._id),
@@ -3260,6 +3258,12 @@ app.post("/seller/product", async (req, res) => {
       }
     );
 
+    console.log({
+      coupang: responseCoupang,
+      naver: responseNaver,
+      sk11st: response11st,
+      cafe24: responseCafe24,
+    });
     res.json({
       coupang: responseCoupang,
       naver: responseNaver,
