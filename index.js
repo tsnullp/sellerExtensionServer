@@ -3162,7 +3162,6 @@ app.post("/seller/product", async (req, res) => {
       coupang,
       initCreatedAt: moment().toDate(),
       optionsObj: req.body.options,
-      deliveryFeeObj: req.body.delivery,
     });
 
     let responseCoupang = null;

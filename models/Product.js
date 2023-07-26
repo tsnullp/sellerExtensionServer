@@ -169,7 +169,12 @@ const ProductSchema = mongoose.Schema({
     ],
   },
   product: {
-    deliveryFee: Number,
+    deliveryFee: {
+      naver: Number,
+      coupang: Number,
+      sk11st: Number,
+      emsplus: Number,
+    },
     exchange: Number, // 환율
     shippingFee: Number, //  해외배송비
     profit: Number, // 마진율
@@ -459,12 +464,7 @@ const ProductSchema = mongoose.Schema({
       },
     ],
   },
-  deliveryFeeObj: {
-    naver: Number,
-    coupang: Number,
-    sk11st: Number,
-    emsplus: Number,
-  },
+
   coupangUpdatedAt: Date,
   cafe24UpdatedAt: Date,
   initCreatedAt: Date,
