@@ -188,7 +188,7 @@ const ProductSchema = mongoose.Schema({
       naver: String,
       coupang: String,
       sk11st: String,
-      emsplus: String,
+      emsplus: [String],
     },
     korTitleArray: [String],
     deli_pri_cupang: Number,
