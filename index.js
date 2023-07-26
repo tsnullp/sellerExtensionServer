@@ -2299,7 +2299,7 @@ const getPermutations = function (arr, selectNumber) {
 };
 
 // IherbPriceSync()
-RakutenPriceSync();
+// RakutenPriceSync();
 
 const getVVICItems = async () => {
   try {
@@ -2755,6 +2755,8 @@ app.post("/seller/product", async (req, res) => {
   // 메인이미지[String]
   // 타오바오 상세이미지[String]
   // 옵션 [key,value,image,stock,price]
+
+  console.log("req.body", req.body);
 
   try {
     if (!req.body.email) {

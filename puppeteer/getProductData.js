@@ -422,12 +422,15 @@ const getCategoryInfo = async ({ userID, korTitle }) => {
     requiredDocumentNames: "",
     certifications: "",
   };
+
+  console.log("korTitle", korTitle);
   try {
     const recommendedResponse = await CategoryPredict({
       userID,
       productName: korTitle,
     });
 
+    console.log("recommendedResponse", recommendedResponse);
     objItem.categoryCode = recommendedResponse.data.predictedCategoryId;
 
     const metaResponse = await CategoryMeta({
