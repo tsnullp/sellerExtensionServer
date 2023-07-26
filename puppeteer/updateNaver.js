@@ -151,7 +151,7 @@ const updateNaver = async ({
       statusType: "SALE",
       saleType: "NEW",
       leafCategoryId: naverCategoryCode,
-      name: product.korTitle,
+      name: product.korTitle.replace(/[\\*?"<>]/g, ""),
       detailContent: htmlContent,
       images: {
         representativeImage: {
@@ -236,8 +236,8 @@ const updateNaver = async ({
           };
         }),
         seoInfo: {
-          pageTitle: product.korTitle,
-          metaDescription: product.korTitle,
+          pageTitle: product.korTitle.replace(/[\\*?"<>]/g, ""),
+          metaDescription: product.korTitle.replace(/[\\*?"<>]/g, ""),
           sellerTags: _.uniqBy(tag, "code")
             .filter((item, i) => i < 10)
             .map((item) => {

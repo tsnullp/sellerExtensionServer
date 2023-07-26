@@ -28,6 +28,7 @@ const findAliExpressDetailAPIsimple = require("./puppeteer/getAliExpressItemAPis
 const getVVIC = require("./puppeteer/getVVICAPI");
 const getRakuten = require("./puppeteer/getRakutenAPI");
 const getRakutenSimple = require("./puppeteer/getRakutenAPISimple");
+const getStudious = require("./puppeteer/getStudiousAPI");
 const {
   Cafe24ListOrders,
   Cafe24RegisterShipments,
@@ -194,7 +195,8 @@ app.post("/amazon/isRegister", async (req, res) => {
       detailUrl.includes("taobao.com") ||
       detailUrl.includes("tmall.com") ||
       detailUrl.includes("aliexpress.com") ||
-      detailUrl.includes("item.rakuten.co.jp")
+      detailUrl.includes("item.rakuten.co.jp") ||
+      detailUrl.includes("studious.co.jp")
     ) {
       product = await Product.findOne({
         userID: ObjectId(userInfo._id),
@@ -294,7 +296,8 @@ app.post("/amazon/isRegisters", async (req, res) => {
         items[0].includes("tmall.com") ||
         items[0].includes("aliexpress.com") ||
         items[0].includes("vvic.com") ||
-        items[0].includes("item.rakuten.co.jp")
+        items[0].includes("item.rakuten.co.jp") ||
+        items[0].includes("studious.co.jp")
       ) {
         product = await Product.aggregate([
           {
@@ -329,6 +332,9 @@ app.post("/amazon/isRegisters", async (req, res) => {
                 },
                 {
                   "basic.url": { $regex: `.*rakuten.co.jp.*` },
+                },
+                {
+                  "basic.url": { $regex: `.*studious.co.jp.*` },
                 },
               ],
             },
@@ -387,7 +393,8 @@ app.post("/amazon/isRegisters", async (req, res) => {
               items[0].includes("tmall.com") ||
               items[0].includes("aliexpress.com") ||
               items[0].includes("vvic.com") ||
-              items[0].includes("item.rakuten.co.jp")
+              items[0].includes("item.rakuten.co.jp") ||
+              items[0].includes("studious.co.jp")
             ) {
               return pItem.basic.good_id === asin;
             } else {
@@ -1104,6 +1111,78 @@ app.post("/amazon/collectionItems", async (req, res) => {
                           brand: detailItem.brand,
                           manufacture: detailItem.manufacture,
                           modelName: detailItem.modelName,
+                          title: detailItem.title,
+                          keyword: detailItem.keyword,
+                          mainImages: detailItem.mainImages,
+                          price: detailItem.price,
+                          salePrice: detailItem.salePrice,
+                          html: detailItem.html,
+                          content: detailItem.content,
+                          options: detailItem.options,
+                          detailUrl: item.detailUrl,
+                          korTitle: detailItem.korTitle,
+                          prop: detailItem.prop,
+                          lastUpdate: moment().toDate(),
+                        },
+                      },
+                      {
+                        upsert: true,
+                        new: true,
+                      }
+                    );
+                  } else {
+                    console.log("옵션 없음", item.detailUrl);
+                  }
+                } else if (item.detailUrl.includes("studious.co.jp/shop")) {
+                  const asin = AmazonAsin(item.detailUrl);
+                  if (!asin) {
+                    console.log("asin 없음");
+                    continue;
+                  }
+
+                  let detailItem = await getStudious({
+                    url: item.detailUrl,
+                    userID: userInfo._id,
+                    keyword: item.keyword,
+                  });
+
+                  if (!detailItem) {
+                    await AmazonCollection.findOneAndUpdate(
+                      {
+                        userID: ObjectId(userInfo._id),
+                        asin,
+                      },
+                      {
+                        $set: {
+                          isDelete: true,
+                          lastUpdate: moment().toDate(),
+                        },
+                      },
+                      {
+                        upsert: true,
+                      }
+                    );
+                  } else if (
+                    detailItem &&
+                    detailItem.options &&
+                    detailItem.options.length > 0 &&
+                    detailItem.options.length !==
+                      detailItem.options.filter((item) => item.stock === 0)
+                        .length
+                  ) {
+                    await TempProduct.findOneAndUpdate(
+                      {
+                        userID: ObjectId(userInfo._id),
+                        good_id: detailItem.good_id,
+                      },
+                      {
+                        $set: {
+                          userID: ObjectId(userInfo._id),
+                          categoryID: detailItem.categoryID,
+                          good_id: detailItem.good_id,
+                          brand: detailItem.brand,
+                          manufacture: detailItem.manufacture,
+                          // modelName: detailItem.modelName,
                           title: detailItem.title,
                           keyword: detailItem.keyword,
                           mainImages: detailItem.mainImages,
@@ -2739,9 +2818,10 @@ app.post("/seller/product", async (req, res) => {
       return;
     }
     if (
-      !req.body.options ||
-      !Array.isArray(req.body.options) ||
-      req.body.options.length === 0
+      !req.body.options
+      //  ||
+      // !Array.isArray(req.body.options) ||
+      // req.body.options.length === 0
     ) {
       console.log("옵션이 없습니다.");
       res.json({
@@ -2783,18 +2863,30 @@ app.post("/seller/product", async (req, res) => {
       writerID = user1._id;
     }
 
-    const { deli_pri_cupang, deli_pri_naver, deli_pri_11st, deli_pri_emsplus } =
-      req.body;
     const objItem = await getProductData({
       userID: user,
       url: req.body.url,
       brand: req.body.brand,
       title: req.body.title || "",
-      korTitle: req.body.korTitle[0] || "",
+      korTitle: req.body.korTitle.naver || "",
       mainImages: req.body.mainImages || [],
       content: req.body.content || [],
       prop: req.body.prop || null,
-      options: req.body.options || [],
+      options: req.body.options.naver || [],
+      isClothes: req.body.isClothes === "Y" ? true : false,
+      isShoes: req.body.isShoes === "Y" ? true : false,
+    });
+
+    const coupangObjItem = await getProductData({
+      userID: user,
+      url: req.body.url,
+      brand: req.body.brand,
+      title: req.body.title || "",
+      korTitle: req.body.korTitle.coupang || "",
+      mainImages: req.body.mainImages || [],
+      content: req.body.content || [],
+      prop: req.body.prop || null,
+      options: req.body.options.coupang || [],
       isClothes: req.body.isClothes === "Y" ? true : false,
       isShoes: req.body.isShoes === "Y" ? true : false,
     });
@@ -2830,12 +2922,14 @@ app.post("/seller/product", async (req, res) => {
       maximumBuyForPersonPeriod: objItem.maximumBuyForPersonPeriod,
       keywords: [],
     };
+
     const product = {
       exchange: req.body.exchange || 0,
       weihtPrice: objItem.options[0].weihtPrice,
       profit: objItem.options[0].margin,
       good_id: objItem.good_id,
       korTitle: objItem.korTitle,
+      korTitleObj: req.body.korTitle,
       mainImages: objItem.mainImages,
       price: objItem.price,
       salePrice: objItem.salePrice,
@@ -2853,16 +2947,16 @@ app.post("/seller/product", async (req, res) => {
       outboundShippingTimeDay: objItem.shipping.outboundShippingTimeDay,
       // deliveryChargeType: objItem.shipping.deliveryChargeType,
       deliveryChargeType:
-        deli_pri_cupang && deli_pri_cupang > 0 ? "NOT_FREE" : "FREE",
+        req.body.delivery.coupang && req.body.delivery > 0
+          ? "NOT_FREE"
+          : "FREE",
+      // deli_pri_cupang && deli_pri_cupang > 0 ? "NOT_FREE" : "FREE",
       // deliveryCharge: objItem.shipping.deliveryCharge,
-      deliveryCharge: deli_pri_cupang,
+      deliveryCharge: req.body.delivery.coupang,
       deliveryChargeOnReturn: objItem.returnCenter.deliveryChargeOnReturn,
       weightPrice: objItem.options[0].weightPrice || 0,
-      korTitleArray: req.body.korTitle,
-      deli_pri_cupang,
-      deli_pri_naver,
-      deli_pri_11st,
-      deli_pri_emsplus,
+      korTitleArray: req.body.korTitle.coupang,
+      deliveryFee: req.body.delivery,
     };
     const prop = objItem.prop;
     const options = objItem.options.map((item) => {
@@ -2872,6 +2966,51 @@ app.post("/seller/product", async (req, res) => {
         desabled: false,
       };
     });
+
+    const coupangProduct = {
+      exchange: req.body.exchange || 0,
+      weihtPrice: coupangObjItem.options[0].weihtPrice,
+      profit: coupangObjItem.options[0].margin,
+      good_id: coupangObjItem.good_id,
+      korTitle: coupangObjItem.korTitle,
+      mainImages: coupangObjItem.mainImages,
+      price: coupangObjItem.price,
+      salePrice: coupangObjItem.salePrice,
+      topHtml: coupangObjItem.topImage,
+      clothesHtml: coupangObjItem.clothesHtml,
+      isClothes: req.body.isClothes === "Y" ? true : false,
+      shoesHtml: coupangObjItem.shoesHtml,
+      isShoes: req.body.isShoes === "Y" ? true : false,
+      optionHtml: coupangObjItem.optionHtml,
+      html: coupangObjItem.detailHtml,
+      bottomHtml: coupangObjItem.bottomImage,
+      keyword: req.body.search_word || [],
+      brand: coupangObjItem.brand,
+      manufacture: coupangObjItem.manufacture,
+      outboundShippingTimeDay: coupangObjItem.shipping.outboundShippingTimeDay,
+      // deliveryChargeType: objItem.shipping.deliveryChargeType,
+      deliveryChargeType:
+        req.body.delivery.coupang && req.body.delivery > 0
+          ? "NOT_FREE"
+          : "FREE",
+      // deli_pri_cupang && deli_pri_cupang > 0 ? "NOT_FREE" : "FREE",
+      // deliveryCharge: objItem.shipping.deliveryCharge,
+      deliveryCharge: req.body.delivery.coupang,
+      deliveryChargeOnReturn:
+        coupangObjItem.returnCenter.deliveryChargeOnReturn,
+      weightPrice: coupangObjItem.options[0].weightPrice || 0,
+      korTitleArray: req.body.korTitle.coupang,
+      deliveryFee: req.body.delivery,
+    };
+
+    const coupangOptions = coupangObjItem.options.map((item) => {
+      return {
+        ...item,
+        active: true,
+        desabled: false,
+      };
+    });
+
     const coupang = {
       displayCategoryCode: objItem.categoryCode,
       displayCategoryName: "",
@@ -2897,6 +3036,121 @@ app.post("/seller/product", async (req, res) => {
       attributes: objItem.attributes,
     };
 
+    const sk11stObjItem = await getProductData({
+      userID: user,
+      url: req.body.url,
+      brand: req.body.brand,
+      title: req.body.title || "",
+      korTitle: req.body.korTitle.sk11st || "",
+      mainImages: req.body.mainImages || [],
+      content: req.body.content || [],
+      prop: req.body.prop || null,
+      options: req.body.options.sk11st || [],
+      isClothes: req.body.isClothes === "Y" ? true : false,
+      isShoes: req.body.isShoes === "Y" ? true : false,
+    });
+
+    const sk11stProduct = {
+      exchange: req.body.exchange || 0,
+      weihtPrice: sk11stObjItem.options[0].weihtPrice,
+      profit: sk11stObjItem.options[0].margin,
+      good_id: sk11stObjItem.good_id,
+      korTitle: sk11stObjItem.korTitle,
+      mainImages: sk11stObjItem.mainImages,
+      price: sk11stObjItem.price,
+      salePrice: sk11stObjItem.salePrice,
+      topHtml: sk11stObjItem.topImage,
+      clothesHtml: coupangsk11stObjItemObjItem.clothesHtml,
+      isClothes: req.body.isClothes === "Y" ? true : false,
+      shoesHtml: sk11stObjItem.shoesHtml,
+      isShoes: req.body.isShoes === "Y" ? true : false,
+      optionHtml: sk11stObjItem.optionHtml,
+      html: sk11stObjItem.detailHtml,
+      bottomHtml: sk11stObjItem.bottomImage,
+      keyword: req.body.search_word || [],
+      brand: sk11stObjItem.brand,
+      manufacture: sk11stObjItem.manufacture,
+      outboundShippingTimeDay: sk11stObjItem.shipping.outboundShippingTimeDay,
+      // deliveryChargeType: objItem.shipping.deliveryChargeType,
+      deliveryChargeType:
+        req.body.delivery.coupang && req.body.delivery > 0
+          ? "NOT_FREE"
+          : "FREE",
+      // deli_pri_cupang && deli_pri_cupang > 0 ? "NOT_FREE" : "FREE",
+      // deliveryCharge: objItem.shipping.deliveryCharge,
+      deliveryCharge: req.body.delivery.coupang,
+      deliveryChargeOnReturn: sk11stObjItem.returnCenter.deliveryChargeOnReturn,
+      weightPrice: sk11stObjItem.options[0].weightPrice || 0,
+      korTitleArray: req.body.korTitle.coupang,
+      deliveryFee: req.body.delivery,
+    };
+
+    const sk11stOptions = sk11stObjItem.options.map((item) => {
+      return {
+        ...item,
+        active: true,
+        desabled: false,
+      };
+    });
+
+    const emsplusObjItem = await getProductData({
+      userID: user,
+      url: req.body.url,
+      brand: req.body.brand,
+      title: req.body.title || "",
+      korTitle: req.body.korTitle.emsplus[0] || "",
+      mainImages: req.body.mainImages || [],
+      content: req.body.content || [],
+      prop: req.body.prop || null,
+      options: req.body.options.sk11st || [],
+      isClothes: req.body.isClothes === "Y" ? true : false,
+      isShoes: req.body.isShoes === "Y" ? true : false,
+    });
+
+    const emsplusProduct = {
+      exchange: req.body.exchange || 0,
+      weihtPrice: emsplusObjItem.options[0].weihtPrice,
+      profit: emsplusObjItem.options[0].margin,
+      good_id: emsplusObjItem.good_id,
+      korTitle: emsplusObjItem.korTitle,
+      mainImages: emsplusObjItem.mainImages,
+      price: emsplusObjItem.price,
+      salePrice: emsplusObjItem.salePrice,
+      topHtml: emsplusObjItem.topImage,
+      clothesHtml: emsplusObjItem.clothesHtml,
+      isClothes: req.body.isClothes === "Y" ? true : false,
+      shoesHtml: emsplusObjItem.shoesHtml,
+      isShoes: req.body.isShoes === "Y" ? true : false,
+      optionHtml: emsplusObjItem.optionHtml,
+      html: emsplusObjItem.detailHtml,
+      bottomHtml: emsplusObjItem.bottomImage,
+      keyword: req.body.search_word || [],
+      brand: emsplusObjItem.brand,
+      manufacture: emsplusObjItem.manufacture,
+      outboundShippingTimeDay: emsplusObjItem.shipping.outboundShippingTimeDay,
+      // deliveryChargeType: objItem.shipping.deliveryChargeType,
+      deliveryChargeType:
+        req.body.delivery.coupang && req.body.delivery > 0
+          ? "NOT_FREE"
+          : "FREE",
+      // deli_pri_cupang && deli_pri_cupang > 0 ? "NOT_FREE" : "FREE",
+      // deliveryCharge: objItem.shipping.deliveryCharge,
+      deliveryCharge: req.body.delivery.coupang,
+      deliveryChargeOnReturn:
+        emsplusObjItem.returnCenter.deliveryChargeOnReturn,
+      weightPrice: emsplusObjItem.options[0].weightPrice || 0,
+      korTitleArray: req.body.korTitle.coupang,
+      deliveryFee: req.body.delivery,
+    };
+
+    const emsplusOptions = emsplusObjItem.options.map((item) => {
+      return {
+        ...item,
+        active: true,
+        desabled: false,
+      };
+    });
+
     const tempProduct = await Product.create({
       userID: user,
       writerID,
@@ -2907,6 +3161,8 @@ app.post("/seller/product", async (req, res) => {
       options: objItem.options,
       coupang,
       initCreatedAt: moment().toDate(),
+      optionsObj: req.body.options,
+      deliveryFeeObj: req.body.delivery,
     });
 
     let responseCoupang = null;
@@ -2920,13 +3176,13 @@ app.post("/seller/product", async (req, res) => {
           responseCoupang = await updateCoupang({
             id: tempProduct._id,
             basic,
-            product,
+            product: coupangProduct,
             prop,
-            options,
+            options: coupangOptions,
             coupang,
             userID: user,
             writerID,
-            deli_pri_cupang,
+            deli_pri_cupang: req.body.delivery.coupang,
           });
 
           resolve();
@@ -2943,7 +3199,7 @@ app.post("/seller/product", async (req, res) => {
             prop,
             options,
             userID: user,
-            deli_pri_naver,
+            deli_pri_naver: req.body.delivery.naver,
             attribute: req.body.attribute ? req.body.attribute : [],
             tag: req.body.tag ? req.body.tag : [],
           });
@@ -2957,11 +3213,11 @@ app.post("/seller/product", async (req, res) => {
           response11st = await update11st({
             id: tempProduct._id,
             basic,
-            product,
+            product: sk11stProduct,
             prop,
-            options,
+            options: sk11stOptions,
             userID: user,
-            deli_pri_11st,
+            deli_pri_11st: req.body.delivery.sk11st,
           });
           resolve();
         } catch (e) {
@@ -2972,13 +3228,13 @@ app.post("/seller/product", async (req, res) => {
         try {
           responseCafe24 = await updateCafe24({
             id: tempProduct._id,
-            product,
+            product: emsplusProduct,
             prop,
-            options,
-            korTitleArray: req.body.korTitle,
+            options: emsplusOptions,
+            korTitleArray: req.body.korTitle.emsplus,
             userID: user,
             writerID,
-            deli_pri_emsplus,
+            deli_pri_emsplus: req.body.delivery.emsplus,
           });
           resolve();
         } catch (e) {
