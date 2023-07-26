@@ -2415,7 +2415,6 @@ app.get("/seller/getCEO", async (req, res) => {
 });
 // 관라지 -> 직원 정보
 app.get("/seller/getStaff", async (req, res) => {
-  console.log("req.query", req.query);
   try {
     if (!req.query.email) {
       res.json({
@@ -3200,8 +3199,10 @@ app.post("/seller/product", async (req, res) => {
             options,
             userID: user,
             deli_pri_naver: req.body.delivery.naver,
-            attribute: req.body.attribute ? req.body.attribute : [],
-            tag: req.body.tag ? req.body.tag : [],
+            attribute: req.body.attribute
+              ? Array.isArray(req.body.attribute)
+              : [],
+            tag: req.body.tag ? Array.isArray(req.body.tag) : [],
           });
           resolve();
         } catch (e) {
