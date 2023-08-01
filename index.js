@@ -29,6 +29,7 @@ const getVVIC = require("./puppeteer/getVVICAPI");
 const getRakuten = require("./puppeteer/getRakutenAPI");
 const getRakutenSimple = require("./puppeteer/getRakutenAPISimple");
 const getStudious = require("./puppeteer/getStudiousAPI");
+const getIssymiyake = require("./puppeteer/getIssymiyakeAPI");
 const {
   Cafe24ListOrders,
   Cafe24RegisterShipments,
@@ -167,7 +168,7 @@ app.post("/seller/userGroup", async (req, res) => {
 app.post("/amazon/isRegister", async (req, res) => {
   try {
     const { detailUrl, user } = req.body;
-    console.log("detailUrl, use", detailUrl, user);
+
     const asin = AmazonAsin(detailUrl);
     // 0: 실패, 1: 등록됨, 2: 수집요청전, 3: 수집요청후, 4: 수집완료, 5t 수집실패
     if (!asin || !user) {
@@ -1205,6 +1206,78 @@ app.post("/amazon/collectionItems", async (req, res) => {
                   } else {
                     console.log("옵션 없음", item.detailUrl);
                   }
+                } else if (item.detailUrl.includes("isseymiyake.com")) {
+                  const asin = AmazonAsin(item.detailUrl);
+                  if (!asin) {
+                    console.log("asin 없음");
+                    continue;
+                  }
+
+                  let detailItem = await getIssymiyake({
+                    url: item.detailUrl,
+                    userID: userInfo._id,
+                    keyword: item.keyword,
+                  });
+
+                  if (!detailItem) {
+                    await AmazonCollection.findOneAndUpdate(
+                      {
+                        userID: ObjectId(userInfo._id),
+                        asin,
+                      },
+                      {
+                        $set: {
+                          isDelete: true,
+                          lastUpdate: moment().toDate(),
+                        },
+                      },
+                      {
+                        upsert: true,
+                      }
+                    );
+                  } else if (
+                    detailItem &&
+                    detailItem.options &&
+                    detailItem.options.length > 0 &&
+                    detailItem.options.length !==
+                      detailItem.options.filter((item) => item.stock === 0)
+                        .length
+                  ) {
+                    await TempProduct.findOneAndUpdate(
+                      {
+                        userID: ObjectId(userInfo._id),
+                        good_id: detailItem.good_id,
+                      },
+                      {
+                        $set: {
+                          userID: ObjectId(userInfo._id),
+                          categoryID: detailItem.categoryID,
+                          good_id: detailItem.good_id,
+                          brand: detailItem.brand,
+                          manufacture: detailItem.manufacture,
+                          // modelName: detailItem.modelName,
+                          title: detailItem.title,
+                          keyword: detailItem.keyword,
+                          mainImages: detailItem.mainImages,
+                          price: detailItem.price,
+                          salePrice: detailItem.salePrice,
+                          html: detailItem.html,
+                          content: detailItem.content,
+                          options: detailItem.options,
+                          detailUrl: item.detailUrl,
+                          korTitle: detailItem.korTitle,
+                          prop: detailItem.prop,
+                          lastUpdate: moment().toDate(),
+                        },
+                      },
+                      {
+                        upsert: true,
+                        new: true,
+                      }
+                    );
+                  } else {
+                    console.log("옵션 없음", item.detailUrl);
+                  }
                 }
               }
             }
@@ -1967,28 +2040,73 @@ const RakutenPriceSync = async () => {
                 userID: product.userID,
                 originProductNo: product.product.naver.originProductNo,
               });
-
-              naverProduct.originProduct.salePrice = salePrice;
-              naverProduct.originProduct.stockQuantity = optionValue[0].stock;
-              naverProduct.originProduct.detailAttribute.optionInfo = {
-                optionCombinationSortType: "CREATE",
-                optionCombinationGroupNames,
-                optionCombinations,
-              };
-              naverProduct.originProduct.customerBenefit = {
-                immediateDiscountPolicy: {
-                  discountMethod: {
-                    value: discountPrice,
-                    unitType: "WON",
+              if (naverProduct) {
+                naverProduct.originProduct.salePrice = salePrice;
+                naverProduct.originProduct.stockQuantity = optionValue[0].stock;
+                naverProduct.originProduct.detailAttribute.optionInfo = {
+                  optionCombinationSortType: "CREATE",
+                  optionCombinationGroupNames,
+                  optionCombinations,
+                };
+                naverProduct.originProduct.customerBenefit = {
+                  immediateDiscountPolicy: {
+                    discountMethod: {
+                      value: discountPrice,
+                      unitType: "WON",
+                    },
+                    mobileDiscountMethod: {
+                      value: discountPrice,
+                      unitType: "WON",
+                    },
                   },
-                  mobileDiscountMethod: {
-                    value: discountPrice,
-                    unitType: "WON",
-                  },
-                },
-              };
+                };
 
-              // console.log("naverProduct", naverProduct.originProduct);
+                // console.log("naverProduct", naverProduct.originProduct);
+
+                const updateReponse = await NaverModifyOption({
+                  userID: product.userID,
+                  originProductNo: product.product.naver.originProductNo,
+                  product: naverProduct,
+                });
+
+                if (
+                  updateReponse &&
+                  updateReponse.originProductNo &&
+                  updateReponse.originProductNo.toString() ===
+                    product.product.naver.originProductNo
+                ) {
+                  await Product.findOneAndUpdate(
+                    {
+                      _id: product._id,
+                    },
+                    {
+                      $set: {
+                        options: product.options,
+                      },
+                    }
+                  );
+                }
+
+                console.log("updateReponse", updateReponse);
+                await sleep(1000);
+              }
+            }
+          } else {
+            const naverProduct = await NaverOriginProducts({
+              userID: product.userID,
+              originProductNo: product.product.naver.originProductNo,
+            });
+
+            if (naverProduct) {
+              for (const option of product.options) {
+                option.stock = 0;
+              }
+
+              naverProduct.originProduct.stockQuantity = 0;
+              for (const optionItem of naverProduct.originProduct
+                .detailAttribute.optionInfo.optionCombinations) {
+                optionItem.stockQuantity = 0;
+              }
 
               const updateReponse = await NaverModifyOption({
                 userID: product.userID,
@@ -2014,8 +2132,7 @@ const RakutenPriceSync = async () => {
                 );
               }
 
-              console.log("updateReponse", updateReponse);
-              await sleep(1000);
+              console.log("deleteReponse", updateReponse);
             }
           }
           await sleep(30000);
@@ -2299,7 +2416,7 @@ const getPermutations = function (arr, selectNumber) {
 };
 
 // IherbPriceSync()
-// RakutenPriceSync();
+RakutenPriceSync();
 
 const getVVICItems = async () => {
   try {

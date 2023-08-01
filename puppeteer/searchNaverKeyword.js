@@ -259,47 +259,43 @@ const searchNaver = async ({ keyword, mall }) => {
       }
     );
 
-    const catId = jsObj.props.pageProps.cmpResult.catId;
+    // const catId = jsObj.props.pageProps.cmpResult.catId;
 
-    // const catId = jsObj.cmpResult.catId
+    // let findObj = _.find(list, { category4Id: catId });
 
-    // const list = jsObj.shoppingResult.products
+    // if (!findObj) {
+    //   findObj = _.find(list, { category3Id: catId });
+    // }
+    // if (!findObj) {
+    //   findObj = list[0];
+    // }
 
-    let findObj = _.find(list, { category4Id: catId });
-
-    if (!findObj) {
-      findObj = _.find(list, { category3Id: catId });
-    }
-    if (!findObj) {
-      findObj = list[0];
-    }
-
-    if (findObj) {
+    if (list.length > 0) {
       switch (mall) {
         case "24": // 지마켓
-          return await searchGmarketDetail({ url: findObj.mallProductUrl });
+          return await searchGmarketDetail({ url: list[0].mallProductUrl });
         case "114": // 옥션
-          return await searchAuctionDetail({ url: findObj.mallProductUrl });
+          return await searchAuctionDetail({ url: list[0].mallProductUrl });
         case "3": // 인터파크
-          return await searchInterParkDetail({ url: findObj.mallProductUrl });
+          return await searchInterParkDetail({ url: list[0].mallProductUrl });
         case "197023": // 위메프
-          return await searchWemakeDetail({ url: findObj.mallProductUrl });
+          return await searchWemakeDetail({ url: list[0].mallProductUrl });
         case "221844": // 티몬
-          return await searchTmonDetail({ url: findObj.mallProductUrl });
+          return await searchTmonDetail({ url: list[0].mallProductUrl });
         case "17703": // 11 번가
-          return await search11stDetail({ url: findObj.mallProductUrl });
+          return await search11stDetail({ url: list[0].mallProductUrl });
         default:
           break;
       }
       return {
-        category1Name: findObj.category1Name,
-        category2Name: findObj.category2Name,
-        category3Name: findObj.category3Name,
-        category4Name: findObj.category4Name,
-        category1Code: findObj.category1Id,
-        category2Code: findObj.category2Id,
-        category3Code: findObj.category3Id,
-        category4Code: findObj.category4Id,
+        category1Name: list[0].category1Name,
+        category2Name: list[0].category2Name,
+        category3Name: list[0].category3Name,
+        category4Name: list[0].category4Name,
+        category1Code: list[0].category1Id,
+        category2Code: list[0].category2Id,
+        category3Code: list[0].category3Id,
+        category4Code: list[0].category4Id,
       };
     } else {
       return null;

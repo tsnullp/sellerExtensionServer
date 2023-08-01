@@ -132,24 +132,27 @@ const start = async ({ url, userID, keyword }) => {
                 ObjItem.brand = keyword;
               }
 
-              let category = null;
-              const $ = cheerio.load(iconv.decode(content.data, "EUC-JP"));
-              let categoryWord = $(".normal_reserve_catch_copy").text();
-              if (categoryWord && categoryWord.length > 0) {
-                categoryWord = await papagoTranslate(
-                  categoryWord,
-                  "auto",
-                  "ko"
-                );
+              // let category = null;
+              // const $ = cheerio.load(iconv.decode(content.data, "EUC-JP"));
+              // let categoryWord = $(".normal_reserve_catch_copy").text();
+              // if (categoryWord && categoryWord.length > 0) {
+              //   categoryWord = await papagoTranslate(
+              //     categoryWord,
+              //     "auto",
+              //     "ko"
+              //   );
 
-                category = await searchNaverKeyword({
-                  title: categoryWord,
-                });
-              } else {
-                category = await searchNaverKeyword({
-                  title: ObjItem.korTitle,
-                });
-              }
+              //   category = await searchNaverKeyword({
+              //     title: categoryWord,
+              //   });
+              // } else {
+              //   category = await searchNaverKeyword({
+              //     title: ObjItem.korTitle,
+              //   });
+              // }
+              category = await searchNaverKeyword({
+                title: ObjItem.korTitle,
+              });
 
               if (category) {
                 if (category.category4Code) {
@@ -161,7 +164,13 @@ const start = async ({ url, userID, keyword }) => {
             }
           } else {
             // const titleArray = ObjItem.korTitle.split(" ");
-            // ObjItem.modelName = titleArray[titleArray.length - 1];
+            let modelName = ObjItem.korTitle.match(
+              /[A-Za-z\d]+(?:-[A-Za-z\d]+)+/g
+            );
+            if (modelName && Array.isArray(modelName) && modelName.length > 0) {
+              ObjItem.modelName = modelName[0];
+            }
+
             if (keyword) {
               ObjItem.brand = keyword;
               // let korTitleArrr = [keyword];
@@ -176,34 +185,38 @@ const start = async ({ url, userID, keyword }) => {
               //   .join(" ");
             }
 
-            let category = null;
-            const $ = cheerio.load(iconv.decode(content.data, "EUC-JP"));
+            // let category = null;
+            // const $ = cheerio.load(iconv.decode(content.data, "EUC-JP"));
 
-            let categoryWord = $(".normal_reserve_catch_copy").text();
+            // let categoryWord = $(".normal_reserve_catch_copy").text();
 
-            let categoryWord1 = $(
-              "#pagebody > table > tbody > tr > td > table:nth-child(2) > tbody > tr > td > table > tbody > tr:nth-child(2) > td:nth-child(3) > table:nth-child(2) > tbody > tr > td > table:nth-child(4) > tbody > tr > td > a:nth-child(5)"
-            ).text();
+            // let categoryWord1 = $(
+            //   "#pagebody > table > tbody > tr > td > table:nth-child(2) > tbody > tr > td > table > tbody > tr:nth-child(2) > td:nth-child(3) > table:nth-child(2) > tbody > tr > td > table:nth-child(4) > tbody > tr > td > a:nth-child(5)"
+            // ).text();
 
-            if (categoryWord && categoryWord.length > 0) {
-              categoryWord = await papagoTranslate(categoryWord, "auto", "ko");
-              if (categoryWord1 && categoryWord1.length > 0) {
-                categoryWord1 = await papagoTranslate(
-                  categoryWord1,
-                  "auto",
-                  "ko"
-                );
-                categoryWord = `${categoryWord} ${categoryWord1}`;
-              }
+            // if (categoryWord && categoryWord.length > 0) {
+            //   categoryWord = await papagoTranslate(categoryWord, "auto", "ko");
+            //   if (categoryWord1 && categoryWord1.length > 0) {
+            //     categoryWord1 = await papagoTranslate(
+            //       categoryWord1,
+            //       "auto",
+            //       "ko"
+            //     );
+            //     categoryWord = `${categoryWord} ${categoryWord1}`;
+            //   }
 
-              category = await searchNaverKeyword({
-                title: categoryWord,
-              });
-            } else {
-              category = await searchNaverKeyword({
-                title: ObjItem.korTitle,
-              });
-            }
+            //   category = await searchNaverKeyword({
+            //     title: categoryWord,
+            //   });
+            // } else {
+            //   category = await searchNaverKeyword({
+            //     title: ObjItem.korTitle,
+            //   });
+            // }
+
+            category = await searchNaverKeyword({
+              title: ObjItem.korTitle,
+            });
 
             if (category) {
               if (category.category4Code) {
