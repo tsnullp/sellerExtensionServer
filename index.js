@@ -27,9 +27,11 @@ const findTaobaoDetailAPIsimple = require("./puppeteer/getTaobaoItemAPIsimple");
 const findAliExpressDetailAPIsimple = require("./puppeteer/getAliExpressItemAPisimple");
 const getVVIC = require("./puppeteer/getVVICAPI");
 const getRakuten = require("./puppeteer/getRakutenAPI");
+const getRakutenFashion = require("./puppeteer/getRakutenFashionAPI");
 const getRakutenSimple = require("./puppeteer/getRakutenAPISimple");
 const getStudious = require("./puppeteer/getStudiousAPI");
 const getIssymiyake = require("./puppeteer/getIssymiyakeAPI");
+const getKeen = require("./puppeteer/getKeenAPI");
 const {
   Cafe24ListOrders,
   Cafe24RegisterShipments,
@@ -197,7 +199,10 @@ app.post("/amazon/isRegister", async (req, res) => {
       detailUrl.includes("tmall.com") ||
       detailUrl.includes("aliexpress.com") ||
       detailUrl.includes("item.rakuten.co.jp") ||
-      detailUrl.includes("studious.co.jp")
+      detailUrl.includes("brandavenue.rakuten.co.jp") ||
+      detailUrl.includes("studious.co.jp") ||
+      detailUrl.includes("isseymiyake.com") ||
+      detailUrl.includes("keenfootwear.jp")
     ) {
       product = await Product.findOne({
         userID: ObjectId(userInfo._id),
@@ -298,7 +303,10 @@ app.post("/amazon/isRegisters", async (req, res) => {
         items[0].includes("aliexpress.com") ||
         items[0].includes("vvic.com") ||
         items[0].includes("item.rakuten.co.jp") ||
-        items[0].includes("studious.co.jp")
+        items[0].includes("brandavenue.rakuten.co.jp") ||
+        items[0].includes("studious.co.jp") ||
+        items[0].includes("isseymiyake.com") ||
+        items[0].includes("keenfootwear.jp")
       ) {
         product = await Product.aggregate([
           {
@@ -336,6 +344,12 @@ app.post("/amazon/isRegisters", async (req, res) => {
                 },
                 {
                   "basic.url": { $regex: `.*studious.co.jp.*` },
+                },
+                {
+                  "basic.url": { $regex: `.*isseymiyake.com.*` },
+                },
+                {
+                  "basic.url": { $regex: `.*keenfootwear.jp.*` },
                 },
               ],
             },
@@ -395,7 +409,10 @@ app.post("/amazon/isRegisters", async (req, res) => {
               items[0].includes("aliexpress.com") ||
               items[0].includes("vvic.com") ||
               items[0].includes("item.rakuten.co.jp") ||
-              items[0].includes("studious.co.jp")
+              items[0].includes("brandavenue.rakuten.co.jp") ||
+              items[0].includes("studious.co.jp") ||
+              items[0].includes("isseymiyake.com") ||
+              items[0].includes("keenfootwear.jp")
             ) {
               return pItem.basic.good_id === asin;
             } else {
@@ -645,6 +662,7 @@ app.post("/amazon/getCollectionItem", async (req, res) => {
       },
     ]);
 
+    console.time("1111");
     const tempArr = await TempProduct.aggregate([
       {
         $match: {
@@ -654,33 +672,74 @@ app.post("/amazon/getCollectionItem", async (req, res) => {
       },
     ]);
 
+    console.timeEnd("1111");
+    console.time("2222");
     const productArr = [];
-    for (const item of products) {
-      let isRegister = false;
-      for (const rItem of registerProducts) {
-        if (
-          rItem.options.filter((fItem) => fItem.key === item.asin).length > 0
-        ) {
-          isRegister = true;
-          break;
-        }
-        if (rItem.basic.good_id === item.asin) {
-          isRegister = true;
-          break;
-        }
-      }
-      if (!isRegister) {
-        const temp = tempArr.filter((fItem) => fItem.good_id === item.asin);
-        if (temp.length > 0) {
-          item.isDone = true;
-          if (temp[0].options.length === 0) {
-            item.isFail = true;
-          }
-        }
 
-        productArr.push(item);
-      }
-    }
+    const promiseArr = products.map((item) => {
+      return new Promise(async (resolve, reject) => {
+        try {
+          let isRegister = false;
+          for (const rItem of registerProducts) {
+            if (
+              rItem.options.filter((fItem) => fItem.key === item.asin).length >
+              0
+            ) {
+              isRegister = true;
+              break;
+            }
+            if (rItem.basic.good_id === item.asin) {
+              isRegister = true;
+              break;
+            }
+          }
+          if (!isRegister) {
+            const temp = tempArr.filter((fItem) => fItem.good_id === item.asin);
+            if (temp.length > 0) {
+              item.isDone = true;
+              if (temp[0].options.length === 0) {
+                item.isFail = true;
+              }
+            }
+
+            productArr.push(item);
+          }
+          resolve();
+        } catch (e) {
+          reject(e);
+        }
+      });
+    });
+
+    await Promise.all(productArr);
+    // for (const item of products) {
+    //   let isRegister = false;
+    //   for (const rItem of registerProducts) {
+    //     if (
+    //       rItem.options.filter((fItem) => fItem.key === item.asin).length > 0
+    //     ) {
+    //       isRegister = true;
+    //       break;
+    //     }
+    //     if (rItem.basic.good_id === item.asin) {
+    //       isRegister = true;
+    //       break;
+    //     }
+    //   }
+    //   if (!isRegister) {
+    //     const temp = tempArr.filter((fItem) => fItem.good_id === item.asin);
+    //     if (temp.length > 0) {
+    //       item.isDone = true;
+    //       if (temp[0].options.length === 0) {
+    //         item.isFail = true;
+    //       }
+    //     }
+
+    //     productArr.push(item);
+    //   }
+    // }
+    console.timeEnd("2222");
+
     res.json(
       productArr.map((item) => {
         return {
@@ -742,7 +801,8 @@ app.post("/amazon/collectionItems", async (req, res) => {
               item.detailUrl.includes("taobao.com") ||
               item.detailUrl.includes("tmall.com") ||
               item.detailUrl.includes("vvic.com") ||
-              item.detailUrl.includes("item.rakuten.co.jp")
+              item.detailUrl.includes("item.rakuten.co.jp") ||
+              item.detailUrl.includes("brandavenue.rakuten.co.jp")
             ) {
               product = await Product.findOne({
                 userID: ObjectId(userInfo._id),
@@ -809,7 +869,7 @@ app.post("/amazon/collectionItems", async (req, res) => {
                   }
                 } else if (item.detailUrl.includes("iherb.com")) {
                   // 아이허브
-                  console.log("item.detailUrl", item.detailUrl);
+
                   const asin = AmazonAsin(item.detailUrl);
                   if (!asin) {
                     continue;
@@ -1134,6 +1194,80 @@ app.post("/amazon/collectionItems", async (req, res) => {
                   } else {
                     console.log("옵션 없음", item.detailUrl);
                   }
+                } else if (
+                  item.detailUrl.includes("brandavenue.rakuten.co.jp")
+                ) {
+                  const asin = AmazonAsin(item.detailUrl);
+                  if (!asin) {
+                    console.log("asin 없음");
+                    continue;
+                  }
+
+                  let detailItem = await getRakutenFashion({
+                    url: item.detailUrl,
+                    userID: userInfo._id,
+                    keyword: item.keyword,
+                  });
+                  // console.log("detailItem -- ", detailItem);
+                  if (!detailItem) {
+                    await AmazonCollection.findOneAndUpdate(
+                      {
+                        userID: ObjectId(userInfo._id),
+                        asin,
+                      },
+                      {
+                        $set: {
+                          isDelete: true,
+                          lastUpdate: moment().toDate(),
+                        },
+                      },
+                      {
+                        upsert: true,
+                      }
+                    );
+                  } else if (
+                    detailItem &&
+                    detailItem.options &&
+                    detailItem.options.length > 0 &&
+                    detailItem.options.length !==
+                      detailItem.options.filter((item) => item.stock === 0)
+                        .length
+                  ) {
+                    await TempProduct.findOneAndUpdate(
+                      {
+                        userID: ObjectId(userInfo._id),
+                        good_id: detailItem.good_id,
+                      },
+                      {
+                        $set: {
+                          userID: ObjectId(userInfo._id),
+                          categoryID: detailItem.categoryID,
+                          good_id: detailItem.good_id,
+                          brand: detailItem.brand,
+                          manufacture: detailItem.manufacture,
+                          modelName: detailItem.modelName,
+                          title: detailItem.title,
+                          keyword: detailItem.keyword,
+                          mainImages: detailItem.mainImages,
+                          price: detailItem.price,
+                          salePrice: detailItem.salePrice,
+                          html: detailItem.html,
+                          content: detailItem.content,
+                          options: detailItem.options,
+                          detailUrl: item.detailUrl,
+                          korTitle: detailItem.korTitle,
+                          prop: detailItem.prop,
+                          lastUpdate: moment().toDate(),
+                        },
+                      },
+                      {
+                        upsert: true,
+                        new: true,
+                      }
+                    );
+                  } else {
+                    console.log("옵션 없음", item.detailUrl);
+                  }
                 } else if (item.detailUrl.includes("studious.co.jp/shop")) {
                   const asin = AmazonAsin(item.detailUrl);
                   if (!asin) {
@@ -1256,6 +1390,78 @@ app.post("/amazon/collectionItems", async (req, res) => {
                           brand: detailItem.brand,
                           manufacture: detailItem.manufacture,
                           // modelName: detailItem.modelName,
+                          title: detailItem.title,
+                          keyword: detailItem.keyword,
+                          mainImages: detailItem.mainImages,
+                          price: detailItem.price,
+                          salePrice: detailItem.salePrice,
+                          html: detailItem.html,
+                          content: detailItem.content,
+                          options: detailItem.options,
+                          detailUrl: item.detailUrl,
+                          korTitle: detailItem.korTitle,
+                          prop: detailItem.prop,
+                          lastUpdate: moment().toDate(),
+                        },
+                      },
+                      {
+                        upsert: true,
+                        new: true,
+                      }
+                    );
+                  } else {
+                    console.log("옵션 없음", item.detailUrl);
+                  }
+                } else if (item.detailUrl.includes("keenfootwear.jp")) {
+                  const asin = AmazonAsin(item.detailUrl);
+                  if (!asin) {
+                    console.log("asin 없음");
+                    continue;
+                  }
+
+                  let detailItem = await getKeen({
+                    url: item.detailUrl,
+                    userID: userInfo._id,
+                    keyword: item.keyword,
+                  });
+
+                  if (!detailItem) {
+                    await AmazonCollection.findOneAndUpdate(
+                      {
+                        userID: ObjectId(userInfo._id),
+                        asin,
+                      },
+                      {
+                        $set: {
+                          isDelete: true,
+                          lastUpdate: moment().toDate(),
+                        },
+                      },
+                      {
+                        upsert: true,
+                      }
+                    );
+                  } else if (
+                    detailItem &&
+                    detailItem.options &&
+                    detailItem.options.length > 0 &&
+                    detailItem.options.length !==
+                      detailItem.options.filter((item) => item.stock === 0)
+                        .length
+                  ) {
+                    await TempProduct.findOneAndUpdate(
+                      {
+                        userID: ObjectId(userInfo._id),
+                        good_id: detailItem.good_id,
+                      },
+                      {
+                        $set: {
+                          userID: ObjectId(userInfo._id),
+                          categoryID: detailItem.categoryID,
+                          good_id: detailItem.good_id,
+                          brand: detailItem.brand,
+                          manufacture: detailItem.manufacture,
+                          modelName: detailItem.modelName,
                           title: detailItem.title,
                           keyword: detailItem.keyword,
                           mainImages: detailItem.mainImages,
@@ -1897,11 +2103,15 @@ const RakutenPriceSync = async () => {
             $or: [
               {
                 "basic.url": { $regex: `.*item.rakuten.co.jp.*` },
+                // "basic.url": {
+                //   $regex: `.*item.rakuten.co.jp/naturum/3422832.*`,
+                // },
               },
             ],
           },
         },
       ]);
+
       for (const product of products) {
         try {
           console.log("product 상품명 ", product.product.korTitle);
@@ -1911,7 +2121,12 @@ const RakutenPriceSync = async () => {
             userID: product.userID,
           });
           // console.log("response", response);
-          if (response && response.options && Array.isArray(response.options)) {
+          if (
+            response &&
+            response.options &&
+            Array.isArray(response.options) &&
+            response.options.length > 0
+          ) {
             let changePrice = false;
             let changeStock = false;
             for (const option of response.options) {
@@ -2041,6 +2256,7 @@ const RakutenPriceSync = async () => {
                 originProductNo: product.product.naver.originProductNo,
               });
               if (naverProduct) {
+                naverProduct.originProduct.statusType = "SALE";
                 naverProduct.originProduct.salePrice = salePrice;
                 naverProduct.originProduct.stockQuantity = optionValue[0].stock;
                 naverProduct.originProduct.detailAttribute.optionInfo = {
@@ -2103,11 +2319,13 @@ const RakutenPriceSync = async () => {
               }
 
               naverProduct.originProduct.stockQuantity = 0;
+              naverProduct.originProduct.statusType = "SUSPENSION";
+
               for (const optionItem of naverProduct.originProduct
                 .detailAttribute.optionInfo.optionCombinations) {
                 optionItem.stockQuantity = 0;
               }
-
+              // console.log("naverProduct", naverProduct);
               const updateReponse = await NaverModifyOption({
                 userID: product.userID,
                 originProductNo: product.product.naver.originProductNo,
@@ -2135,7 +2353,7 @@ const RakutenPriceSync = async () => {
               console.log("deleteReponse", updateReponse);
             }
           }
-          await sleep(30000);
+          await sleep(5000);
         } catch (e) {
           console.log("eeeee", e);
         }

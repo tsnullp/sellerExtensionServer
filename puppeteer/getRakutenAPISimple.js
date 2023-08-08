@@ -212,7 +212,7 @@ const start = async ({ url, userID }) => {
       }
     } catch (e) {}
   } catch (e) {
-    console.log("findRakutenAPISimple - ", e);
+    // console.log("findRakutenAPISimple - ", e);
     return null;
   } finally {
     return {

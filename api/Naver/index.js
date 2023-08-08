@@ -275,7 +275,7 @@ exports.NaverModifyOption = async ({ userID, originProductNo, product }) => {
     return response.data;
   } catch (e) {
     console.log("NaverModifyOption e", e.response.data);
-    console.log("originProductNo", JSON.stringify(product));
+    // console.log("originProductNo", JSON.stringify(product));
   }
 };
 

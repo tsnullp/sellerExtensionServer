@@ -45,6 +45,7 @@ const start = async ({ url, userID, keyword }) => {
 
           const {
             shopId,
+            manageNumber,
             itemId,
             title,
             media,
@@ -227,8 +228,41 @@ const start = async ({ url, userID, keyword }) => {
             }
           }
 
-          ObjItem.content = media.images.map((item) => item.location);
-          ObjItem.mainImages = [ObjItem.content[0]];
+          if (shopId === "385909") {
+            try {
+              // 무인양품
+              let content = await axios({
+                url: `https://www.muji.com/jp/ja/store/cacheProxy2/product-details/${manageNumber}`,
+                method: "GET",
+                headers: {
+                  // "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+                  "Accept-Language":
+                    "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7,zh;q=0.6", // 원하는 압축 방식 명시
+                },
+                responseEncoding: "binary",
+              });
+
+              // console.log("content.data", content.data);
+              ObjItem.content = content.data.data.itemImages.map(
+                (item) => item.imageUrl
+              );
+              ObjItem.mainImages = [ObjItem.content[0]];
+              ObjItem.brand = "무인양품";
+              let modelNames = content.data.data.itemStandardName.split("：");
+              if (modelNames.length > 1) {
+                ObjItem.modelName = modelNames[1].trim();
+              } else {
+                ObjItem.modelName = content.data.data.storeJanCode;
+              }
+            } catch (e) {
+              ObjItem.brand = "무인양품";
+              ObjItem.content = media.images.map((item) => item.location);
+              ObjItem.mainImages = [ObjItem.content[0]];
+            }
+          } else {
+            ObjItem.content = media.images.map((item) => item.location);
+            ObjItem.mainImages = [ObjItem.content[0]];
+          }
 
           if (pcFields && pcFields.productDescription) {
             const weight = extractWeight(pcFields.productDescription);

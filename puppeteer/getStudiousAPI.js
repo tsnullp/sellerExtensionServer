@@ -259,7 +259,7 @@ const start = async ({ url, userID, keyword }) => {
       });
     }
   } catch (e) {
-    console.log("findRakutenAPI - ", e);
+    console.log("findStudiousAPI - ", e);
   } finally {
     return {
       ...ObjItem,
