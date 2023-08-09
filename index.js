@@ -2256,6 +2256,7 @@ const RakutenPriceSync = async () => {
                 originProductNo: product.product.naver.originProductNo,
               });
               if (naverProduct) {
+                delete naverProduct.originProduct.detailContent;
                 naverProduct.originProduct.statusType = "SALE";
                 naverProduct.originProduct.salePrice = salePrice;
                 naverProduct.originProduct.stockQuantity = optionValue[0].stock;
