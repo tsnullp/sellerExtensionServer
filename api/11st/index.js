@@ -452,7 +452,7 @@ exports.get11stProduct = async ({
           return {
             useYn: "Y",
             colOptPrice:
-              Math.ceil(item.salePrice * 0.1) * 10 - salePrice - deli_pri_11st,
+              Math.ceil(item.salePrice * 0.1) * 10 - salePrice + deli_pri_11st,
             // Math.ceil((item.salePrice - minPrice - deli_pri_11st) * 0.1) * 10,
             colValue0:
               item.korKey && item.korKey.length > 0

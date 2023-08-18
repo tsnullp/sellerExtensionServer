@@ -27,8 +27,8 @@ const updateNaver = async ({
   const maxOption = _.maxBy(options, "salePrice");
 
   const salePrice =
-    (minOption.salePrice + maxOption.salePrice - deli_pri_naver) * 2; // 판매가
-  const discountPrice = salePrice - minOption.salePrice - deli_pri_naver; // 판매가 - 최저가
+    (minOption.salePrice + maxOption.salePrice + deli_pri_naver) * 2; // 판매가
+  const discountPrice = salePrice - minOption.salePrice + deli_pri_naver; // 판매가 - 최저가
   console.log("salePrice", salePrice);
   console.log("discountPrice", discountPrice);
   const optionValue = options.filter((item) => item.active && !item.disabled);
@@ -72,7 +72,7 @@ const updateNaver = async ({
       if (Object.keys(combinationValue).length > 0) {
         combinationValue.stockQuantity = item.stock; //재고
         combinationValue.price =
-          item.salePrice - minOption.salePrice - deli_pri_naver;
+          item.salePrice - minOption.salePrice + deli_pri_naver;
         optionCombinations.push(combinationValue);
       }
     }

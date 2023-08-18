@@ -108,7 +108,7 @@ const updateCoupang = async ({
       .filter((item) => item.length > 0 && item.length < 20)
       .map((item) => regExp_test(item));
 
-    const salePrice = options[0].salePrice - deli_pri_cupang;
+    const salePrice = options[0].salePrice + deli_pri_cupang;
 
     let minSalePrice = salePrice;
     options
@@ -116,7 +116,7 @@ const updateCoupang = async ({
       .filter((i, index) => index < 100)
       .map((item) => {
         if (item.salePrice < minSalePrice) {
-          minSalePrice = item.salePrice - deli_pri_cupang;
+          minSalePrice = item.salePrice + deli_pri_cupang;
         }
       });
 
@@ -248,7 +248,7 @@ const updateCoupang = async ({
                 : item.coupang.vendorItemId,
               itemName: item.korKey ? item.korKey : item.korValue, //업체상품옵션명
               originalPrice: item.productPrice, //할인율기준가 (정가표시)
-              salePrice: item.salePrice - deli_pri_cupang, //판매가격
+              salePrice: item.salePrice + deli_pri_cupang, //판매가격
               maximumBuyCount: item.stock, //판매가능수량
               maximumBuyForPerson: coupang.maximumBuyForPerson, // 인당 최대 구매 수량
               maximumBuyForPersonPeriod: coupang.maximumBuyForPersonPeriod, // 최대 구매 수량 기간
@@ -543,7 +543,7 @@ const updateCoupang = async ({
           return {
             itemName: item.korKey ? item.korKey : item.korValue, //업체상품옵션명
             originalPrice: item.productPrice, //할인율기준가 (정가표시)
-            salePrice: item.salePrice - deli_pri_cupang, //판매가격
+            salePrice: item.salePrice + deli_pri_cupang, //판매가격
             maximumBuyCount: item.stock, //판매가능수량
             maximumBuyForPerson: coupang.maximumBuyForPerson, // 인당 최대 구매 수량
             maximumBuyForPersonPeriod: coupang.maximumBuyForPersonPeriod, // 최대 구매 수량 기간

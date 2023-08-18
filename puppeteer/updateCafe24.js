@@ -218,28 +218,26 @@ const updateCafe24 = async ({
       ) {
         price =
           SplitOptions.filter((item) => item.active && !item.disabled)[0]
-            .salePrice - deli_pri_emsplus;
+            .salePrice + deli_pri_emsplus;
         retail_price =
           SplitOptions.filter((item) => item.active && !item.disabled)[0]
-            .productPrice - deli_pri_emsplus;
+            .productPrice + deli_pri_emsplus;
       } else {
         price =
           SplitOptions.filter(
             (item) => item.active && !item.disabled && item.base
-          )[0].salePrice - deli_pri_emsplus;
+          )[0].salePrice + deli_pri_emsplus;
         retail_price =
           SplitOptions.filter(
             (item) => item.active && !item.disabled && item.base
-          )[0].productPrice - deli_pri_emsplus;
+          )[0].productPrice + deli_pri_emsplus;
       }
 
       if (!price) {
-        price = SplitOptions[0].salePrice - deli_pri_emsplus;
-        retail_price = SplitOptions[0].productPrice - deli_pri_emsplus;
+        price = SplitOptions[0].salePrice + deli_pri_emsplus;
+        retail_price = SplitOptions[0].productPrice = deli_pri_emsplus;
       }
-      console.log("price -----------", price);
 
-      console.log("SplitOptions[0]", SplitOptions[0]);
       if (!price) {
         return {
           message: "판매가 없음",
@@ -870,7 +868,7 @@ const updateCafe24 = async ({
               // custom_variant_code: options[index].key,
               display: "T",
               selling: "T",
-              additional_amount: item.salePrice - deli_pri_emsplus - price,
+              additional_amount: item.salePrice + deli_pri_emsplus - price,
               quantity: item.stock,
               use_inventory: "T",
               important_inventory: "A",
