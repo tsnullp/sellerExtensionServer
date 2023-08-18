@@ -3122,7 +3122,7 @@ app.post("/seller/product", async (req, res) => {
   // 타오바오 상세이미지[String]
   // 옵션 [key,value,image,stock,price]
 
-  console.log("req.body", req.body);
+  // console.log("req.body", req.body);
   try {
     if (!req.body.email) {
       console.log("email 없습니다.");

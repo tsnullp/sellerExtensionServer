@@ -23,13 +23,16 @@ const updateNaver = async ({
     smartstoreChannelProductNo: null,
     message: null,
   };
+
+  const optionValue = options.filter(
+    (item) => item.active && !item.disabled && item.stock > 0
+  );
+
   const minOption = _.minBy(options, "salePrice");
   const maxOption = _.maxBy(options, "salePrice");
 
   const salePrice = (minOption.salePrice + maxOption.salePrice) * 2; // 판매가
   const discountPrice = salePrice - minOption.salePrice; // 판매가 - 최저가
-
-  const optionValue = options.filter((item) => item.active && !item.disabled);
 
   let optionCombinationGroupNames = {};
   let optionCombinations = [];
@@ -92,9 +95,8 @@ const updateNaver = async ({
     });
   }
 
-  optionCombinations = optionCombinations.filter(
-    (item) => item.stockQuantity > 0
-  );
+  console.log("optionCombinationGroupNames", optionCombinationGroupNames);
+  console.log("optionCombinations", optionCombinations);
   const basicInfo = await Basic.findOne({
     userID,
   });
