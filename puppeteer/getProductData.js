@@ -58,7 +58,7 @@ const getData = async ({
       if (item.korValue.length > 25) {
         duplication = true;
       }
-      console.log("item---> ", item);
+
       if (
         item.attributes.filter(
           (attrItem) => attrItem.attributeValueName.length > 30

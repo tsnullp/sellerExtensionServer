@@ -3229,7 +3229,8 @@ app.post("/seller/product", async (req, res) => {
       user = user2._id;
       writerID = user1._id;
     }
-    console.log("네이버 ===== ");
+
+    console.log("req.body.options --- ", JSON.stringify(req.body.options));
     const objItem = await getProductData({
       userID: user,
       url: req.body.url,
@@ -3243,7 +3244,7 @@ app.post("/seller/product", async (req, res) => {
       isClothes: req.body.isClothes === "Y" ? true : false,
       isShoes: req.body.isShoes === "Y" ? true : false,
     });
-    console.log("쿠팡 ===== ");
+
     const coupangObjItem = await getProductData({
       userID: user,
       url: req.body.url,
