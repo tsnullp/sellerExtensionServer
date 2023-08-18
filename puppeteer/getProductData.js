@@ -374,7 +374,11 @@ const getShippingInfo = async ({ userID }) => {
     }
     const returnShippingCenter = await ReturnShippingCenter({ userID });
 
-    if (returnShippingCenter && returnShippingCenter.data.content.length > 0) {
+    if (
+      returnShippingCenter &&
+      returnShippingCenter.data.content &&
+      returnShippingCenter.data.content.length > 0
+    ) {
       const temp = returnShippingCenter.data.content.filter(
         (item) => item.usable === true
       );
