@@ -97,8 +97,6 @@ const updateNaver = async ({
     });
   }
 
-  console.log("optionCombinationGroupNames", optionCombinationGroupNames);
-  console.log("optionCombinations", optionCombinations);
   const basicInfo = await Basic.findOne({
     userID,
   });
@@ -279,10 +277,10 @@ const updateNaver = async ({
     },
   };
 
-  // console.log(
-  //   "requestBody",
-  //   JSON.stringify(prouuctBody.originProduct, null, 2)
-  // );
+  console.log(
+    "requestBody",
+    JSON.stringify(prouuctBody.originProduct, null, 2)
+  );
 
   const response = await NaverCreateProduct({ userID, productBody });
   // console.log("response", response);
