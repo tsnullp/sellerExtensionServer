@@ -3292,7 +3292,7 @@ app.post("/seller/product", async (req, res) => {
 
     const product = {
       exchange: req.body.exchange || 0,
-      weihtPrice: objItem.options[0].weihtPrice,
+      weightPrice: objItem.options[0].weightPrice,
       profit: objItem.options[0].margin,
       good_id: objItem.good_id,
       korTitle: objItem.korTitle,
@@ -3340,7 +3340,7 @@ app.post("/seller/product", async (req, res) => {
 
     const coupangProduct = {
       exchange: req.body.exchange || 0,
-      weihtPrice: coupangObjItem.options[0].weihtPrice,
+      weightPrice: coupangObjItem.options[0].weightPrice,
       profit: coupangObjItem.options[0].margin,
       good_id: coupangObjItem.good_id,
       korTitle: coupangObjItem.korTitle,
@@ -3423,7 +3423,7 @@ app.post("/seller/product", async (req, res) => {
 
     const sk11stProduct = {
       exchange: req.body.exchange || 0,
-      weihtPrice: sk11stObjItem.options[0].weihtPrice,
+      weightPrice: sk11stObjItem.options[0].weightPrice,
       profit: sk11stObjItem.options[0].margin,
       good_id: sk11stObjItem.good_id,
       korTitle: sk11stObjItem.korTitle,
@@ -3480,7 +3480,7 @@ app.post("/seller/product", async (req, res) => {
 
     const emsplusProduct = {
       exchange: req.body.exchange || 0,
-      weihtPrice: emsplusObjItem.options[0].weihtPrice,
+      weightPrice: emsplusObjItem.options[0].weightPrice,
       profit: emsplusObjItem.options[0].margin,
       good_id: emsplusObjItem.good_id,
       korTitle: emsplusObjItem.korTitle,
