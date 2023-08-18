@@ -279,7 +279,7 @@ const updateNaver = async ({
 
   console.log(
     "requestBody",
-    JSON.stringify(prouuctBody.originProduct, null, 2)
+    JSON.stringify(productBody.originProduct, null, 2)
   );
 
   const response = await NaverCreateProduct({ userID, productBody });
