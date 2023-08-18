@@ -25,6 +25,12 @@ const updateNaver = async ({
   };
   const minOption = _.minBy(options, "salePrice");
   const maxOption = _.maxBy(options, "salePrice");
+  console.log(
+    "minOption.salePrice + maxOption.salePrice + deli_pri_naver",
+    minOption.salePrice,
+    maxOption.salePrice,
+    deli_pri_naver
+  );
 
   const salePrice =
     (minOption.salePrice + maxOption.salePrice + deli_pri_naver) * 2; // 판매가
