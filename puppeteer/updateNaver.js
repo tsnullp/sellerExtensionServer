@@ -92,7 +92,9 @@ const updateNaver = async ({
     });
   }
 
-  console.log("optionCombinations --- ", optionCombinations);
+  optionCombinations = optionCombinations.filter(
+    (item) => item.stockQuantity > 0
+  );
   const basicInfo = await Basic.findOne({
     userID,
   });
