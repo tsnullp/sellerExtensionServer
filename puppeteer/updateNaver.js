@@ -28,8 +28,8 @@ const updateNaver = async ({
     (item) => item.active && !item.disabled && item.stock > 0
   );
 
-  const minOption = _.minBy(options, "salePrice");
-  const maxOption = _.maxBy(options, "salePrice");
+  const minOption = _.minBy(optionValue, "salePrice");
+  const maxOption = _.maxBy(optionValue, "salePrice");
 
   const salePrice = (minOption.salePrice + maxOption.salePrice) * 2; // 판매가
   const discountPrice = salePrice - minOption.salePrice; // 판매가 - 최저가
@@ -277,10 +277,10 @@ const updateNaver = async ({
     },
   };
 
-  console.log(
-    "requestBody",
-    JSON.stringify(productBody.originProduct, null, 2)
-  );
+  // console.log(
+  //   "requestBody",
+  //   JSON.stringify(productBody.originProduct, null, 2)
+  // );
 
   const response = await NaverCreateProduct({ userID, productBody });
   // console.log("response", response);
