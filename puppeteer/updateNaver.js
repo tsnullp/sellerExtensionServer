@@ -28,9 +28,9 @@ const updateNaver = async ({
 
   const salePrice = (minOption.salePrice + maxOption.salePrice) * 2; // 판매가
   const discountPrice = salePrice - minOption.salePrice; // 판매가 - 최저가
-  console.log("options", options);
+
   const optionValue = options.filter((item) => item.active && !item.disabled);
-  console.log("optionValue", optionValue);
+
   let optionCombinationGroupNames = {};
   let optionCombinations = [];
   if (
@@ -91,6 +91,8 @@ const updateNaver = async ({
       };
     });
   }
+
+  console.log("optionCombinations --- ", optionCombinations);
   const basicInfo = await Basic.findOne({
     userID,
   });
