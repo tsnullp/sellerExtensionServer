@@ -3335,7 +3335,7 @@ app.post("/seller/product", async (req, res) => {
       return {
         ...item,
         active: true,
-        desabled: false,
+        disabled: false,
       };
     });
 
@@ -3379,7 +3379,7 @@ app.post("/seller/product", async (req, res) => {
       return {
         ...item,
         active: true,
-        desabled: false,
+        disabled: false,
       };
     });
 
@@ -3461,7 +3461,7 @@ app.post("/seller/product", async (req, res) => {
       return {
         ...item,
         active: true,
-        desabled: false,
+        disabled: false,
       };
     });
 
@@ -3519,7 +3519,7 @@ app.post("/seller/product", async (req, res) => {
       return {
         ...item,
         active: true,
-        desabled: false,
+        disabled: false,
       };
     });
 
