@@ -25,17 +25,10 @@ const updateNaver = async ({
   };
   const minOption = _.minBy(options, "salePrice");
   const maxOption = _.maxBy(options, "salePrice");
-  console.log(
-    "minOption.salePrice + maxOption.salePrice + deli_pri_naver",
-    minOption.salePrice,
-    maxOption.salePrice,
-    deli_pri_naver
-  );
 
   const salePrice = (minOption.salePrice + maxOption.salePrice) * 2; // 판매가
   const discountPrice = salePrice - minOption.salePrice; // 판매가 - 최저가
-  console.log("salePrice", salePrice);
-  console.log("discountPrice", discountPrice);
+  console.log("options", options);
   const optionValue = options.filter((item) => item.active && !item.disabled);
 
   let optionCombinationGroupNames = {};
