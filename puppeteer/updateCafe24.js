@@ -237,7 +237,9 @@ const updateCafe24 = async ({
         price = SplitOptions[0].salePrice - deli_pri_emsplus;
         retail_price = SplitOptions[0].productPrice - deli_pri_emsplus;
       }
-      // console.log("price", price);
+      console.log("price -----------", price);
+
+      console.log("SplitOptions[0]", SplitOptions[0]);
       if (!price) {
         return {
           message: "판매가 없음",
