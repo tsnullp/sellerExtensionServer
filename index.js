@@ -3230,7 +3230,7 @@ app.post("/seller/product", async (req, res) => {
       writerID = user1._id;
     }
 
-    console.log("req.body.options --- ", JSON.stringify(req.body.options));
+    // console.log("req.body.options --- ", JSON.stringify(req.body.options));
     const objItem = await getProductData({
       userID: user,
       url: req.body.url,
@@ -3474,7 +3474,7 @@ app.post("/seller/product", async (req, res) => {
       mainImages: req.body.mainImages || [],
       content: req.body.content || [],
       prop: req.body.prop || null,
-      options: req.body.options.sk11st || [],
+      options: req.body.options.emsplus || [],
       isClothes: req.body.isClothes === "Y" ? true : false,
       isShoes: req.body.isShoes === "Y" ? true : false,
     });
