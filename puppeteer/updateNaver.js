@@ -236,7 +236,7 @@ const updateNaver = async ({
           };
         }),
         seoInfo: {
-          pageTitle: product.korTitle.replace(/[\\*?"<>]/g, ""),
+          pageTitle: product.pageTitle.replace(/[\\*?"<>]/g, ""),
           metaDescription: product.korTitle.replace(/[\\*?"<>]/g, ""),
           sellerTags: _.uniqBy(tag, "code")
             .filter((item, i) => i < 10)

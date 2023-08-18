@@ -816,7 +816,7 @@ app.post("/amazon/collectionItems", async (req, res) => {
                 isDelete: false,
               });
             }
-
+            // console.log("product==", product);
             if (!product) {
               const tempProduct = await TempProduct.findOne({
                 userID: ObjectId(userInfo._id),
@@ -2071,7 +2071,9 @@ app.post("/taobao/getSimbaUrl", async (req, res) => {
 
 const RakutenPriceSync = async () => {
   const SyncFun = async () => {
-    while (true) {
+    let isFirst = true;
+    while (isFirst) {
+      isFirst = false;
       const excahgeRate = await ExchangeRate.aggregate([
         {
           $match: {
@@ -2110,6 +2112,11 @@ const RakutenPriceSync = async () => {
             ],
           },
         },
+        {
+          $sort: {
+            _id: -1,
+          },
+        },
       ]);
 
       for (const product of products) {
@@ -2137,6 +2144,9 @@ const RakutenPriceSync = async () => {
                 // console.log("재고", findOption.stock, option.stock);
 
                 // console.log("111", exchange);
+
+                findOption.margin = 20;
+
                 let salePrice =
                   Math.ceil(
                     ((option.price * exchange +
@@ -2162,7 +2172,7 @@ const RakutenPriceSync = async () => {
                 // await sleep(1000);
               } catch (e) {}
             }
-
+            changePrice = true;
             if (changePrice || changeStock) {
               const minOption = _.minBy(product.options, "salePrice");
               const maxOption = _.maxBy(product.options, "salePrice");
@@ -2255,7 +2265,28 @@ const RakutenPriceSync = async () => {
                 userID: product.userID,
                 originProductNo: product.product.naver.originProductNo,
               });
+
+              // console.log("naverProduct", naverProduct.originProduct);
+
               if (naverProduct) {
+                if (
+                  naverProduct.originProduct.detailAttribute
+                    .naverShoppingSearchInfo
+                ) {
+                  let brand =
+                    naverProduct.originProduct.detailAttribute
+                      .naverShoppingSearchInfo.brandName;
+                  let modelName =
+                    naverProduct.originProduct.detailAttribute
+                      .naverShoppingSearchInfo.modelName;
+                  if (brand && modelName) {
+                    naverProduct.originProduct.detailAttribute.seoInfo.pageTitle = `${brand} ${modelName}`;
+                  } else if (brand) {
+                    naverProduct.originProduct.detailAttribute.seoInfo.pageTitle =
+                      brand;
+                  }
+                }
+
                 delete naverProduct.originProduct.detailContent;
                 naverProduct.originProduct.statusType = "SALE";
                 naverProduct.originProduct.salePrice = salePrice;
@@ -2354,12 +2385,12 @@ const RakutenPriceSync = async () => {
               console.log("deleteReponse", updateReponse);
             }
           }
-          await sleep(5000);
+          await sleep(2000);
         } catch (e) {
           console.log("eeeee", e);
         }
       }
-      console.log("끝----");
+      console.log("---- 끝 ----");
       await sleep(10000);
     }
   };
@@ -3293,6 +3324,10 @@ app.post("/seller/product", async (req, res) => {
       weightPrice: objItem.options[0].weightPrice || 0,
       korTitleArray: req.body.korTitle.coupang,
       deliveryFee: req.body.delivery,
+      pageTitle:
+        req.body.page_title && req.body.page_title.length > 0
+          ? req.body.page_title
+          : objItem.korTitle,
     };
     const prop = objItem.prop;
     const options = objItem.options.map((item) => {
