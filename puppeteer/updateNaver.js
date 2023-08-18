@@ -73,6 +73,7 @@ const updateNaver = async ({
       if (Object.keys(combinationValue).length > 0) {
         combinationValue.stockQuantity = item.stock; //재고
         combinationValue.price = item.salePrice - minOption.salePrice;
+        combinationValue.usable = true;
         optionCombinations.push(combinationValue);
       }
     }
@@ -91,6 +92,7 @@ const updateNaver = async ({
                 .replace(/\>/gi, " "),
         stockQuantity: item.stock,
         price: item.salePrice - minOption.salePrice,
+        usable: true,
       };
     });
   }
