@@ -32,6 +32,7 @@ const getRakutenSimple = require("./puppeteer/getRakutenAPISimple");
 const getStudious = require("./puppeteer/getStudiousAPI");
 const getIssymiyake = require("./puppeteer/getIssymiyakeAPI");
 const getKeen = require("./puppeteer/getKeenAPI");
+const getBrandAPI = require("./puppeteer/getBrandAPI");
 const {
   Cafe24ListOrders,
   Cafe24RegisterShipments,
@@ -306,7 +307,8 @@ app.post("/amazon/isRegisters", async (req, res) => {
         items[0].includes("brandavenue.rakuten.co.jp") ||
         items[0].includes("studious.co.jp") ||
         items[0].includes("isseymiyake.com") ||
-        items[0].includes("keenfootwear.jp")
+        items[0].includes("keenfootwear.jp") ||
+        items[0].includes("uniqlo.com/jp")
       ) {
         product = await Product.aggregate([
           {
@@ -350,6 +352,9 @@ app.post("/amazon/isRegisters", async (req, res) => {
                 },
                 {
                   "basic.url": { $regex: `.*keenfootwear.jp.*` },
+                },
+                {
+                  "basic.url": { $regex: `.*uniqlo.com/jp.*` },
                 },
               ],
             },
@@ -412,7 +417,8 @@ app.post("/amazon/isRegisters", async (req, res) => {
               items[0].includes("brandavenue.rakuten.co.jp") ||
               items[0].includes("studious.co.jp") ||
               items[0].includes("isseymiyake.com") ||
-              items[0].includes("keenfootwear.jp")
+              items[0].includes("keenfootwear.jp") ||
+              items[0].includes("uniqlo.com/jp")
             ) {
               return pItem.basic.good_id === asin;
             } else {
@@ -693,6 +699,7 @@ app.post("/amazon/getCollectionItem", async (req, res) => {
               break;
             }
           }
+
           if (!isRegister) {
             const temp = tempArr.filter((fItem) => fItem.good_id === item.asin);
             if (temp.length > 0) {
@@ -711,7 +718,7 @@ app.post("/amazon/getCollectionItem", async (req, res) => {
       });
     });
 
-    await Promise.all(productArr);
+    await Promise.all(promiseArr);
     // for (const item of products) {
     //   let isRegister = false;
     //   for (const rItem of registerProducts) {
@@ -1121,6 +1128,10 @@ app.post("/amazon/collectionItems", async (req, res) => {
                     );
                   } else {
                     console.log("옵션 없음", item.detailUrl);
+                    await AmazonCollection.deleteOne({
+                      userID: ObjectId(userInfo._id),
+                      asin,
+                    });
                   }
                 } else if (item.detailUrl.includes("item.rakuten.co.jp")) {
                   const asin = AmazonAsin(item.detailUrl);
@@ -1193,6 +1204,10 @@ app.post("/amazon/collectionItems", async (req, res) => {
                     );
                   } else {
                     console.log("옵션 없음", item.detailUrl);
+                    await AmazonCollection.deleteOne({
+                      userID: ObjectId(userInfo._id),
+                      asin,
+                    });
                   }
                 } else if (
                   item.detailUrl.includes("brandavenue.rakuten.co.jp")
@@ -1267,6 +1282,10 @@ app.post("/amazon/collectionItems", async (req, res) => {
                     );
                   } else {
                     console.log("옵션 없음", item.detailUrl);
+                    await AmazonCollection.deleteOne({
+                      userID: ObjectId(userInfo._id),
+                      asin,
+                    });
                   }
                 } else if (item.detailUrl.includes("studious.co.jp/shop")) {
                   const asin = AmazonAsin(item.detailUrl);
@@ -1280,7 +1299,7 @@ app.post("/amazon/collectionItems", async (req, res) => {
                     userID: userInfo._id,
                     keyword: item.keyword,
                   });
-
+                  console.log("detailItem", detailItem);
                   if (!detailItem) {
                     await AmazonCollection.findOneAndUpdate(
                       {
@@ -1339,6 +1358,10 @@ app.post("/amazon/collectionItems", async (req, res) => {
                     );
                   } else {
                     console.log("옵션 없음", item.detailUrl);
+                    await AmazonCollection.deleteOne({
+                      userID: ObjectId(userInfo._id),
+                      asin,
+                    });
                   }
                 } else if (item.detailUrl.includes("isseymiyake.com")) {
                   const asin = AmazonAsin(item.detailUrl);
@@ -1411,6 +1434,10 @@ app.post("/amazon/collectionItems", async (req, res) => {
                     );
                   } else {
                     console.log("옵션 없음", item.detailUrl);
+                    await AmazonCollection.deleteOne({
+                      userID: ObjectId(userInfo._id),
+                      asin,
+                    });
                   }
                 } else if (item.detailUrl.includes("keenfootwear.jp")) {
                   const asin = AmazonAsin(item.detailUrl);
@@ -1483,6 +1510,86 @@ app.post("/amazon/collectionItems", async (req, res) => {
                     );
                   } else {
                     console.log("옵션 없음", item.detailUrl);
+                    await AmazonCollection.deleteOne({
+                      userID: ObjectId(userInfo._id),
+                      asin,
+                    });
+                  }
+                } else if (item.detailUrl.includes("uniqlo.com/jp")) {
+                  const asin = AmazonAsin(item.detailUrl);
+                  if (!asin) {
+                    console.log("asin 없음");
+                    continue;
+                  }
+
+                  let detailItem = await getBrandAPI({
+                    url: item.detailUrl,
+                    userID: userInfo._id,
+                    keyword: item.keyword,
+                  });
+
+                  if (!detailItem) {
+                    await AmazonCollection.findOneAndUpdate(
+                      {
+                        userID: ObjectId(userInfo._id),
+                        asin,
+                      },
+                      {
+                        $set: {
+                          isDelete: true,
+                          lastUpdate: moment().toDate(),
+                        },
+                      },
+                      {
+                        upsert: true,
+                      }
+                    );
+                  } else if (
+                    detailItem &&
+                    detailItem.options &&
+                    detailItem.options.length > 0 &&
+                    detailItem.options.length !==
+                      detailItem.options.filter((item) => item.stock === 0)
+                        .length
+                  ) {
+                    await TempProduct.findOneAndUpdate(
+                      {
+                        userID: ObjectId(userInfo._id),
+                        good_id: detailItem.good_id,
+                      },
+                      {
+                        $set: {
+                          userID: ObjectId(userInfo._id),
+                          categoryID: detailItem.categoryID,
+                          good_id: detailItem.good_id,
+                          brand: detailItem.brand,
+                          manufacture: detailItem.manufacture,
+                          modelName: detailItem.modelName,
+                          title: detailItem.title,
+                          keyword: detailItem.keyword,
+                          mainImages: detailItem.mainImages,
+                          price: detailItem.price,
+                          salePrice: detailItem.salePrice,
+                          html: detailItem.html,
+                          content: detailItem.content,
+                          options: detailItem.options,
+                          detailUrl: item.detailUrl,
+                          korTitle: detailItem.korTitle,
+                          prop: detailItem.prop,
+                          lastUpdate: moment().toDate(),
+                        },
+                      },
+                      {
+                        upsert: true,
+                        new: true,
+                      }
+                    );
+                  } else {
+                    console.log("옵션 없음", item.detailUrl);
+                    await AmazonCollection.deleteOne({
+                      userID: ObjectId(userInfo._id),
+                      asin,
+                    });
                   }
                 }
               }
@@ -1543,6 +1650,10 @@ app.post("/amazon/deleteCollectionItems", async (req, res) => {
           await AmazonCollection.deleteOne({
             userID: ObjectId(userInfo._id),
             asin: item.asin,
+          });
+          await TempProduct.deleteOne({
+            userID: ObjectId(userInfo._id),
+            good_id: item.asin,
           });
           resolve();
         } catch (e) {
@@ -2665,8 +2776,7 @@ const getPermutations = function (arr, selectNumber) {
   return results; // 결과 담긴 results return
 };
 
-// IherbPriceSync()
-RakutenPriceSync();
+// RakutenPriceSync();
 
 const getVVICItems = async () => {
   try {

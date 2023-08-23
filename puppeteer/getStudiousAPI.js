@@ -145,23 +145,33 @@ const start = async ({ url, userID, keyword }) => {
 
     let j = 1;
     let isMatch = false;
+    let tempTitle = null;
     for (const item of $(".block-color-size-with-cart--item-list > div")) {
       let attributes = [];
-      const title = $(item)
+      let title = $(item)
         .find(".block-color-size-with-cart--color-item-term")
         .attr("title");
-
-      if (title === optionName) {
-        isMatch = true;
-      } else {
-        if (isMatch && title && title !== optionName) {
-          isMatch = false;
-        }
+      if (title && tempTitle !== title) {
+        tempTitle = title;
       }
+      if (!title) {
+        title = tempTitle;
+      }
+
+      // if (title === optionName) {
+      //   isMatch = true;
+      // } else {
+      //   if (isMatch && title && title !== optionName) {
+      //     isMatch = false;
+      //   }
+      // }
+      isMatch = true;
       const size = $(item)
         .find(".block-color-size-with-cart--size-item-term")
         .text()
         .trim();
+
+      console.log("size---", size);
 
       const findObj = _.find(tempOptions, { name: size });
 
