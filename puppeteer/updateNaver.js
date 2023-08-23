@@ -243,7 +243,7 @@ const updateNaver = async ({
           pageTitle: product.pageTitle.replace(/[\\*?"<>]/g, ""),
           metaDescription: product.korTitle.replace(/[\\*?"<>]/g, ""),
           sellerTags: _.uniqBy(tag, "code")
-            .filter((item, i) => i < 10)
+            .filter((item, i) => i < 10 && item.code !== "1")
             .map((item) => {
               if (item.code) {
                 return {

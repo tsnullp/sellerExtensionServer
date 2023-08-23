@@ -2613,6 +2613,7 @@ const BrandPriceSync = async () => {
                   findOption.price = option.price;
                   findOption.salePrice = salePrice;
                 }
+
                 if (findOption.stock !== option.stock) {
                   changeStock = true;
                   findOption.stock = option.stock;
