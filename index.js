@@ -2449,7 +2449,6 @@ const RakutenPriceSync = async () => {
                   );
                 }
 
-                console.log("===========================================");
                 console.log("product 상품명 ", product.product.korTitle);
                 if (changePrice) {
                   console.log("가격 변동");
@@ -2458,7 +2457,9 @@ const RakutenPriceSync = async () => {
                   console.log("재고 변동");
                 }
                 console.log("updateReponse", updateReponse);
-                console.log("===========================================");
+                console.log(
+                  "======================================================================================"
+                );
                 await sleep(1000);
               }
             }
@@ -2787,7 +2788,6 @@ const BrandPriceSync = async () => {
                   );
                 }
 
-                console.log("===========================================");
                 console.log("product 상품명 ", product.product.korTitle);
                 if (changePrice) {
                   console.log("가격 변동");
@@ -2796,7 +2796,9 @@ const BrandPriceSync = async () => {
                   console.log("재고 변동");
                 }
                 console.log("updateReponse", updateReponse);
-                console.log("===========================================");
+                console.log(
+                  "======================================================================================"
+                );
                 await sleep(10000);
               }
             }

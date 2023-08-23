@@ -204,8 +204,6 @@ const start = async ({ url, userID }) => {
             .results;
         if (results && Array.isArray(results) && results.length > 0) {
           ObjItem.deliveryFee = results[0].fees.finalFee || 0;
-
-          console.log("ObjItem.deliveryFee", ObjItem.deliveryFee);
         }
       }
     } catch (e) {}
