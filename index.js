@@ -2776,7 +2776,7 @@ const getPermutations = function (arr, selectNumber) {
   return results; // 결과 담긴 results return
 };
 
-// RakutenPriceSync();
+RakutenPriceSync();
 
 const getVVICItems = async () => {
   try {

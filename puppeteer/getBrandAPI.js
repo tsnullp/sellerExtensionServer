@@ -218,7 +218,6 @@ const getUniqlo = async ({ ObjItem, url, userID }) => {
       });
     }
 
-    console.log("product.sizes", product.sizes);
     for (const size of product.sizes) {
       sizeValues.push({
         vid: size.displayCode,
