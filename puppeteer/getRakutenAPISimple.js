@@ -205,7 +205,7 @@ const start = async ({ url, userID }) => {
         if (results && Array.isArray(results) && results.length > 0) {
           ObjItem.deliveryFee = results[0].fees.finalFee || 0;
 
-          // console.log("ObjItem.deliveryFee", ObjItem.deliveryFee);
+          console.log("ObjItem.deliveryFee", ObjItem.deliveryFee);
         }
       }
     } catch (e) {}
