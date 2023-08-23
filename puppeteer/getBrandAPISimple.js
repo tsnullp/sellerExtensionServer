@@ -1,4 +1,6 @@
 const axios = require("axios");
+const url = require("url");
+const { papagoTranslate } = require("./translate");
 const { regExp_test, AmazonAsin } = require("../lib/userFunc");
 const _ = require("lodash");
 const iconv = require("iconv-lite");
@@ -27,7 +29,7 @@ const start = async ({ url }) => {
   try {
     switch (true) {
       case url.includes("uniqlo.com/jp"):
-        await getUniqlo({ ObjItem, url, userID });
+        await getUniqlo({ ObjItem, url });
         break;
       default:
         console.log("DEFAULT", url);
@@ -197,28 +199,4 @@ const getProductEntity = (addr) => {
     const temp2 = pathnames[pathnames.length - 1];
     return temp2;
   } catch (e) {}
-};
-
-const extractTextFromHTML = (htmlString) => {
-  const $ = cheerio.load(htmlString);
-
-  const textNodes = [];
-
-  const extractTextFromNode = (node) => {
-    const children = $(node).contents();
-    if (children.length === 0) {
-      const text = $(node).text().trim();
-      if (text !== "") {
-        textNodes.push(text);
-      }
-    } else {
-      children.each((index, child) => {
-        extractTextFromNode(child);
-      });
-    }
-  };
-
-  extractTextFromNode($("body").get(0));
-
-  return textNodes;
 };

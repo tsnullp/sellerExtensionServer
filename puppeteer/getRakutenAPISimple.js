@@ -1,11 +1,7 @@
 const axios = require("axios");
-const cheerio = require("cheerio");
-const { papagoTranslate } = require("./translate");
-const { regExp_test, extractWeight, AmazonAsin } = require("../lib/userFunc");
-const { NaverProductModel } = require("../api/Naver");
+const { regExp_test, AmazonAsin } = require("../lib/userFunc");
 const _ = require("lodash");
 const iconv = require("iconv-lite");
-const searchNaverKeyword = require("./searchNaverKeyword");
 
 const start = async ({ url, userID }) => {
   const ObjItem = {
