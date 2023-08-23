@@ -172,7 +172,7 @@ const getUniqlo = async ({ ObjItem, url }) => {
         ObjItem.content.push(item.imageUrl);
       }
 
-      if (item.colorCode.length > 0) {
+      if (item.sizeChart && item.sizeChart.length > 0) {
         let tempHtml = `<br><table align="center">`;
         tempHtml += `<tr>`;
         tempHtml += `<th>`;
