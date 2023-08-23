@@ -144,6 +144,8 @@ const start = async ({ url, userID }) => {
     }
 
     try {
+      const shipping = JSON.parse(temp2).api.data.itemInfoSku.shipping;
+
       const payload = {
         marketplaceId: "JP",
         resultType: "DATE_FEE",
@@ -161,8 +163,8 @@ const start = async ({ url, userID }) => {
                       price: tempOptions[0].price,
                       individualShipping: false,
                       customShipping: {
-                        postageSegment1: 0,
-                        postageSegment2: 1,
+                        postageSegment1: shipping.postageSegment.local || 0,
+                        postageSegment2: shipping.singleItemShipping || 1,
                         customTariffId: null,
                       },
                       deliverySetId: null,
@@ -201,7 +203,7 @@ const start = async ({ url, userID }) => {
           shippResponse.data.shippingUnits.unit01.shopShippingUnits.shopUnit1
             .results;
         if (results && Array.isArray(results) && results.length > 0) {
-          ObjItem.deliveryFee = results[0].fees.finalFee;
+          ObjItem.deliveryFee = results[0].fees.finalFee || 0;
 
           // console.log("ObjItem.deliveryFee", ObjItem.deliveryFee);
         }
