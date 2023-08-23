@@ -32,14 +32,14 @@ const start = async ({ url }) => {
   try {
     switch (true) {
       case url.includes("uniqlo.com/jp"):
-        await getUniqlo({ ObjItem, url, userID });
+        await getUniqlo({ ObjItem, url });
         break;
       default:
         console.log("DEFAULT", url);
         break;
     }
   } catch (e) {
-    console.log("findKeenAPI - ", e);
+    console.log("findBrand - ", e);
   } finally {
     return {
       ...ObjItem,
@@ -55,7 +55,7 @@ const start = async ({ url }) => {
 
 module.exports = start;
 
-const getUniqlo = async ({ ObjItem, url, userID }) => {
+const getUniqlo = async ({ ObjItem, url }) => {
   try {
     let stockResponse = await axios({
       url: `https://www.uniqlo.com/jp/api/commerce/v5/ja/products/${ObjItem.good_id}/price-groups/${ObjItem.productEntityCode}/l2s?withPrices=true&withStocks=true&httpFailure=true`,
