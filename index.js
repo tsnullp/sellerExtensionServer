@@ -2283,12 +2283,15 @@ const RakutenPriceSync = async () => {
                 // await sleep(1000);
               } catch (e) {}
             }
-            changePrice = true;
+
             if (changePrice || changeStock) {
               const minOption = _.minBy(product.options, "salePrice");
               const maxOption = _.maxBy(product.options, "salePrice");
 
-              const salePrice = (minOption.salePrice + maxOption.salePrice) * 2; // 판매가
+              const salePrice =
+                Match.ceil(
+                  (minOption.salePrice + maxOption.salePrice) * 0.7 * 0.1
+                ) * 10; // 판매가
               const discountPrice = salePrice - minOption.salePrice; // 판매가 - 최저가
 
               const optionValue = product.options.filter(
