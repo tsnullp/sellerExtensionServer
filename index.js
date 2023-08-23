@@ -2289,7 +2289,7 @@ const RakutenPriceSync = async () => {
               const maxOption = _.maxBy(product.options, "salePrice");
 
               const salePrice =
-                Match.ceil(
+                Math.ceil(
                   (minOption.salePrice + maxOption.salePrice) * 0.7 * 0.1
                 ) * 10; // 판매가
               const discountPrice = salePrice - minOption.salePrice; // 판매가 - 최저가
