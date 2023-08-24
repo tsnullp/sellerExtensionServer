@@ -248,7 +248,7 @@ const updateNaver = async ({
               if (item.code) {
                 return {
                   code: item.code,
-                  text: item.text,
+                  text: item.text.toUpperCase(),
                 };
               } else {
                 return {
