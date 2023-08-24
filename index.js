@@ -3726,6 +3726,7 @@ app.post("/seller/product", async (req, res) => {
     const basic = {
       url: req.body.url,
       naverID: req.body.naverID,
+      naverCategoryCode: req.body.category,
       brand: objItem.brand,
       manufacture: objItem.manufacture,
       good_id: objItem.good_id,
