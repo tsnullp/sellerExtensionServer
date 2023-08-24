@@ -150,6 +150,7 @@ const updateNaver = async ({
     return returnMessage;
   }
 
+  console.log("naverCategoryCode", naverCategoryCode);
   const productBody = {
     originProduct: {
       statusType: "SALE",
