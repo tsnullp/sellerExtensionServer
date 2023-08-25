@@ -3,6 +3,7 @@ const cheerio = require("cheerio");
 const url = require("url");
 const { papagoTranslate } = require("./translate");
 const { AmazonAsin, extractWeight } = require("../lib/userFunc");
+const he = require("he");
 const _ = require("lodash");
 const iconv = require("iconv-lite");
 const searchNaverKeyword = require("./searchNaverKeyword");
@@ -33,6 +34,9 @@ const start = async ({ url }) => {
     switch (true) {
       case url.includes("uniqlo.com/jp"):
         await getUniqlo({ ObjItem, url });
+        break;
+      case url.includes("charleskeith.jp"):
+        await getCharleskeith({ ObjItem, url });
         break;
       default:
         console.log("DEFAULT", url);
@@ -340,6 +344,235 @@ const getUniqlo = async ({ ObjItem, url }) => {
     }
   } catch (e) {
     console.log("getUniqlo", e);
+  }
+};
+
+const getCharleskeith = async ({ ObjItem, url }) => {
+  try {
+    let content = await axios({
+      url,
+      method: "GET",
+      headers: {
+        "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+      },
+      responseEncoding: "binary",
+    });
+
+    const temp1 = content.data
+      .split('<script type="application/ld+json">')[2]
+      .split("</script>")[0];
+
+    const jsonObj = JSON.parse(iconv.decode(temp1, "UTF-8"));
+
+    ObjItem.salePrice = jsonObj.Offers.price;
+    ObjItem.title = he.decode(jsonObj.name);
+    ObjItem.brand = he.decode(jsonObj.brand.name);
+    ObjItem.korTitle = he.decode(jsonObj.name);
+
+    const $ = cheerio.load(iconv.decode(content.data, "UTF-8"));
+
+    for (const item of $(".more-views").children("li")) {
+      ObjItem.content.push(
+        `${$(item)
+          .find("img")
+          .attr("src")
+          .split("?")[0]
+          .replace("m.jpg", "l.jpg")}`
+      );
+    }
+
+    ObjItem.mainImages = ObjItem.content.filter((_, i) => i < 10);
+
+    let stockInfo = await axios({
+      url: `https://charleskeith.jp/commodity/${jsonObj.sku}/stockInfo`,
+      method: "GET",
+      headers: {
+        "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+      },
+      responseEncoding: "binary",
+    });
+
+    const colorName = await papagoTranslate(
+      stockInfo.data.commodityStock.colorName,
+      "auto",
+      "ko"
+    );
+
+    const modelName = $(
+      ".product_table > table > tbody > tr:nth-child(2) > td"
+    ).html();
+
+    ObjItem.modelName = modelName.split(" ")[0];
+    ObjItem.brand = "찰스앤키스";
+
+    ObjItem.korTitle = `${ObjItem.brand} ${await papagoTranslate(
+      ObjItem.title,
+      "auto",
+      "ko"
+    )} ${ObjItem.modelName}`;
+
+    let category = await searchNaverKeyword({
+      title: ObjItem.korTitle,
+    });
+    if (category) {
+      if (category.category4Code) {
+        ObjItem.categoryID = category.category4Code;
+      } else {
+        ObjItem.categoryID = category.category3Code;
+      }
+    }
+
+    let detailHtml = $(".product_text.locondo > div").html();
+
+    if (detailHtml && detailHtml.length > 0) {
+      detailHtml = `
+        <br>
+        <h2>상품 설명</h2>
+        <p>${detailHtml}</p>
+        <br>
+      `;
+    }
+    let detailTable = "";
+    for (const item of $(".product_table > table > tbody").children("tr")) {
+      const th = $(item).find("th").text();
+      const td = $(item).find("td").text();
+      if (th.length > 0 && td.length > 0) {
+        detailTable += "<tr>";
+        detailTable += "<td>";
+        detailTable += th.replace("※店舗お問い合わせ用", "").trim();
+        detailTable += "</td>";
+        detailTable += "<td>";
+        detailTable += td.trim();
+        detailTable += "</td>";
+        detailTable += "</tr>";
+      }
+    }
+
+    if (detailTable.length > 0) {
+      detailTable = `
+      <br>
+      <h2>상품 상세</h2>
+      <table align="center">
+      ${detailTable}
+      </table>
+      <br><br>
+      `;
+    }
+
+    const weight = extractWeight(detailTable);
+
+    if (weight) {
+      ObjItem.weight = weight;
+    }
+
+    ObjItem.html += `
+    <br>
+    <h1>${ObjItem.korTitle}</h1>
+    `;
+    ObjItem.html += detailHtml;
+    ObjItem.html += detailTable;
+
+    let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
+      (item) => item.trim().length > 0
+    );
+
+    let htmlKorObj = [];
+    const promiseArray = htmlTextArr.map((item) => {
+      return new Promise(async (resolve, reject) => {
+        try {
+          const korText = await papagoTranslate(item, "ja", "ko");
+
+          htmlKorObj.push({
+            key: item,
+            value: korText,
+          });
+
+          resolve();
+        } catch (e) {
+          reject();
+        }
+      });
+    });
+    await Promise.all(promiseArray);
+
+    htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
+
+    for (const item of htmlKorObj) {
+      const regex = new RegExp(
+        item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        "g"
+      );
+
+      ObjItem.html = ObjItem.html.replace(regex, (match) => {
+        if (match.toLowerCase() === item.key.toLowerCase()) {
+          return item.value;
+        } else {
+          return match;
+        }
+      });
+    }
+
+    if (ObjItem.mainImages.length === 0 && ObjItem.content.length > 0) {
+      ObjItem.mainImages = [ObjItem.content[0]];
+    }
+
+    const tempProp = [];
+    const tempOptions = [];
+
+    const sizeValues = [];
+    for (const detailItem of stockInfo.data.commodityStock.detailList) {
+      sizeValues.push({
+        vid: detailItem.skuCode,
+        name: detailItem.sizeLabel,
+        korValueName: detailItem.sizeLabel,
+      });
+
+      tempOptions.push({
+        key: detailItem.supplierBarCode,
+        propPath: `1:1;2:${detailItem.skuCode}`,
+        value: `${stockInfo.data.commodityStock.colorName} ${detailItem.sizeLabel}`,
+        korValue: `${colorName} ${detailItem.sizeLabel}`,
+        price: stockInfo.data.commodityStock.unitPrice,
+        stock: detailItem.availableStockQuantity,
+        disabled: false,
+        active: true,
+        weight: ObjItem.weight,
+        attributes: [
+          {
+            attributeTypeName: "컬러",
+            attributeValueName: colorName,
+          },
+          {
+            attributeTypeName: "사이즈",
+            attributeValueName: detailItem.sizeLabel,
+          },
+        ],
+      });
+    }
+    tempProp.push({
+      pid: "1",
+      name: "color",
+      korTypeName: "컬러",
+      values: [
+        {
+          vid: "1",
+          name: stockInfo.data.commodityStock.colorName,
+          korValueName: colorName,
+        },
+      ],
+    });
+
+    tempProp.push({
+      pid: "2",
+      name: "size",
+      korTypeName: "사이즈",
+      values: sizeValues,
+    });
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+  } catch (e) {
+    console.log("getCharleskeith", e);
   }
 };
 const getProductEntity = (addr) => {

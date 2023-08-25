@@ -31,6 +31,9 @@ const start = async ({ url }) => {
       case url.includes("uniqlo.com/jp"):
         await getUniqlo({ ObjItem, url });
         break;
+      case url.includes("charleskeith.jp"):
+        await getCharleskeith({ ObjItem, url });
+        break;
       default:
         console.log("DEFAULT", url);
         break;
@@ -187,6 +190,98 @@ const getUniqlo = async ({ ObjItem, url }) => {
     ObjItem.options = tempOptions;
   } catch (e) {
     console.log("getUniqlo", e);
+  }
+};
+
+const getCharleskeith = async ({ ObjItem, url }) => {
+  try {
+    let content = await axios({
+      url,
+      method: "GET",
+      headers: {
+        "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+      },
+      responseEncoding: "binary",
+    });
+
+    const temp1 = content.data
+      .split('<script type="application/ld+json">')[2]
+      .split("</script>")[0];
+
+    const jsonObj = JSON.parse(iconv.decode(temp1, "UTF-8"));
+
+    let stockInfo = await axios({
+      url: `https://charleskeith.jp/commodity/${jsonObj.sku}/stockInfo`,
+      method: "GET",
+      headers: {
+        "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+      },
+      responseEncoding: "binary",
+    });
+
+    const colorName = await papagoTranslate(
+      stockInfo.data.commodityStock.colorName,
+      "auto",
+      "ko"
+    );
+
+    const tempProp = [];
+    const tempOptions = [];
+
+    const sizeValues = [];
+    for (const detailItem of stockInfo.data.commodityStock.detailList) {
+      sizeValues.push({
+        vid: detailItem.skuCode,
+        name: detailItem.sizeLabel,
+        korValueName: detailItem.sizeLabel,
+      });
+
+      tempOptions.push({
+        key: detailItem.supplierBarCode,
+        propPath: `1:1;2:${detailItem.skuCode}`,
+        value: `${stockInfo.data.commodityStock.colorName} ${detailItem.sizeLabel}`,
+        korValue: `${colorName} ${detailItem.sizeLabel}`,
+        price: stockInfo.data.commodityStock.unitPrice,
+        stock: detailItem.availableStockQuantity,
+        disabled: false,
+        active: true,
+        weight: ObjItem.weight,
+        attributes: [
+          {
+            attributeTypeName: "컬러",
+            attributeValueName: colorName,
+          },
+          {
+            attributeTypeName: "사이즈",
+            attributeValueName: detailItem.sizeLabel,
+          },
+        ],
+      });
+    }
+    tempProp.push({
+      pid: "1",
+      name: "color",
+      korTypeName: "컬러",
+      values: [
+        {
+          vid: "1",
+          name: stockInfo.data.commodityStock.colorName,
+          korValueName: colorName,
+        },
+      ],
+    });
+
+    tempProp.push({
+      pid: "2",
+      name: "size",
+      korTypeName: "사이즈",
+      values: sizeValues,
+    });
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+  } catch (e) {
+    console.log("getCharleskeith", e);
   }
 };
 

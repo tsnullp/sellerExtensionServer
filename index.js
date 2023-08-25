@@ -1516,7 +1516,10 @@ app.post("/amazon/collectionItems", async (req, res) => {
                       asin,
                     });
                   }
-                } else if (item.detailUrl.includes("uniqlo.com/jp")) {
+                } else if (
+                  item.detailUrl.includes("uniqlo.com/jp") ||
+                  item.detailUrl.includes("charleskeith.jp/")
+                ) {
                   const asin = AmazonAsin(item.detailUrl);
                   if (!asin) {
                     console.log("asin 없음");
@@ -2185,7 +2188,7 @@ const RakutenPriceSync = async () => {
   const SyncFun = async () => {
     let isFirst = true;
     while (isFirst) {
-      isFirst = false;
+      // isFirst = false;
       const excahgeRate = await ExchangeRate.aggregate([
         {
           $match: {
@@ -2506,6 +2509,7 @@ const RakutenPriceSync = async () => {
                 );
               }
 
+              console.log("product.basic.url", product.basic.url);
               console.log("deleteReponse", updateReponse);
             }
           }
@@ -2526,7 +2530,7 @@ const BrandPriceSync = async () => {
   const SyncFun = async () => {
     let isFirst = true;
     while (isFirst) {
-      isFirst = false;
+      // isFirst = false;
       const excahgeRate = await ExchangeRate.aggregate([
         {
           $match: {
@@ -2558,6 +2562,9 @@ const BrandPriceSync = async () => {
             $or: [
               {
                 "basic.url": { $regex: `.*uniqlo.com/jp.*` },
+              },
+              {
+                "basic.url": { $regex: `.*charleskeith.jp.*` },
               },
             ],
           },
@@ -2845,6 +2852,7 @@ const BrandPriceSync = async () => {
                 );
               }
 
+              console.log("product.basic.url", product.basic.url);
               console.log("deleteReponse", updateReponse);
             }
           }

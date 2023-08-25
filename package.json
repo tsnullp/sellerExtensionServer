@@ -28,6 +28,7 @@
     "crypto-js": "^4.1.1",
     "express": "^4.17.1",
     "form-data": "^4.0.0",
+    "he": "^1.2.0",
     "iconv-lite": "^0.6.3",
     "image-downloader": "^4.3.0",
     "js2xmlparser": "^5.0.0",
