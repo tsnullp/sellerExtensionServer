@@ -189,7 +189,7 @@ const updateNaver = async ({
       },
       detailAttribute: {
         naverShoppingSearchInfo: {
-          modelId: 0,
+          // modelId: 0,
           // manufacturerName: basic.manufacture,
           // brandName: basic.brand,
           manufacturerName: "메타트론",
