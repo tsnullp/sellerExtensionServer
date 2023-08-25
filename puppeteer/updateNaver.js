@@ -188,12 +188,14 @@ const updateNaver = async ({
         installationFee: false,
       },
       detailAttribute: {
-        // naverShoppingSearchInfo: {
-        //   modelId: 0,
-        //   manufacturerName: basic.manufacture,
-        //   brandName: basic.brand,
-        //   modelName: "",
-        // },
+        naverShoppingSearchInfo: {
+          modelId: 0,
+          // manufacturerName: basic.manufacture,
+          // brandName: basic.brand,
+          manufacturerName: "메타트론",
+          brandName: "메타트론",
+          modelName: "",
+        },
         afterServiceInfo: {
           afterServiceTelephoneNumber: basicInfo.afterServiceContactNumber,
           afterServiceGuideContent: basicInfo.afterServiceInformation,
