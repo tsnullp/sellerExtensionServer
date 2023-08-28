@@ -2315,7 +2315,7 @@ const RakutenPriceSync = async () => {
                 // await sleep(1000);
               } catch (e) {}
             }
-
+            changePrice = true;
             if (changePrice || changeStock) {
               const minOption = _.minBy(product.options, "salePrice");
               const maxOption = _.maxBy(product.options, "salePrice");
@@ -2455,6 +2455,15 @@ const RakutenPriceSync = async () => {
                   },
                 };
 
+                if (
+                  naverProduct.originProduct.deliveryInfo.deliveryFee
+                    .deliveryFeeType === "PAID"
+                ) {
+                  console.log("유료배송");
+                  naverProduct.originProduct.deliveryInfo.deliveryFee.deliveryFeeType =
+                    "UNIT_QUANTITY_PAID";
+                  naverProduct.originProduct.deliveryInfo.deliveryFee.repeatQuantity = 1;
+                }
                 // console.log("naverProduct", naverProduct.originProduct);
 
                 const updateReponse = await NaverModifyOption({
