@@ -137,6 +137,36 @@ app.post("/taobao/cookie", async (req, res) => {
   }
 });
 
+app.post("/crocs/cookie", async (req, res) => {
+  try {
+    const { cookie } = req.body;
+
+    await Cookie.findOneAndUpdate(
+      {
+        name: "crocs",
+      },
+      {
+        $set: {
+          name: "crocs",
+          cookie,
+          lastUpdate: moment().toDate(),
+        },
+      },
+      {
+        upsert: true,
+      }
+    );
+    res.json({
+      message: "success",
+    });
+  } catch (e) {
+    console.log("/taobao/cookie", e);
+    res.json({
+      message: "fail",
+    });
+  }
+});
+
 app.post("/seller/userGroup", async (req, res) => {
   try {
     const { user } = req.body;
@@ -2215,6 +2245,7 @@ const RakutenPriceSync = async () => {
           $match: {
             // userID: ObjectId("5f1947bd682563be2d22f008"),
             // "options.key": {$in: asinArr},
+
             isDelete: false,
             "product.naver.smartstoreChannelProductNo": { $ne: null },
             $or: [
@@ -2270,8 +2301,6 @@ const RakutenPriceSync = async () => {
                   ) *
                     10 -
                   product.product.deliveryFee;
-
-                // console.log("salePrice", salePrice);
 
                 if (findOption.price !== option.price) {
                   changePrice = true;

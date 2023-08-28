@@ -163,7 +163,11 @@ const start = async ({ url, userID }) => {
                       price: tempOptions[0].price,
                       individualShipping: false,
                       customShipping: {
-                        postageSegment1: shipping.postageSegment.local || 0,
+                        postageSegment1:
+                          shipping.postageSegment &&
+                          shipping.postageSegment.local
+                            ? shipping.postageSegment.local
+                            : 0,
                         postageSegment2: shipping.singleItemShipping || 1,
                         customTariffId: null,
                       },

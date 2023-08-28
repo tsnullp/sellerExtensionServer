@@ -431,7 +431,10 @@ const start = async ({ url, userID, keyword }) => {
                             individualShipping: false,
                             customShipping: {
                               postageSegment1:
-                                shipping.postageSegment.local || 0,
+                                shipping.postageSegment &&
+                                shipping.postageSegment.local
+                                  ? shipping.postageSegment.local
+                                  : 0,
                               postageSegment2: shipping.singleItemShipping || 1,
                               customTariffId: null,
                             },
