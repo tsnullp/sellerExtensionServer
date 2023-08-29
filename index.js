@@ -1548,7 +1548,8 @@ app.post("/amazon/collectionItems", async (req, res) => {
                   }
                 } else if (
                   item.detailUrl.includes("uniqlo.com/jp") ||
-                  item.detailUrl.includes("charleskeith.jp/")
+                  item.detailUrl.includes("charleskeith.jp/") ||
+                  item.detailUrl.includes("crocs.co.jp/")
                 ) {
                   const asin = AmazonAsin(item.detailUrl);
                   if (!asin) {
@@ -2315,7 +2316,7 @@ const RakutenPriceSync = async () => {
                 // await sleep(1000);
               } catch (e) {}
             }
-            changePrice = true;
+
             if (changePrice || changeStock) {
               const minOption = _.minBy(product.options, "salePrice");
               const maxOption = _.maxBy(product.options, "salePrice");

@@ -1,6 +1,7 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
 const url = require("url");
+const Cookie = require("../models/Cookie");
 const { papagoTranslate } = require("./translate");
 const { AmazonAsin, extractWeight } = require("../lib/userFunc");
 const he = require("he");
@@ -37,6 +38,9 @@ const start = async ({ url }) => {
         break;
       case url.includes("charleskeith.jp"):
         await getCharleskeith({ ObjItem, url });
+        break;
+      case url.includes("crocs.co.jp"):
+        await getCrocs({ ObjItem, url });
         break;
       default:
         console.log("DEFAULT", url);
@@ -575,6 +579,342 @@ const getCharleskeith = async ({ ObjItem, url }) => {
     console.log("getCharleskeith", e);
   }
 };
+
+const getCrocs = async ({ ObjItem, url }) => {
+  try {
+    const cookie = await Cookie.findOne({
+      name: "crocs",
+    });
+
+    if (!cookie || cookie.cookie.length === 0) {
+      return;
+    }
+
+    let config = {
+      method: "get",
+      maxBodyLength: Infinity,
+      url,
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",
+        Host: "www.crocs.co.jp",
+        Cookie: cookie.cookie,
+      },
+    };
+
+    // axios
+    //   .request(config)
+    //   .then((response) => {
+    //     console.log(JSON.stringify(response.data));
+    //   })
+    //   .catch((error) => {
+    //     console.log("--------------", error);
+    //   });
+
+    let content = await axios.request(config);
+    const updateAppLen = content.data.split("app.updateApp(").length;
+
+    const temp1 = content.data
+      .split("app.updateApp(")
+      [updateAppLen - 1].split("</script>")[0]
+      .trim();
+    const temp2 = temp1.substring(0, temp1.length - 2);
+
+    const jsonObj = JSON.parse(temp2);
+
+    const productID = jsonObj.pdp.data.productID;
+    const product = jsonObj.product.data.cache[productID].pidData;
+
+    const variationTemp1 = content.data.split('{"variations"')[1].split(";")[0];
+
+    const variantion = JSON.parse(`{"variations"${variationTemp1}`);
+
+    ObjItem.title = product.name;
+
+    ObjItem.korTitle = await papagoTranslate(ObjItem.title, "ja", "ko");
+
+    ObjItem.brand = "크록스";
+    ObjItem.modelName = productID;
+    ObjItem.korTitle = `${ObjItem.brand} ${ObjItem.korTitle} ${ObjItem.modelName}`;
+
+    let category = await searchNaverKeyword({
+      title: ObjItem.korTitle,
+    });
+    if (category) {
+      if (category.category4Code) {
+        ObjItem.categoryID = category.category4Code;
+      } else {
+        ObjItem.categoryID = category.category3Code;
+      }
+    }
+
+    ObjItem.html += `<h1>${ObjItem.korTitle}</h1>`;
+    ObjItem.html += `<h2>${product.localizedName}</h2>`;
+
+    const $ = cheerio.load(content.data);
+
+    const productDetail = $(".product-details-long").html();
+    ObjItem.html += productDetail
+      .replace(/<button\b[^>]*>.*?<\/button>/g, "")
+      .replace(/<img\b[^>]*>.*?>/g, "")
+      .replace(/<a\b[^>]*>.*?<\/a>/g, "");
+
+    let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
+      (item) => item.trim().length > 0
+    );
+
+    let htmlKorObj = [];
+    const promiseArray = htmlTextArr.map((item) => {
+      return new Promise(async (resolve, reject) => {
+        try {
+          const korText = await papagoTranslate(item, "ja", "ko");
+
+          htmlKorObj.push({
+            key: item,
+            value: korText,
+          });
+
+          resolve();
+        } catch (e) {
+          reject();
+        }
+      });
+    });
+    await Promise.all(promiseArray);
+
+    htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
+
+    for (const item of htmlKorObj) {
+      const regex = new RegExp(
+        item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        "g"
+      );
+
+      ObjItem.html = ObjItem.html.replace(regex, (match) => {
+        if (match.toLowerCase() === item.key.toLowerCase()) {
+          return item.value;
+        } else {
+          return match;
+        }
+      });
+    }
+
+    const weight = extractWeight(ObjItem.html);
+
+    if (weight) {
+      ObjItem.weight = weight * 2;
+    }
+
+    let colorImages = {};
+    if (product.variationData) {
+      for (const item of product.variationData.cvrcArray) {
+        const response = await axios({
+          url: `https://media.crocs.com/image/list/${productID}_${item.colorNum}.json`,
+          method: "GET",
+        });
+
+        let i = 0;
+
+        let resources = response.data.resources
+          .map((item) => {
+            let tempSplit = item.public_id.split("_");
+            let id = tempSplit[tempSplit.length - 1];
+
+            return {
+              ...item,
+              id: Number(id.replace("ALT", "")),
+            };
+          })
+          .sort((a, b) => a.id - b.id);
+
+        for (const resource of resources) {
+          ObjItem.content.push(
+            `https://media.crocs.com/images/t_pdphero/${resource.public_id}/crocs.${resource.format}`
+          );
+          if (i === 0) {
+            colorImages[
+              item.colorNum
+            ] = `https://media.crocs.com/images/t_pdphero/${resource.public_id}/crocs.${resource.format}`;
+            ObjItem.mainImages.push(
+              `https://media.crocs.com/images/t_pdphero/${resource.public_id}/crocs.${resource.format}`
+            );
+          }
+          i++;
+        }
+      }
+    } else {
+      const response = await axios({
+        url: `https://media.crocs.com/image/list/${productID}_${product.defaultColor}.json`,
+        method: "GET",
+      });
+      let i = 0;
+
+      let resources = response.data.resources
+        .map((item) => {
+          let tempSplit = item.public_id.split("_");
+          let id = tempSplit[tempSplit.length - 1];
+
+          return {
+            ...item,
+            id: Number(id.replace("ALT", "")),
+          };
+        })
+        .sort((a, b) => a.id - b.id);
+
+      for (const resource of resources) {
+        ObjItem.content.push(
+          `https://media.crocs.com/images/t_pdphero/${resource.public_id}/crocs.${resource.format}`
+        );
+        if (i === 0) {
+          // colorImages[
+          //   product.defaultColor
+          // ] = `https://media.crocs.com/images/t_pdphero/${resource.public_id}/crocs.${resource.format}`;
+          ObjItem.mainImages.push(
+            `https://media.crocs.com/images/t_pdphero/${resource.public_id}/crocs.${resource.format}`
+          );
+        }
+        i++;
+      }
+    }
+
+    let tempProp = [];
+    let tempOptions = [];
+
+    let colorValues = [];
+    let sizeValues = [];
+    if (product.variationData) {
+      for (const colors of product.variationData.cvrcArray) {
+        colorValues.push({
+          vid: colors.colorNum,
+          name: colors.colorName,
+          korValueName: await papagoTranslate(colors.colorName, "en", "ko"),
+          image: colorImages[colors.colorNum]
+            ? colorImages[colors.colorNum]
+            : null,
+        });
+      }
+    } else {
+      colorValues.push({
+        vid: "1",
+        name: "단일상품",
+        korValueName: "단일상품",
+      });
+    }
+
+    tempProp.push({
+      pid: "1",
+      name: "colors",
+      korTypeName: "컬러",
+      values: colorValues,
+    });
+
+    if (
+      product.variationData &&
+      product.variationData.genderSizesArray.length > 0
+    ) {
+      for (const sizes of product.variationData.genderSizesArray[0]
+        .sizesArray) {
+        sizeValues.push({
+          vid: sizes.value,
+          name: sizes.displayValue,
+          korValueName: sizes.displayValue,
+        });
+      }
+      tempProp.push({
+        pid: "2",
+        name: "sizes",
+        korTypeName: "사이즈",
+        values: sizeValues,
+      });
+    }
+
+    // console.log("tempProp", tempProp);
+    // console.log("variantion", variantion.variations);
+
+    for (const key of Object.keys(variantion.variations)) {
+      const item = variantion.variations[key];
+      const keyArray = key.split("-");
+      let productID = null;
+      let colorID = null;
+      let sizeID = null;
+      let propPath = "";
+      let value = "";
+      let attributes = [];
+      let price = 0;
+
+      for (const key of Object.keys(variantion.colors)) {
+        const colorItem = variantion.colors[key];
+        if (colorItem.colors.includes(item.color)) {
+          price = colorItem.price;
+        }
+      }
+      if (keyArray.length > 0) {
+        productID = keyArray[0];
+      }
+      if (keyArray.length > 1) {
+        colorID = keyArray[1];
+        propPath += `1:${colorID}`;
+        const colorObj = _.find(tempProp[0].values, { vid: colorID });
+        if (colorObj) {
+          value += `${colorObj.korValueName}`;
+          attributes.push({
+            attributeTypeName: "컬러",
+            attributeValueName: colorObj.korValueName,
+          });
+        }
+      }
+      if (keyArray.length > 2) {
+        sizeID = keyArray[2];
+        propPath += `;2:${sizeID}`;
+        const sizeObj = _.find(tempProp[1].values, { vid: sizeID });
+        if (sizeObj) {
+          value += ` ${sizeObj.korValueName}`;
+          attributes.push({
+            attributeTypeName: "사이즈",
+            attributeValueName: sizeObj.korValueName,
+          });
+        }
+      }
+
+      tempOptions.push({
+        key: item.id,
+        propPath,
+        value,
+        korValue: value,
+        price: price >= 4950 ? price : price + 550,
+        stock: item.ATS,
+        active: true,
+        weight: ObjItem.weight,
+        disabled: false,
+        attributes,
+      });
+    }
+
+    if (tempOptions.length === 0) {
+      tempOptions.push({
+        key: productID,
+        value: "단일상품",
+        korValue: "단일상품",
+        price: variantion.single.price.price,
+        stock: variantion.single.ATS,
+        disabled: false,
+        active: true,
+        weight: ObjItem.weight,
+        attributes: [
+          {
+            attributeTypeName: "컬러",
+            attributeValueName: "단일상품",
+          },
+        ],
+      });
+    }
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+  } catch (e) {
+    console.log("getCrocs", e);
+  }
+};
+
 const getProductEntity = (addr) => {
   const tmepUrl = addr.split("?")[0];
   const q1 = url.parse(tmepUrl, true);

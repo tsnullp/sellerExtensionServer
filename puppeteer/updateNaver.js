@@ -111,7 +111,7 @@ const updateNaver = async ({
 
   const mainImageUrls = await NaverImageUpload({
     userID,
-    imageUrls: product.mainImages,
+    imageUrls: product.mainImages.filter((_, i) => i < 10),
   });
 
   if (!mainImageUrls) {
@@ -171,8 +171,11 @@ const updateNaver = async ({
         deliveryCompany: "CJGLS",
         deliveryFee: {
           deliveryFeeType:
-            deli_pri_naver && deli_pri_naver > 0 ? "PAID" : "FREE",
+            deli_pri_naver && deli_pri_naver > 0
+              ? "UNIT_QUANTITY_PAID"
+              : "FREE",
           baseFee: deli_pri_naver,
+          repeatQuantity: 1,
           deliveryFeePayType: "PREPAID",
           deliveryFeeByArea: {
             deliveryAreaType: "AREA_2",
