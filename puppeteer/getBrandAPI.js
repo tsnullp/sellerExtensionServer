@@ -1172,8 +1172,8 @@ const getAsics = async ({ ObjItem, url }) => {
 
     ObjItem.korTitle = await papagoTranslate(ObjItem.title, "auto", "ko");
 
-    let color = `${jsonObj.product_variant[0]} ${jsonObj.product_color[0]}`;
-    color = await papagoTranslate(color, "auto", "ko");
+    let color = await papagoTranslate(jsonObj.product_variant[0], "auto", "ko");
+    color = `${color} ${jsonObj.product_color[0]}`;
 
     ObjItem.salePrice = Number(jsonObj.product_unit_price[0]);
 
