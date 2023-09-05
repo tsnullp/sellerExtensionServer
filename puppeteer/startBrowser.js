@@ -1,18 +1,31 @@
-const puppeteer = require("puppeteer")
+const puppeteer = require("puppeteer-extra");
+// add stealth plugin and use defaults (all evasion techniques)
+const StealthPlugin = require("puppeteer-extra-plugin-stealth");
+const os = require("os");
+const path = require("path");
 
 const startBrowser = async (headless = true) => {
-  const browserOpts = {
-    headless,
-    ignoreHTTPSErrors: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"]
+  try {
+    let executablePath = null;
+    if (os.platform() === "darwin") {
+      executablePath =
+        "../node_modules/puppeteer/.local-chromium/mac-818858/chrome-mac/Chromium.app/Contents/MacOS/Chromium";
+    } else {
+      executablePath =
+        "../node_modules/puppeteer/.local-chromium/win64-818858/chrome-win/chrome.exe";
+    }
+
+    puppeteer.use(StealthPlugin());
+    const browser = await puppeteer.launch({
+      headless,
+      executablePath: path.join(__dirname, executablePath),
+      defaultViewport: null,
+    });
+
+    return browser;
+  } catch (e) {
+    return null;
   }
-  const browser = await puppeteer.launch(browserOpts)
+};
 
-  browser.userAgent(
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_16_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36"
-  )
-
-  return browser
-}
-
-module.exports = startBrowser
+module.exports = startBrowser;

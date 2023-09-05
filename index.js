@@ -234,7 +234,10 @@ app.post("/amazon/isRegister", async (req, res) => {
       detailUrl.includes("brandavenue.rakuten.co.jp") ||
       detailUrl.includes("studious.co.jp") ||
       detailUrl.includes("isseymiyake.com") ||
-      detailUrl.includes("keenfootwear.jp")
+      detailUrl.includes("uniqlo.com/jp") ||
+      detailUrl.includes("charleskeith.jp") ||
+      detailUrl.includes("crocs.co.jp") ||
+      detailUrl.includes("barns.jp")
     ) {
       product = await Product.findOne({
         userID: ObjectId(userInfo._id),
@@ -339,7 +342,10 @@ app.post("/amazon/isRegisters", async (req, res) => {
         items[0].includes("studious.co.jp") ||
         items[0].includes("isseymiyake.com") ||
         items[0].includes("keenfootwear.jp") ||
-        items[0].includes("uniqlo.com/jp")
+        items[0].includes("uniqlo.com/jp") ||
+        items[0].includes("charleskeith.jp") ||
+        items[0].includes("crocs.co.jp") ||
+        items[0].includes("barns.jp")
       ) {
         product = await Product.aggregate([
           {
@@ -386,6 +392,15 @@ app.post("/amazon/isRegisters", async (req, res) => {
                 },
                 {
                   "basic.url": { $regex: `.*uniqlo.com/jp.*` },
+                },
+                {
+                  "basic.url": { $regex: `.*charleskeith.jp.*` },
+                },
+                {
+                  "basic.url": { $regex: `.*crocs.co.jp.*` },
+                },
+                {
+                  "basic.url": { $regex: `.*barns.jp.*` },
                 },
               ],
             },
@@ -449,7 +464,10 @@ app.post("/amazon/isRegisters", async (req, res) => {
               items[0].includes("studious.co.jp") ||
               items[0].includes("isseymiyake.com") ||
               items[0].includes("keenfootwear.jp") ||
-              items[0].includes("uniqlo.com/jp")
+              items[0].includes("uniqlo.com/jp") ||
+              items[0].includes("charleskeith.jp") ||
+              items[0].includes("crocs.co.jp") ||
+              items[0].includes("barns.jp")
             ) {
               return pItem.basic.good_id === asin;
             } else {
@@ -1549,7 +1567,9 @@ app.post("/amazon/collectionItems", async (req, res) => {
                 } else if (
                   item.detailUrl.includes("uniqlo.com/jp") ||
                   item.detailUrl.includes("charleskeith.jp/") ||
-                  item.detailUrl.includes("crocs.co.jp/")
+                  item.detailUrl.includes("crocs.co.jp/") ||
+                  item.detailUrl.includes("barns.jp/") ||
+                  item.detailUrl.includes("asics.com/jp")
                 ) {
                   const asin = AmazonAsin(item.detailUrl);
                   if (!asin) {
@@ -2605,6 +2625,12 @@ const BrandPriceSync = async () => {
               {
                 "basic.url": { $regex: `.*charleskeith.jp.*` },
               },
+              {
+                "basic.url": { $regex: `.*barns.jp.*` },
+              },
+              {
+                "basic.url": { $regex: `.*asics.com/jp.*` },
+              },
             ],
           },
         },
@@ -2622,7 +2648,7 @@ const BrandPriceSync = async () => {
             url: product.basic.url,
             userID: product.userID,
           });
-          // console.log("response", response);
+
           if (
             response &&
             response.options &&

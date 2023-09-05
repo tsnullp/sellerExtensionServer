@@ -207,7 +207,7 @@ const updateNaver = async ({
           importer: "구매대행",
         },
         sellerCodeInfo: {
-          sellerManagementCode: basic.good_id,
+          sellerManagementCode: basic.good_id.slice(-30),
         },
         optionInfo: {
           optionCombinationSortType: "CREATE",

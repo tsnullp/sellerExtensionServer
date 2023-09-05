@@ -1,4 +1,5 @@
 const axios = require("axios");
+const https = require("https");
 const cheerio = require("cheerio");
 const url = require("url");
 const Cookie = require("../models/Cookie");
@@ -8,6 +9,7 @@ const he = require("he");
 const _ = require("lodash");
 const iconv = require("iconv-lite");
 const searchNaverKeyword = require("./searchNaverKeyword");
+const startBrowser = require("./startBrowser");
 
 const start = async ({ url }) => {
   const ObjItem = {
@@ -41,6 +43,13 @@ const start = async ({ url }) => {
         break;
       case url.includes("crocs.co.jp"):
         await getCrocs({ ObjItem, url });
+        break;
+
+      case url.includes("barns.jp"):
+        await getBarns({ ObjItem, url });
+        break;
+      case url.includes("asics.com/jp"):
+        await getAsics({ ObjItem, url });
         break;
       default:
         console.log("DEFAULT", url);
@@ -915,6 +924,447 @@ const getCrocs = async ({ ObjItem, url }) => {
   }
 };
 
+const getBarns = async ({ ObjItem, url }) => {
+  try {
+    const agent = new https.Agent({
+      rejectUnauthorized: false,
+    });
+
+    let config = {
+      httpsAgent: agent,
+      method: "get",
+      maxBodyLength: Infinity,
+      url,
+      headers: {
+        Host: "barns.jp",
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",
+      },
+    };
+
+    let content = await axios.request(config);
+
+    let temp1 = content.data
+      .split("window.hulkappsWishlist.productJSON = ")[1]
+      .split("</script>")[0];
+
+    let temp2 = temp1.trim().slice(0, temp1.trim().length - 1);
+    temp2 = decodeUnicode(temp2);
+
+    const jsonObj = JSON.parse(temp2);
+
+    // console.log("jsonObj", jsonObj);
+
+    ObjItem.brand = "반스아웃피터스";
+    ObjItem.salePrice = jsonObj.price;
+    ObjItem.modelName = jsonObj.handle.toUpperCase();
+    ObjItem.title = jsonObj.title;
+    ObjItem.korTitle = await papagoTranslate(jsonObj.title, "auto", "ko");
+    ObjItem.korTitle = `${ObjItem.brand} ${ObjItem.korTitle} ${ObjItem.modelName}`;
+
+    let category = await searchNaverKeyword({
+      title: ObjItem.korTitle,
+    });
+    if (category) {
+      if (category.category4Code) {
+        ObjItem.categoryID = category.category4Code;
+      } else {
+        ObjItem.categoryID = category.category3Code;
+      }
+    }
+
+    ObjItem.html += `<h1>${ObjItem.korTitle}</h1>`;
+    ObjItem.html += `<br>`;
+    ObjItem.html += jsonObj.content;
+
+    let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
+      (item) => item.trim().length > 0
+    );
+
+    let htmlKorObj = [];
+    const promiseArray = htmlTextArr.map((item) => {
+      return new Promise(async (resolve, reject) => {
+        try {
+          const korText = await papagoTranslate(item, "ja", "ko");
+
+          htmlKorObj.push({
+            key: item,
+            value: korText,
+          });
+
+          resolve();
+        } catch (e) {
+          reject();
+        }
+      });
+    });
+    await Promise.all(promiseArray);
+
+    htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
+
+    for (const item of htmlKorObj) {
+      const regex = new RegExp(
+        item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        "g"
+      );
+
+      ObjItem.html = ObjItem.html.replace(regex, (match) => {
+        if (match.toLowerCase() === item.key.toLowerCase()) {
+          return item.value;
+        } else {
+          return match;
+        }
+      });
+    }
+
+    ObjItem.content = jsonObj.images.map((item) => {
+      return `https:${item.split("?")[0]}`;
+    });
+
+    let inventoryTemp1 = content.data
+      .split("var SimplePreorderBootstrap = ")[1]
+      .split(";")[0]
+      .replace(/'([^'"]+)'/g, (_, match) => {
+        // 큰따옴표 안에 작은따옴표가 없는 경우에만 변경하지 않고 그대로 반환
+        if (!match.includes('"')) {
+          return `"${match}"`;
+        } else {
+          return _;
+        }
+      })
+      .replace(/,\s*]/g, "]");
+
+    let inventoryObj = JSON.parse(inventoryTemp1);
+
+    const variants = inventoryObj.product.variants;
+    let tempProp = [];
+    let tempOptions = [];
+
+    let sizeValues = [];
+    let colorValues = [];
+
+    for (const item of jsonObj.variants) {
+      let attributes = [];
+      let value = "";
+      let korValue = "";
+      let propPath = "";
+      let stock = 0;
+
+      let findStock = _.find(variants, { id: item.id });
+      if (findStock) {
+        stock = Number(findStock.inventory_quantity);
+      }
+      if (item.option1) {
+        let korOption1 = await papagoTranslate(item.option1, "en", "ko");
+        value += item.option1;
+        korValue += korOption1;
+        propPath += `1:${item.option1}`;
+        attributes.push({
+          attributeTypeName: "사이즈",
+          attributeValueName: korOption1,
+        });
+
+        let sizeFindObj = _.find(sizeValues, { vid: item.option1 });
+        if (!sizeFindObj) {
+          sizeValues.push({
+            vid: item.option1,
+            name: value,
+            korValueName: korOption1,
+          });
+        }
+      }
+      if (item.option2) {
+        let korOption2 = await papagoTranslate(item.option2, "en", "ko");
+        if (value.length > 0) {
+          value += ` ${item.option2}`;
+          korValue += ` ${korOption2}`;
+          propPath += `;2:${item.option2}`;
+        } else {
+          value += item.option2;
+          korValue += korOption2;
+          propPath += `2:${item.sku}`;
+        }
+        attributes.push({
+          attributeTypeName: "컬러",
+          attributeValueName: korOption2,
+        });
+
+        let image = null;
+
+        if (item.featured_media && item.featured_media.preview_image) {
+          image = `https:${item.featured_media.preview_image.src}`.split(
+            "?"
+          )[0];
+          if (!ObjItem.mainImages.includes(image)) {
+            ObjItem.mainImages.push(image);
+          }
+        }
+
+        let colorFindObj = _.find(colorValues, { vid: item.option2 });
+        if (!colorFindObj) {
+          colorValues.push({
+            vid: item.option2,
+            name: value,
+            korValueName: korOption2,
+            image,
+          });
+        }
+      }
+      tempOptions.push({
+        key: item.sku,
+        propPath,
+        value,
+        korValue,
+        stock: stock >= 0 ? stock : 0,
+        price:
+          item.price / 100 >= 15000 ? item.price / 100 : item.price / 100 + 660,
+        weight: item.weight,
+        active: true,
+        disabled: false,
+        attributes,
+      });
+    }
+    for (const item of jsonObj.options) {
+      if (item === "サイズ" && sizeValues.length > 0) {
+        tempProp.push({
+          pid: "1",
+          name: "sizes",
+          korTypeName: "사이즈",
+          values: sizeValues,
+        });
+      } else if (item === "色" && colorValues.length > 0) {
+        tempProp.push({
+          pid: "2",
+          name: "colors",
+          korTypeName: "컬러",
+          values: colorValues,
+        });
+      }
+    }
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+
+    if (ObjItem.mainImages.length === 0) {
+      ObjItem.mainImages = ObjItem.content.filter((_, i) => i < 10);
+    }
+  } catch (e) {
+    console.log("getBarns ", e);
+  }
+};
+
+const getAsics = async ({ ObjItem, url }) => {
+  const browser = await startBrowser(true);
+  const page = await browser.newPage();
+  await page.setJavaScriptEnabled(true);
+
+  try {
+    await page.goto(url, { waituntil: "networkidle0" });
+    const content = await page.content();
+
+    // console.log("content--  ", content);
+    const temp1 = content.split("var utag_data = ")[1].split(";")[0];
+
+    const jsonObj = JSON.parse(temp1);
+
+    ObjItem.brand = "아식스";
+    ObjItem.title = jsonObj.page_name;
+
+    ObjItem.korTitle = await papagoTranslate(ObjItem.title, "auto", "ko");
+
+    let color = `${jsonObj.product_variant[0]} ${jsonObj.product_color[0]}`;
+    color = await papagoTranslate(color, "auto", "ko");
+
+    ObjItem.salePrice = Number(jsonObj.product_unit_price[0]);
+
+    ObjItem.modelName = jsonObj.product_style.join(" ");
+
+    ObjItem.korTitle = `${ObjItem.brand} ${ObjItem.korTitle} ${color} ${ObjItem.modelName}`;
+    let category = await searchNaverKeyword({
+      title: ObjItem.korTitle,
+    });
+    if (category) {
+      if (category.category4Code) {
+        ObjItem.categoryID = category.category4Code;
+      } else {
+        ObjItem.categoryID = category.category3Code;
+      }
+    }
+
+    const imageElements = await page.$$("li.thumb > a");
+
+    for (const elem of imageElements) {
+      let src = await page.evaluate((el) => el.getAttribute("href"), elem);
+      ObjItem.content.push(src);
+    }
+
+    ObjItem.mainImages = ObjItem.content.filter((_, index) => index < 10);
+
+    ObjItem.html += `<h1>${ObjItem.korTitle}</h1>`;
+    ObjItem.html += `<br>`;
+
+    try {
+      const classification = await page.$eval(
+        ".product-classification",
+        (element) => element.textContent
+      );
+
+      if (classification) {
+        ObjItem.html += `<h2>${classification.trim()}</h2>`;
+        ObjItem.html += `<br>`;
+      }
+    } catch (e) {}
+
+    try {
+      const hookContent = await page.$eval(
+        ".product-hook-content-small",
+        (element) => element.textContent
+      );
+
+      if (hookContent) {
+        ObjItem.html += `<h3>${hookContent.trim()}</h3>`;
+        ObjItem.html += `<br>`;
+      }
+    } catch (e) {}
+
+    const description = await page.$eval(
+      ".product-info-section-inner",
+      (element) => element.innerHTML
+    );
+    ObjItem.html += description;
+    ObjItem.html += `<br>`;
+
+    try {
+      const sizeTable = await page.$eval(
+        "._sizePickerContainer_6010e",
+        (element) => element.innerHTML
+      );
+
+      if (sizeTable) {
+        const $ = cheerio.load(sizeTable);
+        // 모든 버튼 요소 선택
+        const buttons = $("button");
+
+        // 각 버튼의 span 태그 안에 있는 텍스트를 추출하여 버튼 대신에 넣음
+        buttons.each(function () {
+          const spanText = $(this).find("span").text();
+          $(this).replaceWith(spanText);
+        });
+
+        const allTags = $("*");
+
+        // 모든 태그의 style 속성 삭제
+        allTags.each(function () {
+          $(this).removeAttr("style");
+        });
+
+        ObjItem.html += $.html();
+        ObjItem.html += `<br><br>`;
+      }
+    } catch (e) {}
+
+    let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
+      (item) => item.trim().length > 0
+    );
+
+    let htmlKorObj = [];
+    const promiseArray = htmlTextArr.map((item) => {
+      return new Promise(async (resolve, reject) => {
+        try {
+          const korText = await papagoTranslate(item, "ja", "ko");
+
+          htmlKorObj.push({
+            key: item,
+            value: korText,
+          });
+
+          resolve();
+        } catch (e) {
+          reject();
+        }
+      });
+    });
+    await Promise.all(promiseArray);
+
+    htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
+
+    for (const item of htmlKorObj) {
+      const regex = new RegExp(
+        item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        "g"
+      );
+
+      ObjItem.html = ObjItem.html.replace(regex, (match) => {
+        if (match.toLowerCase() === item.key.toLowerCase()) {
+          return item.value;
+        } else {
+          return match;
+        }
+      });
+    }
+
+    let tempProp = [];
+    let tempOptions = [];
+
+    tempProp.push({
+      pid: "1",
+      name: "sizes",
+      korTypeName: "사이즈",
+      values: jsonObj.product_sizes.map((item, i) => {
+        return {
+          vid: i.toString(),
+          name: item,
+          korValueName: item,
+        };
+      }),
+    });
+
+    tempOptions = jsonObj.product_sizes.map((item, i) => {
+      let price = 0;
+      let stock = 0;
+      if (jsonObj.product_unit_price.length > 0) {
+        price = Number(jsonObj.product_unit_price[0]);
+      } else {
+        price = Number(jsonObj.product_unit_original_price[0]);
+      }
+
+      if (jsonObj.product_sizes_stock[i] === "yes") {
+        stock = 5;
+      }
+      return {
+        key: i.toString(),
+        propPath: `1:${i.toString()}`,
+        value: item,
+        korValue: item,
+        price: price >= 3000 ? price : price + 550,
+        stock,
+        active: true,
+        disabled: false,
+        weight: jsonObj.product_division[0] === "Shoes" ? 1 : 0.5,
+        attributes: [
+          {
+            attributeTypeName: "사이즈",
+            attributeValueName: item,
+          },
+        ],
+      };
+    });
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+  } catch (e) {
+    console.log("getAsics", e);
+  } finally {
+    if (page) {
+      await page.goto("about:blank");
+      await page.close();
+    }
+    if (browser) {
+      await browser.close();
+    }
+  }
+};
+
 const getProductEntity = (addr) => {
   const tmepUrl = addr.split("?")[0];
   const q1 = url.parse(tmepUrl, true);
@@ -946,4 +1396,12 @@ const extractTextFromHTML = (htmlString) => {
   extractTextFromNode($("body").get(0));
 
   return textNodes;
+};
+
+const decodeUnicode = (unicodeString) => {
+  var r = /\\u([\d\w]{4})/gi;
+  unicodeString = unicodeString.replace(r, function (match, grp) {
+    return String.fromCharCode(parseInt(grp, 16));
+  });
+  return unescape(unicodeString);
 };
