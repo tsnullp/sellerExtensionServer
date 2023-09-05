@@ -1170,7 +1170,8 @@ const getAsics = async ({ ObjItem, url }) => {
     ObjItem.brand = "아식스";
     ObjItem.title = jsonObj.page_name;
 
-    ObjItem.korTitle = await papagoTranslate(ObjItem.title, "auto", "ko");
+    // ObjItem.korTitle = await papagoTranslate(ObjItem.title, "auto", "ko");
+    ObjItem.korTitle = ObjItem.title;
 
     let color = await papagoTranslate(jsonObj.product_variant[0], "auto", "ko");
     color = `${color} ${jsonObj.product_color[0]}`;
