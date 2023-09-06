@@ -51,6 +51,9 @@ const start = async ({ url }) => {
       case url.includes("asics.com/jp"):
         await getAsics({ ObjItem, url });
         break;
+      case url.includes("jp.stussy.com"):
+        await getStussy({ ObjItem, url });
+        break;
       default:
         console.log("DEFAULT", url);
         break;
@@ -1363,6 +1366,196 @@ const getAsics = async ({ ObjItem, url }) => {
     if (browser) {
       await browser.close();
     }
+  }
+};
+
+const getStussy = async ({ ObjItem, url }) => {
+  try {
+    const agent = new https.Agent({
+      rejectUnauthorized: false,
+    });
+
+    let content = await axios({
+      httpsAgent: agent,
+      url,
+      method: "GET",
+    });
+
+    let temp1 = content.data;
+
+    temp1 = temp1.split("KiwiSizing.data = ")[1].split(";")[0];
+
+    const jsonObj = JSON.parse(
+      temp1
+        .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')
+        .replace(/\"\"/g, '"')
+        .replace(/,\s*([\]}])/g, "$1")
+    );
+
+    const temp2 = content.data
+      .split('<script type="application/json" id="ProductJSON">')[1]
+      .split("</script>")[0];
+    const productJSON = JSON.parse(temp2);
+
+    ObjItem.brand = "스투시";
+    ObjItem.modelName = jsonObj.product;
+    ObjItem.title = jsonObj.title;
+    ObjItem.korTitle = await papagoTranslate(jsonObj.title, "auto", "ko");
+
+    ObjItem.content = jsonObj.images.map((item) => {
+      return `https:${item.split("?")[0]}`;
+    });
+
+    ObjItem.mainImages = ObjItem.content.filter((_, i) => i < 10);
+
+    let tempProp = [];
+    let tempOptions = [];
+
+    let color = "";
+
+    let colorObj = _.find(jsonObj.options, { name: "Color" });
+    let sizeObj = _.find(jsonObj.options, { name: "Size" });
+
+    if (colorObj && colorObj.values.length > 0) {
+      color = await papagoTranslate(colorObj.values[0], "en", "ko");
+    }
+    const sizeValues = [];
+
+    for (const item of sizeObj.values) {
+      sizeValues.push({
+        vid: item,
+        name: item,
+        korValueName: await papagoTranslate(item, "en", "ko"),
+      });
+    }
+
+    tempProp.push({
+      pid: "1",
+      name: sizeObj.name,
+      korTypeName: "사이즈",
+      values: sizeValues,
+    });
+
+    for (const item of jsonObj.variants) {
+      let size = await papagoTranslate(item.option2, "en", "ko");
+      tempOptions.push({
+        key: item.id,
+        propPath: `1:${item.option2}`,
+        value: item.option2,
+        korValue: size,
+        price:
+          item.price / 100 >= 20000 ? item.price / 100 : item.price / 100 + 550,
+        weight: item.weight && item.weight > 0 ? item.weight / 1000 : 0,
+        stock: item.available ? 5 : 0,
+        active: true,
+        disabled: false,
+        attributes: [
+          {
+            attributeTypeName: "컬러",
+            attributeValueName: size,
+          },
+        ],
+      });
+    }
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+
+    const sizeResponse = await axios.request({
+      method: "GET",
+      url: "https://app.kiwisizing.com/api/getSizingChart?shop=stussy-japan.myshopify.com",
+      params: {
+        product: jsonObj.product,
+        title: jsonObj.title,
+        tags: jsonObj.tags,
+        type: jsonObj.type,
+        vendor: jsonObj.vendor,
+        collections: jsonObj.collections,
+      },
+    });
+
+    ObjItem.korTitle = `${ObjItem.brand} ${ObjItem.korTitle} ${color}`;
+
+    let category = await searchNaverKeyword({
+      title: ObjItem.korTitle,
+    });
+    if (category) {
+      if (category.category4Code) {
+        ObjItem.categoryID = category.category4Code;
+      } else {
+        ObjItem.categoryID = category.category3Code;
+      }
+    }
+
+    ObjItem.html += `<h1>${ObjItem.korTitle}</h1>`;
+    ObjItem.html += `<br>`;
+    ObjItem.html += productJSON.description;
+
+    let tableHtml = "";
+    if (sizeResponse && sizeResponse.data && sizeResponse.data.sizings) {
+      for (const item of sizeResponse.data.sizings) {
+        tableHtml += `<br>`;
+        tableHtml += `<h2>사이즈 안내</h2>`;
+        tableHtml += `<table border="1">`;
+
+        for (const sizeItem of item.tables.vmOh7Lf.data) {
+          tableHtml += `<tr>`;
+          for (const tableItem of sizeItem) {
+            let value = tableItem.value;
+            if (Number(value) && tableItem.unitType === "in") {
+              value = (Number(value) * 2.54).toFixed(1);
+            }
+            tableHtml += `<td>${value}</td>`;
+          }
+          tableHtml += `</tr>`;
+        }
+        tableHtml += `</table>`;
+      }
+
+      ObjItem.html += tableHtml;
+
+      let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
+        (item) => item.trim().length > 0
+      );
+
+      let htmlKorObj = [];
+      const promiseArray = htmlTextArr.map((item) => {
+        return new Promise(async (resolve, reject) => {
+          try {
+            const korText = await papagoTranslate(item, "ja", "ko");
+
+            htmlKorObj.push({
+              key: item,
+              value: korText,
+            });
+
+            resolve();
+          } catch (e) {
+            reject();
+          }
+        });
+      });
+      await Promise.all(promiseArray);
+
+      htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
+
+      for (const item of htmlKorObj) {
+        const regex = new RegExp(
+          item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+          "g"
+        );
+
+        ObjItem.html = ObjItem.html.replace(regex, (match) => {
+          if (match.toLowerCase() === item.key.toLowerCase()) {
+            return item.value;
+          } else {
+            return match;
+          }
+        });
+      }
+    }
+  } catch (e) {
+    console.log("getStussy -- ", e);
   }
 };
 

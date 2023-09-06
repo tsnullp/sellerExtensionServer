@@ -42,6 +42,9 @@ const start = async ({ url }) => {
       case url.includes("asics.com/jp"):
         await getAsics({ ObjItem, url });
         break;
+      case url.includes("jp.stussy.com"):
+        await getStussy({ ObjItem, url });
+        break;
       default:
         console.log("DEFAULT", url);
         break;
@@ -523,6 +526,91 @@ const getAsics = async ({ ObjItem, url }) => {
     if (browser) {
       await browser.close();
     }
+  }
+};
+
+const getStussy = async ({ ObjItem, url }) => {
+  try {
+    const agent = new https.Agent({
+      rejectUnauthorized: false,
+    });
+
+    let content = await axios({
+      httpsAgent: agent,
+      url,
+      method: "GET",
+    });
+
+    let temp1 = content.data;
+
+    temp1 = temp1.split("KiwiSizing.data = ")[1].split(";")[0];
+
+    const jsonObj = JSON.parse(
+      temp1
+        .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')
+        .replace(/\"\"/g, '"')
+        .replace(/,\s*([\]}])/g, "$1")
+    );
+
+    const temp2 = content.data
+      .split('<script type="application/json" id="ProductJSON">')[1]
+      .split("</script>")[0];
+    const productJSON = JSON.parse(temp2);
+
+    let tempProp = [];
+    let tempOptions = [];
+
+    let color = "";
+
+    let colorObj = _.find(jsonObj.options, { name: "Color" });
+    let sizeObj = _.find(jsonObj.options, { name: "Size" });
+
+    if (colorObj && colorObj.values.length > 0) {
+      color = await papagoTranslate(colorObj.values[0], "en", "ko");
+    }
+    const sizeValues = [];
+
+    for (const item of sizeObj.values) {
+      sizeValues.push({
+        vid: item,
+        name: item,
+        korValueName: await papagoTranslate(item, "en", "ko"),
+      });
+    }
+
+    tempProp.push({
+      pid: "1",
+      name: sizeObj.name,
+      korTypeName: "사이즈",
+      values: sizeValues,
+    });
+
+    for (const item of jsonObj.variants) {
+      let size = await papagoTranslate(item.option2, "en", "ko");
+      tempOptions.push({
+        key: item.id,
+        propPath: `1:${item.option2}`,
+        value: item.option2,
+        korValue: size,
+        price:
+          item.price / 100 >= 20000 ? item.price / 100 : item.price / 100 + 550,
+        weight: item.weight && item.weight > 0 ? item.weight / 1000 : 0,
+        stock: item.available ? 5 : 0,
+        active: true,
+        disabled: false,
+        attributes: [
+          {
+            attributeTypeName: "컬러",
+            attributeValueName: size,
+          },
+        ],
+      });
+    }
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+  } catch (e) {
+    console.log("getStussy -- ", e);
   }
 };
 

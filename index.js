@@ -237,7 +237,9 @@ app.post("/amazon/isRegister", async (req, res) => {
       detailUrl.includes("uniqlo.com/jp") ||
       detailUrl.includes("charleskeith.jp") ||
       detailUrl.includes("crocs.co.jp") ||
-      detailUrl.includes("barns.jp")
+      detailUrl.includes("barns.jp") ||
+      detailUrl.includes("asics.com/jp") ||
+      detailUrl.includes("jp.stussy.com")
     ) {
       product = await Product.findOne({
         userID: ObjectId(userInfo._id),
@@ -345,7 +347,9 @@ app.post("/amazon/isRegisters", async (req, res) => {
         items[0].includes("uniqlo.com/jp") ||
         items[0].includes("charleskeith.jp") ||
         items[0].includes("crocs.co.jp") ||
-        items[0].includes("barns.jp")
+        items[0].includes("barns.jp") ||
+        items[0].includes("asics.com/jp") ||
+        items[0].includes("jp.stussy.com")
       ) {
         product = await Product.aggregate([
           {
@@ -401,6 +405,12 @@ app.post("/amazon/isRegisters", async (req, res) => {
                 },
                 {
                   "basic.url": { $regex: `.*barns.jp.*` },
+                },
+                {
+                  "basic.url": { $regex: `.*asics.com/jp.*` },
+                },
+                {
+                  "basic.url": { $regex: `.*jp.stussy.com.*` },
                 },
               ],
             },
@@ -467,7 +477,9 @@ app.post("/amazon/isRegisters", async (req, res) => {
               items[0].includes("uniqlo.com/jp") ||
               items[0].includes("charleskeith.jp") ||
               items[0].includes("crocs.co.jp") ||
-              items[0].includes("barns.jp")
+              items[0].includes("barns.jp") ||
+              items[0].includes("asics.com/jp") ||
+              items[0].includes("jp.stussy.com")
             ) {
               return pItem.basic.good_id === asin;
             } else {
@@ -1569,7 +1581,8 @@ app.post("/amazon/collectionItems", async (req, res) => {
                   item.detailUrl.includes("charleskeith.jp/") ||
                   item.detailUrl.includes("crocs.co.jp/") ||
                   item.detailUrl.includes("barns.jp/") ||
-                  item.detailUrl.includes("asics.com/jp")
+                  item.detailUrl.includes("asics.com/jp") ||
+                  item.detailUrl.includes("jp.stussy.com")
                 ) {
                   const asin = AmazonAsin(item.detailUrl);
                   if (!asin) {
@@ -2630,6 +2643,9 @@ const BrandPriceSync = async () => {
               },
               {
                 "basic.url": { $regex: `.*asics.com/jp.*` },
+              },
+              {
+                "basic.url": { $regex: `.*jp.stussy.com.*` },
               },
             ],
           },
