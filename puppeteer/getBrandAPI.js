@@ -1600,7 +1600,7 @@ const getNorthFace = async ({ ObjItem, url }) => {
 
     let detailTable = null;
     try {
-      detailTable = $(".item_detail_table").html();
+      detailTable = $(".item_detail_table > table:nth-child(1)").html();
       const weight = extractWeight(detailTable);
 
       if (weight) {
@@ -1634,7 +1634,24 @@ const getNorthFace = async ({ ObjItem, url }) => {
         .replace("取扱説明書はこちら ≫≫", "")
         .replace("●GOLDWIN WEB STORE 限定販売品番", "")
         .replace("●店頭取り寄せ注文についてはご利用いただけません。", "")
-        .replace("●GOLDWIN WEB STORE・一部直営店 限定販売品番カラー", "");
+        .replace("●GOLDWIN WEB STORE・一部直営店 限定販売品番カラー", "")
+        .replace(
+          "※ZI Magne Systemは、既存のZip in Zip Systemには対応しておりません。",
+          ""
+        )
+        .replace(
+          "ジップインマグネシステム（ユニセックス）対応品番はこちら≫≫",
+          ""
+        )
+        .replace("製品を安全にご使用頂くための注意事項", "")
+        .replace("※ご購入前に必ずご一読ください。 ≫≫", "")
+        .replace("WEB STORE・一部直営店 限定販売品番", "")
+        .replace("▼収納方法", "")
+        .replace(
+          "THE NORTH FACEの長きにわたり愛され続けるバッグのカラーカスタマイズが可能に。詳細はこちら≫≫",
+          ""
+        )
+        .replace("はこちら ≫≫", "");
 
       ObjItem.title = productStructured.name;
       ObjItem.modelName = productStructured.item_group_id;
