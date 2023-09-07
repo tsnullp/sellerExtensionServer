@@ -54,6 +54,9 @@ const start = async ({ url }) => {
       case url.includes("jp.stussy.com"):
         await getStussy({ ObjItem, url });
         break;
+      case url.includes("goldwin.co.jp"):
+        await getNorthFace({ ObjItem, url });
+        break;
       default:
         console.log("DEFAULT", url);
         break;
@@ -1558,6 +1561,266 @@ const getStussy = async ({ ObjItem, url }) => {
     }
   } catch (e) {
     console.log("getStussy -- ", e);
+  }
+};
+
+const getNorthFace = async ({ ObjItem, url }) => {
+  try {
+    let content = await axios({
+      url,
+      method: "GET",
+      headers: {
+        "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+      },
+      responseEncoding: "binary",
+    });
+
+    content = iconv.decode(content.data, "UTF-8");
+
+    const $ = cheerio.load(content);
+
+    let colorImages = [];
+    for (const item of $(".cart_color_list").children("li")) {
+      const name = $(item).find("img").attr("alt");
+      const image = `https:${
+        $(item).find("img").attr("src").split("-")[0]
+      }.jpg`;
+      ObjItem.mainImages.push(image);
+      colorImages.push({
+        name,
+        image,
+      });
+    }
+    for (const item of $(".item_detail_gallery > ul").children("li")) {
+      let image = `https:${$(item).find("img").attr("src").split("-")[0]}.jpg`;
+      if (!ObjItem.mainImages.includes(image)) {
+        ObjItem.content.push(image);
+      }
+    }
+
+    let detailTable = null;
+    try {
+      detailTable = $(".item_detail_table").html();
+      const weight = extractWeight(detailTable);
+
+      if (weight) {
+        ObjItem.weight = weight;
+      }
+    } catch (e) {}
+
+    ObjItem.brand = "노스페이스";
+    const temp1 = content.split("var _product_structured = ");
+
+    const tempProp = [];
+    const tempOptions = [];
+
+    const colorValues = [];
+    const sizeValues = [];
+
+    let description = "";
+    for (const productStr of temp1.filter((_, i) => i > 0)) {
+      const temp2 = productStr
+        .split("if ( docs.length == 0 ) {")[0]
+        .trim()
+        .replace(
+          /"aggregateRating":\s*{[^}]*}/g,
+          '"aggregateRating": {"@type": "AggregateRating", "ratingValue": "0.0", "bestRating": "0.0", "worstRating": "0.0", "ratingCount": 0}'
+        );
+
+      const productStructured = JSON.parse(temp2);
+
+      description = productStructured.description
+        .replace("ジップインジップ（メンズ）対応品番はこちら≫≫", "")
+        .replace("取扱説明書はこちら ≫≫", "");
+
+      ObjItem.title = productStructured.name;
+      ObjItem.modelName = productStructured.item_group_id;
+      ObjItem.salePrice = productStructured.offers.price;
+
+      let korColorName = await papagoTranslate(
+        productStructured.color,
+        "auto",
+        "ko"
+      );
+      let korSizeName = await papagoTranslate(
+        productStructured.size,
+        "auto",
+        "ko"
+      );
+      const findColorObj = _.find(colorValues, {
+        name: productStructured.color,
+      });
+      if (!findColorObj) {
+        let image = null;
+        const findColorImage = _.find(colorImages, {
+          name: productStructured.color,
+        });
+        if (findColorImage) {
+          image = findColorImage.image;
+        }
+        colorValues.push({
+          vid: productStructured.color.replace(/:/g, " "),
+          name: productStructured.color,
+          korValueName: korColorName,
+          image,
+        });
+      }
+      const findSizeObj = _.find(sizeValues, { name: productStructured.size });
+      if (!findSizeObj) {
+        sizeValues.push({
+          vid: productStructured.size.replace(/:/g, " "),
+          name: productStructured.size,
+          korValueName: korSizeName,
+        });
+      }
+
+      let propPath = ``;
+      let value = ``;
+      let korValue = ``;
+      let attributes = [];
+      if (productStructured.color) {
+        propPath += `1:${productStructured.color.replace(/:/g, " ")}`;
+        value += productStructured.color;
+        korValue += korColorName;
+        attributes.push({
+          attributeTypeName: "컬러",
+          attributeValueName: korColorName,
+        });
+      }
+      if (productStructured.size) {
+        if (propPath.length > 0) {
+          propPath += `;2:${productStructured.size.replace(/:/g, " ")}`;
+          value += ` ${productStructured.size}`;
+          korValue += ` ${korSizeName}`;
+        } else {
+          propPath += `2:${productStructured.size.replace(/:/g, " ")}`;
+          value += `${productStructured.size}`;
+          korValue += `${korSizeName}`;
+        }
+        attributes.push({
+          attributeTypeName: "사이즈",
+          attributeValueName: korSizeName,
+        });
+      }
+      tempOptions.push({
+        key: productStructured.sku,
+        propPath,
+        value,
+        korValue,
+        price:
+          Number(productStructured.offers.price) >= 5000
+            ? Number(productStructured.offers.price)
+            : Number(productStructured.offers.price) + 500,
+        stock: productStructured.offers.availability === "InStock" ? 5 : 0,
+        active: true,
+        weight: ObjItem.weight,
+        disabled: false,
+        attributes,
+      });
+    }
+
+    if (colorValues.length > 0) {
+      tempProp.push({
+        pid: "1",
+        name: "colors",
+        korTypeName: "컬러",
+        values: colorValues,
+      });
+    }
+    if (sizeValues.length > 0) {
+      tempProp.push({
+        pid: "2",
+        name: "sizes",
+        korTypeName: "사이즈",
+        values: sizeValues,
+      });
+    }
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+
+    ObjItem.korTitle = await papagoTranslate(ObjItem.title, "auto", "ko");
+    ObjItem.korTitle = `${ObjItem.brand} ${ObjItem.korTitle} ${ObjItem.modelName}`;
+
+    let category = await searchNaverKeyword({
+      title: ObjItem.korTitle,
+    });
+    if (category) {
+      if (category.category4Code) {
+        ObjItem.categoryID = category.category4Code;
+      } else {
+        ObjItem.categoryID = category.category3Code;
+      }
+    }
+
+    ObjItem.html += `<h1>${ObjItem.korTitle}</h1>`;
+    ObjItem.html += `<br>`;
+    if (description.length > 0) {
+      ObjItem.html += `<h2>아이템 정보</h2>`;
+      ObjItem.html += `<br>`;
+      ObjItem.html += `<p>${description}</p>`;
+      ObjItem.html += `<br>`;
+    }
+
+    try {
+      const sizeTable = content
+        .split(`$("#measureText").append('`)[1]
+        .split("');")[0];
+      if (sizeTable && sizeTable.length > 0) {
+        ObjItem.html += `<h2>사이즈 정보</h2>`;
+        ObjItem.html += `<br>`;
+        ObjItem.html += sizeTable
+          .replace("width='400'", "")
+          .replace("border='0'", "border='1'");
+        ObjItem.html += `<br>`;
+        if (detailTable) {
+          ObjItem.html += detailTable;
+          ObjItem.html += `<br>`;
+        }
+      }
+    } catch (e) {}
+
+    let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
+      (item) => item.trim().length > 0
+    );
+
+    let htmlKorObj = [];
+    const promiseArray = htmlTextArr.map((item) => {
+      return new Promise(async (resolve, reject) => {
+        try {
+          const korText = await papagoTranslate(item, "ja", "ko");
+
+          htmlKorObj.push({
+            key: item,
+            value: korText,
+          });
+
+          resolve();
+        } catch (e) {
+          reject();
+        }
+      });
+    });
+    await Promise.all(promiseArray);
+
+    htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
+
+    for (const item of htmlKorObj) {
+      const regex = new RegExp(
+        item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        "g"
+      );
+
+      ObjItem.html = ObjItem.html.replace(regex, (match) => {
+        if (match.toLowerCase() === item.key.toLowerCase()) {
+          return item.value;
+        } else {
+          return match;
+        }
+      });
+    }
+  } catch (e) {
+    console.log("getNorthFace -- ", e);
   }
 };
 

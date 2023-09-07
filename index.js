@@ -239,7 +239,8 @@ app.post("/amazon/isRegister", async (req, res) => {
       detailUrl.includes("crocs.co.jp") ||
       detailUrl.includes("barns.jp") ||
       detailUrl.includes("asics.com/jp") ||
-      detailUrl.includes("jp.stussy.com")
+      detailUrl.includes("jp.stussy.com") ||
+      detailUrl.includes("goldwin.co.jp")
     ) {
       product = await Product.findOne({
         userID: ObjectId(userInfo._id),
@@ -349,7 +350,8 @@ app.post("/amazon/isRegisters", async (req, res) => {
         items[0].includes("crocs.co.jp") ||
         items[0].includes("barns.jp") ||
         items[0].includes("asics.com/jp") ||
-        items[0].includes("jp.stussy.com")
+        items[0].includes("jp.stussy.com") ||
+        items[0].includes("goldwin.co.jp")
       ) {
         product = await Product.aggregate([
           {
@@ -411,6 +413,9 @@ app.post("/amazon/isRegisters", async (req, res) => {
                 },
                 {
                   "basic.url": { $regex: `.*jp.stussy.com.*` },
+                },
+                {
+                  "basic.url": { $regex: `.*goldwin.co.jp.*` },
                 },
               ],
             },
@@ -479,7 +484,8 @@ app.post("/amazon/isRegisters", async (req, res) => {
               items[0].includes("crocs.co.jp") ||
               items[0].includes("barns.jp") ||
               items[0].includes("asics.com/jp") ||
-              items[0].includes("jp.stussy.com")
+              items[0].includes("jp.stussy.com") ||
+              items[0].includes("goldwin.co.jp")
             ) {
               return pItem.basic.good_id === asin;
             } else {
@@ -701,11 +707,13 @@ app.post("/amazon/getCollectionItem", async (req, res) => {
       return;
     }
 
-    const products = await AmazonCollection.find({
+    // 수집할 데이터 조회
+    let products = await AmazonCollection.find({
       userID: ObjectId(userInfo._id),
       isDelete: { $ne: true },
     });
 
+    // 수집할 데이터 아이디
     let asinArr = products.map((item) => item.asin);
 
     // const registerProducts = await Product.find({
@@ -713,6 +721,8 @@ app.post("/amazon/getCollectionItem", async (req, res) => {
     //   isDelete: false,
     //   "basic.good_id": { $in: asinArr },
     // })
+
+    // 수집할 데이터중에 이미 등록된것들
     const registerProducts = await Product.aggregate([
       {
         $match: {
@@ -723,13 +733,17 @@ app.post("/amazon/getCollectionItem", async (req, res) => {
       },
       {
         $project: {
-          "options.key": 1,
+          // "options.key": 1,
           "basic.good_id": 1,
         },
       },
     ]);
 
-    console.time("1111");
+    let registerAsin = registerProducts.map((item) => item.basic.good_id);
+
+    products = products.filter((item) => !registerAsin.includes(item.asin));
+
+    // 수집 완료된 데이터
     const tempArr = await TempProduct.aggregate([
       {
         $match: {
@@ -737,41 +751,66 @@ app.post("/amazon/getCollectionItem", async (req, res) => {
           good_id: { $in: asinArr },
         },
       },
+      {
+        $project: {
+          good_id: 1,
+        },
+      },
     ]);
 
-    console.timeEnd("1111");
-    console.time("2222");
-    const productArr = [];
+    let productArr = [];
 
     const promiseArr = products.map((item) => {
       return new Promise(async (resolve, reject) => {
         try {
-          let isRegister = false;
-          for (const rItem of registerProducts) {
-            if (
-              rItem.options.filter((fItem) => fItem.key === item.asin).length >
-              0
-            ) {
-              isRegister = true;
-              break;
-            }
-            if (rItem.basic.good_id === item.asin) {
-              isRegister = true;
-              break;
+          const temp = tempArr.filter((fItem) => fItem.good_id === item.asin);
+          if (temp.length > 0) {
+            item.isDone = true;
+            if (temp[0].options.length === 0) {
+              item.isFail = true;
             }
           }
 
-          if (!isRegister) {
-            const temp = tempArr.filter((fItem) => fItem.good_id === item.asin);
-            if (temp.length > 0) {
-              item.isDone = true;
-              if (temp[0].options.length === 0) {
-                item.isFail = true;
-              }
-            }
+          productArr.push(item);
+          // let isRegister = false;
 
-            productArr.push(item);
-          }
+          // const findObj = _.find(registerProducts, (rItem) => {
+          //   if (rItem.basic.good_id === item.asin) {
+          //     return true;
+          //   }
+          //   const findOptionObj = _.find(rItem.options, { key: item.asin });
+          //   if (findOptionObj) {
+          //     return true;
+          //   }
+          // });
+          // if (findObj) {
+          //   isRegister = true;
+          // }
+          // for (const rItem of registerProducts) {
+          //   if (
+          //     rItem.options.filter((fItem) => fItem.key === item.asin).length >
+          //     0
+          //   ) {
+          //     isRegister = true;
+          //     break;
+          //   }
+          //   if (rItem.basic.good_id === item.asin) {
+          //     isRegister = true;
+          //     break;
+          //   }
+          // }
+
+          // if (!isRegister) {
+          //   const temp = tempArr.filter((fItem) => fItem.good_id === item.asin);
+          //   if (temp.length > 0) {
+          //     item.isDone = true;
+          //     if (temp[0].options.length === 0) {
+          //       item.isFail = true;
+          //     }
+          //   }
+
+          //   productArr.push(item);
+          // }
           resolve();
         } catch (e) {
           reject(e);
@@ -806,7 +845,6 @@ app.post("/amazon/getCollectionItem", async (req, res) => {
     //     productArr.push(item);
     //   }
     // }
-    console.timeEnd("2222");
 
     res.json(
       productArr.map((item) => {
@@ -1582,7 +1620,8 @@ app.post("/amazon/collectionItems", async (req, res) => {
                   item.detailUrl.includes("crocs.co.jp/") ||
                   item.detailUrl.includes("barns.jp/") ||
                   item.detailUrl.includes("asics.com/jp") ||
-                  item.detailUrl.includes("jp.stussy.com")
+                  item.detailUrl.includes("jp.stussy.com") ||
+                  item.detailUrl.includes("goldwin.co.jp")
                 ) {
                   const asin = AmazonAsin(item.detailUrl);
                   if (!asin) {
@@ -2351,8 +2390,14 @@ const RakutenPriceSync = async () => {
             }
 
             if (changePrice || changeStock) {
-              const minOption = _.minBy(product.options, "salePrice");
-              const maxOption = _.maxBy(product.options, "salePrice");
+              const minOption = _.minBy(
+                product.options.filter((item) => item.salePrice > 0),
+                "salePrice"
+              );
+              const maxOption = _.maxBy(
+                product.options.filter((item) => item.salePrice > 0),
+                "salePrice"
+              );
 
               const salePrice =
                 Math.ceil(
@@ -2647,6 +2692,9 @@ const BrandPriceSync = async () => {
               {
                 "basic.url": { $regex: `.*jp.stussy.com.*` },
               },
+              {
+                "basic.url": { $regex: `.*goldwin.co.jp.*` },
+              },
             ],
           },
         },
@@ -2712,9 +2760,16 @@ const BrandPriceSync = async () => {
             }
 
             if (changePrice || changeStock) {
-              const minOption = _.minBy(product.options, "salePrice");
-              const maxOption = _.maxBy(product.options, "salePrice");
-
+              const minOption = _.minBy(
+                product.options.filter((item) => item.salePrice > 0),
+                "salePrice"
+              );
+              const maxOption = _.maxBy(
+                product.options.filter((item) => item.salePrice > 0),
+                "salePrice"
+              );
+              console.log("minOptions", minOption.salePrice);
+              console.log("maxOption", maxOption.salePrice);
               const salePrice =
                 Math.ceil(
                   (minOption.salePrice + maxOption.salePrice) * 0.7 * 0.1

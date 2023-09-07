@@ -45,6 +45,9 @@ const start = async ({ url }) => {
       case url.includes("jp.stussy.com"):
         await getStussy({ ObjItem, url });
         break;
+      case url.includes("goldwin.co.jp"):
+        await getNorthFace({ ObjItem, url });
+        break;
       default:
         console.log("DEFAULT", url);
         break;
@@ -611,6 +614,140 @@ const getStussy = async ({ ObjItem, url }) => {
     ObjItem.options = tempOptions;
   } catch (e) {
     console.log("getStussy -- ", e);
+  }
+};
+
+const getNorthFace = async ({ ObjItem, url }) => {
+  try {
+    let content = await axios({
+      url,
+      method: "GET",
+      headers: {
+        "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+      },
+      responseEncoding: "binary",
+    });
+
+    content = iconv.decode(content.data, "UTF-8");
+
+    const temp1 = content.split("var _product_structured = ");
+
+    const tempProp = [];
+    const tempOptions = [];
+
+    const colorValues = [];
+    const sizeValues = [];
+
+    for (const productStr of temp1.filter((_, i) => i > 0)) {
+      const temp2 = productStr
+        .split("if ( docs.length == 0 ) {")[0]
+        .trim()
+        .replace(
+          /"aggregateRating":\s*{[^}]*}/g,
+          '"aggregateRating": {"@type": "AggregateRating", "ratingValue": "0.0", "bestRating": "0.0", "worstRating": "0.0", "ratingCount": 0}'
+        );
+
+      const productStructured = JSON.parse(temp2);
+
+      let korColorName = await papagoTranslate(
+        productStructured.color,
+        "auto",
+        "ko"
+      );
+      let korSizeName = await papagoTranslate(
+        productStructured.size,
+        "auto",
+        "ko"
+      );
+      const findColorObj = _.find(colorValues, {
+        name: productStructured.color,
+      });
+      if (!findColorObj) {
+        let image = null;
+
+        colorValues.push({
+          vid: productStructured.color.replace(/:/g, " "),
+          name: productStructured.color,
+          korValueName: korColorName,
+          image,
+        });
+      }
+      const findSizeObj = _.find(sizeValues, { name: productStructured.size });
+      if (!findSizeObj) {
+        sizeValues.push({
+          vid: productStructured.size.replace(/:/g, " "),
+          name: productStructured.size,
+          korValueName: korSizeName,
+        });
+      }
+
+      let propPath = ``;
+      let value = ``;
+      let korValue = ``;
+      let attributes = [];
+      if (productStructured.color) {
+        propPath += `1:${productStructured.color.replace(/:/g, " ")}`;
+        value += productStructured.color;
+        korValue += korColorName;
+        attributes.push({
+          attributeTypeName: "컬러",
+          attributeValueName: korColorName,
+        });
+      }
+      if (productStructured.size) {
+        if (propPath.length > 0) {
+          propPath += `;2:${productStructured.size.replace(/:/g, " ")}`;
+          value += ` ${productStructured.size}`;
+          korValue += ` ${korSizeName}`;
+        } else {
+          propPath += `2:${productStructured.size.replace(/:/g, " ")}`;
+          value += `${productStructured.size}`;
+          korValue += `${korSizeName}`;
+        }
+        attributes.push({
+          attributeTypeName: "사이즈",
+          attributeValueName: korSizeName,
+        });
+      }
+
+      tempOptions.push({
+        key: productStructured.sku,
+        propPath,
+        value,
+        korValue,
+        price:
+          Number(productStructured.offers.price) >= 5000
+            ? Number(productStructured.offers.price)
+            : Number(productStructured.offers.price) + 500,
+        stock: productStructured.offers.availability === "InStock" ? 5 : 0,
+        active: true,
+        // weight: ObjItem.weight,
+        disabled: false,
+        attributes,
+      });
+    }
+
+    if (colorValues.length > 0) {
+      tempProp.push({
+        pid: "1",
+        name: "colors",
+        korTypeName: "컬러",
+        values: colorValues,
+      });
+    }
+    if (sizeValues.length > 0) {
+      tempProp.push({
+        pid: "2",
+        name: "sizes",
+        korTypeName: "사이즈",
+        values: sizeValues,
+      });
+    }
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+  } catch (e) {
+    console.log("getNorthFace -- ", e);
   }
 };
 
