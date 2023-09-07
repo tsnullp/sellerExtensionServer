@@ -766,7 +766,7 @@ app.post("/amazon/getCollectionItem", async (req, res) => {
           const temp = tempArr.filter((fItem) => fItem.good_id === item.asin);
           if (temp.length > 0) {
             item.isDone = true;
-            if (temp[0].options.length === 0) {
+            if (!temp[0].options || temp[0].options.length === 0) {
               item.isFail = true;
             }
           }
