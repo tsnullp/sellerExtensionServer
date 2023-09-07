@@ -1631,7 +1631,10 @@ const getNorthFace = async ({ ObjItem, url }) => {
 
       description = productStructured.description
         .replace("ジップインジップ（メンズ）対応品番はこちら≫≫", "")
-        .replace("取扱説明書はこちら ≫≫", "");
+        .replace("取扱説明書はこちら ≫≫", "")
+        .replace("●GOLDWIN WEB STORE 限定販売品番", "")
+        .replace("●店頭取り寄せ注文についてはご利用いただけません。", "")
+        .replace("●GOLDWIN WEB STORE・一部直営店 限定販売品番カラー", "");
 
       ObjItem.title = productStructured.name;
       ObjItem.modelName = productStructured.item_group_id;
