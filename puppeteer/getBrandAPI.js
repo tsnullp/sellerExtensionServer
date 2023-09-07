@@ -1498,18 +1498,20 @@ const getStussy = async ({ ObjItem, url }) => {
         tableHtml += `<h2>사이즈 안내</h2>`;
         tableHtml += `<table border="1">`;
 
-        for (const sizeItem of item.tables.vmOh7Lf.data) {
-          tableHtml += `<tr>`;
-          for (const tableItem of sizeItem) {
-            let value = tableItem.value;
-            if (Number(value) && tableItem.unitType === "in") {
-              value = (Number(value) * 2.54).toFixed(1);
+        for (const key of Object.keys(item.tables)) {
+          for (const sizeItem of item.tables[key].data) {
+            tableHtml += `<tr>`;
+            for (const tableItem of sizeItem) {
+              let value = tableItem.value;
+              if (Number(value) && tableItem.unitType === "in") {
+                value = (Number(value) * 2.54).toFixed(1);
+              }
+              tableHtml += `<td>${value}</td>`;
             }
-            tableHtml += `<td>${value}</td>`;
+            tableHtml += `</tr>`;
           }
-          tableHtml += `</tr>`;
+          tableHtml += `</table>`;
         }
-        tableHtml += `</table>`;
       }
 
       ObjItem.html += tableHtml;
