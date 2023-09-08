@@ -1,5 +1,6 @@
 const axios = require("axios");
 const https = require("https");
+const cheerio = require("cheerio");
 const url = require("url");
 const { papagoTranslate } = require("./translate");
 const { regExp_test, AmazonAsin } = require("../lib/userFunc");
@@ -47,6 +48,9 @@ const start = async ({ url }) => {
         break;
       case url.includes("goldwin.co.jp"):
         await getNorthFace({ ObjItem, url });
+        break;
+      case url.includes("vans.co.jp"):
+        await getVans({ ObjItem, url });
         break;
       default:
         console.log("DEFAULT", url);
@@ -748,6 +752,101 @@ const getNorthFace = async ({ ObjItem, url }) => {
     ObjItem.options = tempOptions;
   } catch (e) {
     console.log("getNorthFace -- ", e);
+  }
+};
+
+const getVans = async ({ ObjItem, url }) => {
+  try {
+    let content = await axios({
+      url,
+      method: "GET",
+      headers: {
+        "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+      },
+      // responseEncoding: "binary",
+    });
+
+    content = content.data;
+
+    const $ = cheerio.load(content);
+
+    let tempProp = [];
+    let tempOptions = [];
+
+    let color = $("span.color > span.attr-display-value").text();
+    color = await papagoTranslate(color, "auto", "ko");
+
+    let sizeValues = [];
+
+    for (const item of $("ul.select-size").children("li")) {
+      let size = $(item).find("span").text();
+      const valueUrl = $(item).find("button").attr("value");
+      size = await papagoTranslate(size, "auto", "ko");
+      let price = ObjItem.salePrice;
+      let stock = 0;
+      if (valueUrl && valueUrl !== "null") {
+        let variationResponse = await axios({
+          url: valueUrl,
+          method: "GET",
+          headers: {
+            "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+            Host: "www.vans.co.jp",
+            "User-Agent":
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",
+          },
+          // responseEncoding: "binary",
+        });
+
+        if (variationResponse && variationResponse.data) {
+          variationResponse = variationResponse.data;
+
+          price = variationResponse.product.price.sales
+            ? variationResponse.product.price.sales.value
+            : variationResponse.product.price.list.value;
+          stock = variationResponse.product.online
+            ? variationResponse.product.maxOrderQuantity
+            : 0;
+        }
+      }
+
+      tempOptions.push({
+        key: size,
+        propPath: `1:${size.replace(/:/g, "")}`,
+        value: size,
+        korValue: size,
+        price: price >= 11000 ? price : price + 550,
+        stock,
+        weight: 1,
+        active: true,
+        disabled: false,
+        attributes: [
+          {
+            attributeTypeName: "사이즈",
+            attributeValueName: size,
+          },
+        ],
+      });
+
+      sizeValues.push({
+        vid: size.replace(/:/g, ""),
+        name: size,
+        korValueName: size,
+      });
+    }
+
+    if (sizeValues.length > 0) {
+      tempProp.push({
+        pid: "1",
+        name: "sizes",
+        korTypeName: "사이즈",
+        values: sizeValues,
+      });
+    }
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+  } catch (e) {
+    console.log("getVans ", e);
   }
 };
 

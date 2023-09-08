@@ -57,6 +57,9 @@ const start = async ({ url }) => {
       case url.includes("goldwin.co.jp"):
         await getNorthFace({ ObjItem, url });
         break;
+      case url.includes("vans.co.jp"):
+        await getVans({ ObjItem, url });
+        break;
       default:
         console.log("DEFAULT", url);
         break;
@@ -1600,7 +1603,7 @@ const getNorthFace = async ({ ObjItem, url }) => {
 
     let detailTable = null;
     try {
-      detailTable = $(".item_detail_table > table:nth-child(1)").html();
+      detailTable = $(".item_detail_table").html();
       const weight = extractWeight(detailTable);
 
       if (weight) {
@@ -1784,6 +1787,10 @@ const getNorthFace = async ({ ObjItem, url }) => {
       ObjItem.html += `<br>`;
       ObjItem.html += `<p>${description}</p>`;
       ObjItem.html += `<br>`;
+      if (detailTable) {
+        ObjItem.html += detailTable;
+        ObjItem.html += `<br>`;
+      }
     }
 
     try {
@@ -1797,10 +1804,6 @@ const getNorthFace = async ({ ObjItem, url }) => {
           .replace("width='400'", "")
           .replace("border='0'", "border='1'");
         ObjItem.html += `<br>`;
-        if (detailTable) {
-          ObjItem.html += detailTable;
-          ObjItem.html += `<br>`;
-        }
       }
     } catch (e) {}
 
@@ -1845,6 +1848,209 @@ const getNorthFace = async ({ ObjItem, url }) => {
     }
   } catch (e) {
     console.log("getNorthFace -- ", e);
+  }
+};
+
+const getVans = async ({ ObjItem, url }) => {
+  try {
+    let content = await axios({
+      url,
+      method: "GET",
+      headers: {
+        "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+      },
+      // responseEncoding: "binary",
+    });
+
+    content = content.data;
+    const temp = content
+      .split('<script type="application/ld+json">')[1]
+      .split("</script>")[0];
+    const productJson = JSON.parse(temp);
+
+    const $ = cheerio.load(content);
+
+    ObjItem.brand = "반스";
+    ObjItem.title = productJson.name;
+    ObjItem.korTitle = ObjItem.title;
+    ObjItem.modelName = productJson.mpn;
+
+    ObjItem.salePrice = productJson.offers.price;
+
+    ObjItem.content = productJson.image;
+    ObjItem.mainImages = ObjItem.content.filter((item, index) => index < 1);
+
+    let tempProp = [];
+    let tempOptions = [];
+
+    let color = $("span.color > span.attr-display-value").text();
+    color = await papagoTranslate(color, "auto", "ko");
+
+    let sizeValues = [];
+
+    let bullets = null;
+    let material = null;
+    let origin = null;
+    for (const item of $("ul.select-size").children("li")) {
+      let size = $(item).find("span").text();
+      const valueUrl = $(item).find("button").attr("value");
+      size = await papagoTranslate(size, "auto", "ko");
+      let price = ObjItem.salePrice;
+      let stock = 0;
+      if (valueUrl && valueUrl !== "null") {
+        let variationResponse = await axios({
+          url: valueUrl,
+          method: "GET",
+          headers: {
+            "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+            Host: "www.vans.co.jp",
+            "User-Agent":
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",
+          },
+          // responseEncoding: "binary",
+        });
+
+        if (variationResponse && variationResponse.data) {
+          variationResponse = variationResponse.data;
+
+          price = variationResponse.product.price.sales
+            ? variationResponse.product.price.sales.value
+            : variationResponse.product.price.list.value;
+          stock = variationResponse.product.online
+            ? variationResponse.product.maxOrderQuantity
+            : 0;
+
+          if (variationResponse.product.bullets) {
+            bullets = variationResponse.product.bullets;
+          }
+          if (variationResponse.product.material) {
+            material = variationResponse.product.material;
+          }
+          if (variationResponse.product.origin) {
+            origin = variationResponse.product.origin;
+          }
+        }
+      }
+
+      tempOptions.push({
+        key: size,
+        propPath: `1:${size.replace(/:/g, "")}`,
+        value: size,
+        korValue: size,
+        price: price >= 11000 ? price : price + 550,
+        stock,
+        weight: 1,
+        active: true,
+        disabled: false,
+        attributes: [
+          {
+            attributeTypeName: "사이즈",
+            attributeValueName: size,
+          },
+        ],
+      });
+
+      sizeValues.push({
+        vid: size.replace(/:/g, ""),
+        name: size,
+        korValueName: size,
+      });
+    }
+
+    if (sizeValues.length > 0) {
+      tempProp.push({
+        pid: "1",
+        name: "sizes",
+        korTypeName: "사이즈",
+        values: sizeValues,
+      });
+    }
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+
+    ObjItem.korTitle = await papagoTranslate(ObjItem.title, "auto", "ko");
+    ObjItem.korTitle = `${ObjItem.brand} ${ObjItem.korTitle} ${color} ${ObjItem.modelName}`;
+
+    let category = await searchNaverKeyword({
+      title: ObjItem.korTitle,
+    });
+    if (category) {
+      if (category.category4Code) {
+        ObjItem.categoryID = category.category4Code;
+      } else {
+        ObjItem.categoryID = category.category3Code;
+      }
+    }
+
+    ObjItem.html += `<h1>${ObjItem.korTitle}</h1>`;
+    ObjItem.html += `<br>`;
+
+    if (productJson.description && productJson.description.length > 0) {
+      ObjItem.html += `<h2>상품에 대해</h2>`;
+      ObjItem.html += `${productJson.description}`;
+      ObjItem.html += `<br>`;
+    }
+
+    if (bullets && bullets !== "-") {
+      ObjItem.html += `<h2>특징</h2>`;
+      ObjItem.html += `${bullets}`;
+      ObjItem.html += `<br>`;
+    }
+
+    if (material && material !== "-") {
+      ObjItem.html += `<h2>소재</h2>`;
+      ObjItem.html += `${material}`;
+      ObjItem.html += `<br>`;
+    }
+
+    if (origin && origin !== "-") {
+      ObjItem.html += `<h2>원산지</h2>`;
+      ObjItem.html += `${origin}`;
+      ObjItem.html += `<br>`;
+    }
+
+    let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
+      (item) => item.trim().length > 0
+    );
+
+    let htmlKorObj = [];
+    const promiseArray = htmlTextArr.map((item) => {
+      return new Promise(async (resolve, reject) => {
+        try {
+          const korText = await papagoTranslate(item, "ja", "ko");
+
+          htmlKorObj.push({
+            key: item,
+            value: korText,
+          });
+
+          resolve();
+        } catch (e) {
+          reject();
+        }
+      });
+    });
+    await Promise.all(promiseArray);
+
+    htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
+
+    for (const item of htmlKorObj) {
+      const regex = new RegExp(
+        item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        "g"
+      );
+
+      ObjItem.html = ObjItem.html.replace(regex, (match) => {
+        if (match.toLowerCase() === item.key.toLowerCase()) {
+          return item.value;
+        } else {
+          return match;
+        }
+      });
+    }
+  } catch (e) {
+    console.log("getVans ", e);
   }
 };
 

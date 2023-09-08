@@ -240,7 +240,8 @@ app.post("/amazon/isRegister", async (req, res) => {
       detailUrl.includes("barns.jp") ||
       detailUrl.includes("asics.com/jp") ||
       detailUrl.includes("jp.stussy.com") ||
-      detailUrl.includes("goldwin.co.jp")
+      detailUrl.includes("goldwin.co.jp") ||
+      detailUrl.includes("vans.co.jp")
     ) {
       product = await Product.findOne({
         userID: ObjectId(userInfo._id),
@@ -351,7 +352,8 @@ app.post("/amazon/isRegisters", async (req, res) => {
         items[0].includes("barns.jp") ||
         items[0].includes("asics.com/jp") ||
         items[0].includes("jp.stussy.com") ||
-        items[0].includes("goldwin.co.jp")
+        items[0].includes("goldwin.co.jp") ||
+        items[0].includes("vans.co.jp")
       ) {
         product = await Product.aggregate([
           {
@@ -416,6 +418,9 @@ app.post("/amazon/isRegisters", async (req, res) => {
                 },
                 {
                   "basic.url": { $regex: `.*goldwin.co.jp.*` },
+                },
+                {
+                  "basic.url": { $regex: `.*vans.co.jp.*` },
                 },
               ],
             },
@@ -485,7 +490,8 @@ app.post("/amazon/isRegisters", async (req, res) => {
               items[0].includes("barns.jp") ||
               items[0].includes("asics.com/jp") ||
               items[0].includes("jp.stussy.com") ||
-              items[0].includes("goldwin.co.jp")
+              items[0].includes("goldwin.co.jp") ||
+              items[0].includes("vans.co.jp")
             ) {
               return pItem.basic.good_id === asin;
             } else {
@@ -1621,7 +1627,8 @@ app.post("/amazon/collectionItems", async (req, res) => {
                   item.detailUrl.includes("barns.jp/") ||
                   item.detailUrl.includes("asics.com/jp") ||
                   item.detailUrl.includes("jp.stussy.com") ||
-                  item.detailUrl.includes("goldwin.co.jp")
+                  item.detailUrl.includes("goldwin.co.jp") ||
+                  item.detailUrl.includes("vans.co.jp")
                 ) {
                   const asin = AmazonAsin(item.detailUrl);
                   if (!asin) {
@@ -2695,6 +2702,9 @@ const BrandPriceSync = async () => {
               {
                 "basic.url": { $regex: `.*goldwin.co.jp.*` },
               },
+              {
+                "basic.url": { $regex: `.*vans.co.jp.*` },
+              },
             ],
           },
         },
@@ -2768,8 +2778,7 @@ const BrandPriceSync = async () => {
                 product.options.filter((item) => item.salePrice > 0),
                 "salePrice"
               );
-              console.log("minOptions", minOption.salePrice);
-              console.log("maxOption", maxOption.salePrice);
+
               const salePrice =
                 Math.ceil(
                   (minOption.salePrice + maxOption.salePrice) * 0.7 * 0.1
@@ -2942,7 +2951,7 @@ const BrandPriceSync = async () => {
                 console.log(
                   "======================================================================================"
                 );
-                await sleep(10000);
+                await sleep(1000);
               }
             }
           } else {
@@ -2992,7 +3001,7 @@ const BrandPriceSync = async () => {
               console.log("deleteReponse", updateReponse);
             }
           }
-          await sleep(10000);
+          await sleep(1000);
         } catch (e) {
           console.log("eeeee", e);
         }
