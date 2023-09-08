@@ -551,7 +551,7 @@ const getCharleskeith = async ({ ObjItem, url }) => {
         propPath: `1:1;2:${detailItem.skuCode}`,
         value: `${stockInfo.data.commodityStock.colorName} ${detailItem.sizeLabel}`,
         korValue: `${colorName} ${detailItem.sizeLabel}`,
-        price: stockInfo.data.commodityStock.unitPrice,
+        price: stockInfo.data.commodityStock.unitPrice + 500,
         stock: detailItem.availableStockQuantity,
         disabled: false,
         active: true,
@@ -1651,7 +1651,11 @@ const getNorthFace = async ({ ObjItem, url }) => {
           "THE NORTH FACEの長きにわたり愛され続けるバッグのカラーカスタマイズが可能に。詳細はこちら≫≫",
           ""
         )
-        .replace("はこちら ≫≫", "");
+        .replace("はこちら ≫≫", "")
+        .replace(
+          "フットプリント/ジオドーム 4（寸法：210×220cm）はこちら ≫≫",
+          ""
+        );
 
       ObjItem.title = productStructured.name;
       ObjItem.modelName = productStructured.item_group_id;

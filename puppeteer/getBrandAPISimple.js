@@ -255,7 +255,7 @@ const getCharleskeith = async ({ ObjItem, url }) => {
         propPath: `1:1;2:${detailItem.skuCode}`,
         value: `${stockInfo.data.commodityStock.colorName} ${detailItem.sizeLabel}`,
         korValue: `${colorName} ${detailItem.sizeLabel}`,
-        price: stockInfo.data.commodityStock.unitPrice,
+        price: stockInfo.data.commodityStock.unitPrice + 500,
         stock: detailItem.availableStockQuantity,
         disabled: false,
         active: true,
