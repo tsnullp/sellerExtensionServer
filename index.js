@@ -2961,7 +2961,7 @@ const BrandPriceSync = async () => {
                 console.log(
                   "======================================================================================"
                 );
-                await sleep(1000);
+                await sleep(10000);
               }
             }
           } else {
@@ -3011,7 +3011,7 @@ const BrandPriceSync = async () => {
               console.log("deleteReponse", updateReponse);
             }
           }
-          await sleep(1000);
+          await sleep(10000);
         } catch (e) {
           console.log("eeeee", e);
         }
