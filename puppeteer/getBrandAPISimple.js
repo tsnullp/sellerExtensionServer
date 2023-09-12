@@ -52,6 +52,9 @@ const start = async ({ url }) => {
       case url.includes("vans.co.jp"):
         await getVans({ ObjItem, url });
         break;
+      case url.includes("converse.co.jp"):
+        await getConverse({ ObjItem, url });
+        break;
       default:
         console.log("DEFAULT", url);
         break;
@@ -768,6 +771,13 @@ const getVans = async ({ ObjItem, url }) => {
 
     content = content.data;
 
+    const temp = content
+      .split('<script type="application/ld+json">')[1]
+      .split("</script>")[0];
+    const productJson = JSON.parse(temp);
+
+    ObjItem.salePrice = productJson.offers.price;
+
     const $ = cheerio.load(content);
 
     let tempProp = [];
@@ -782,7 +792,7 @@ const getVans = async ({ ObjItem, url }) => {
       let size = $(item).find("span").text();
       const valueUrl = $(item).find("button").attr("value");
       size = await papagoTranslate(size, "auto", "ko");
-      let price = ObjItem.salePrice;
+      let price = Number(ObjItem.salePrice);
       let stock = 0;
       if (valueUrl && valueUrl !== "null") {
         let variationResponse = await axios({
@@ -847,6 +857,80 @@ const getVans = async ({ ObjItem, url }) => {
     ObjItem.options = tempOptions;
   } catch (e) {
     console.log("getVans ", e);
+  }
+};
+
+const getConverse = async ({ ObjItem, url }) => {
+  try {
+    const agent = new https.Agent({
+      rejectUnauthorized: false,
+    });
+
+    let contentJson = await axios({
+      httpsAgent: agent,
+      url: `${url.split("?")[0]}.js`,
+      method: "GET",
+      headers: {
+        // "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+      },
+      // responseEncoding: "binary",
+    });
+
+    // console.log("content.data---", content.data);
+    const productJson = contentJson.data;
+
+    // console.log("options:", productJson.options);
+    // console.log("variants:", productJson.variants);
+
+    let tempProp = [];
+    let tempOptions = [];
+
+    let sizeValues = [];
+    for (const item of productJson.variants) {
+      let korValue = null;
+      if (item.option1 === "Default Title") {
+        korValue = "프리";
+      } else {
+        korValue = await papagoTranslate(item.option1, "auto", "ko");
+      }
+      sizeValues.push({
+        vid: item.sku,
+        name: item.option1 === "Default Title" ? "FREE" : item.option1,
+        korValueName: korValue,
+      });
+
+      tempOptions.push({
+        key: item.sku,
+        propPath: `1:${item.sku}`,
+        value: item.option1,
+        korValue,
+        price:
+          item.price / 100 >= 5500 ? item.price / 100 : item.price / 100 + 550,
+        stock: item.available ? 10 : 0,
+        disabled: false,
+        active: true,
+        weight: ObjItem.weight > 0 ? ObjItem.weight : 1,
+        attributes: [
+          {
+            attributeTypeName: "사이즈",
+            attributeValueName: korValue,
+          },
+        ],
+      });
+    }
+
+    if (sizeValues.length > 0) {
+      tempProp.push({
+        pid: "1",
+        name: "sizes",
+        korTypeName: "사이즈",
+        values: sizeValues,
+      });
+    }
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+  } catch (e) {
+    console.log("getConverse-- ", e);
   }
 };
 
