@@ -11,7 +11,7 @@ const iconv = require("iconv-lite");
 const searchNaverKeyword = require("./searchNaverKeyword");
 const startBrowser = require("./startBrowser");
 
-const start = async ({ url }) => {
+const start = async ({ url, keyword }) => {
   const ObjItem = {
     brand: "기타",
     manufacture: "기타",
@@ -64,7 +64,7 @@ const start = async ({ url }) => {
         await getConverse({ ObjItem, url });
         break;
       case url.includes("abc-mart.net/shop"):
-        await getABCMart({ ObjItem, url });
+        await getABCMart({ ObjItem, url, keyword });
         break;
       default:
         console.log("DEFAULT", url);
@@ -2263,7 +2263,7 @@ const getConverse = async ({ ObjItem, url }) => {
   }
 };
 
-const getABCMart = async ({ ObjItem, url }) => {
+const getABCMart = async ({ ObjItem, url, keyword }) => {
   try {
     let content = await axios({
       url,
@@ -2303,23 +2303,27 @@ const getABCMart = async ({ ObjItem, url }) => {
       jsonObj = JSON.parse(temp1);
     }
 
-    switch (jsonObj.brand.name) {
-      case "crocs":
-        ObjItem.brand = "크록스";
-        break;
-      case "NUOVO":
-        ObjItem.brand = "누오보";
-        break;
-      case "Dr.Martens":
-        ObjItem.brand = "닥터마틴";
-        break;
-      case "STEFANO ROSSI":
-        ObjItem.brand = "스테파노로시";
-        break;
-      default:
-        ObjItem.brand = await papagoTranslate(jsonObj.brand.name, "en", "ko");
+    if (keyword && keyword.length > 0) {
+      ObjItem.brand = keyword;
+    } else {
+      switch (jsonObj.brand.name) {
+        case "crocs":
+          ObjItem.brand = "크록스";
+          break;
+        case "NUOVO":
+          ObjItem.brand = "누오보";
+          break;
+        case "Dr.Martens":
+          ObjItem.brand = "닥터마틴";
+          break;
+        case "STEFANO ROSSI":
+          ObjItem.brand = "스테파노로시";
+          break;
+        default:
+          ObjItem.brand = await papagoTranslate(jsonObj.brand.name, "en", "ko");
 
-        break;
+          break;
+      }
     }
 
     ObjItem.salePrice = Number(jsonObj.offers.price);
@@ -2332,9 +2336,7 @@ const getABCMart = async ({ ObjItem, url }) => {
       if (th === "商品名") {
         ObjItem.title = td;
       } else if (th === "カテゴリ") {
-        console.log("td", td);
         categoryName = await papagoTranslate(td, "ja", "ko");
-        console.log("ObjItem.categoryName", categoryName);
       } else if (th === "メーカー品番") {
         ObjItem.modelName = td;
       } else if (th === "カラー") {
