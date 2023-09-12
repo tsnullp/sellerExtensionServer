@@ -63,6 +63,9 @@ const start = async ({ url }) => {
       case url.includes("converse.co.jp"):
         await getConverse({ ObjItem, url });
         break;
+      case url.includes("abc-mart.net/shop"):
+        await getABCMart({ ObjItem, url });
+        break;
       default:
         console.log("DEFAULT", url);
         break;
@@ -2257,6 +2260,229 @@ const getConverse = async ({ ObjItem, url }) => {
     ObjItem.options = tempOptions;
   } catch (e) {
     console.log("getConverse-- ", e);
+  }
+};
+
+const getABCMart = async ({ ObjItem, url }) => {
+  try {
+    let content = await axios({
+      url,
+      method: "GET",
+      headers: {
+        "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+        // "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7,zh;q=0.6",
+      },
+      responseType: "arraybuffer",
+    });
+
+    const decoder = new TextDecoder("shift-jis");
+    content = decoder.decode(new Uint8Array(content.data));
+
+    const $ = cheerio.load(content);
+
+    const temp1 = content
+      .split('<script type="application/ld+json">')[2]
+      .split("</script>")[0];
+
+    const descriptionPattern = /"description":"(.*?)",/;
+    const match = temp1.match(descriptionPattern);
+    let jsonObj = null;
+    if (match) {
+      const descriptionValue = match[1];
+
+      // 큰따옴표를 이스케이프하여 새로운 JSON 문자열 생성
+      const escapedDescription = JSON.stringify(descriptionValue);
+
+      // 원래 JSON 문자열에서 description 값을 바꾸어줍니다.
+      const escapedJsonString = temp1.replace(
+        descriptionPattern,
+        `"description":${escapedDescription},`
+      );
+      jsonObj = JSON.parse(escapedJsonString);
+    } else {
+      jsonObj = JSON.parse(temp1);
+    }
+
+    switch (jsonObj.brand.name) {
+      case "crocs":
+        ObjItem.brand = "크록스";
+        break;
+      case "NUOVO":
+        ObjItem.brand = "누오보";
+        break;
+      case "Dr.Martens":
+        ObjItem.brand = "닥터마틴";
+        break;
+      case "STEFANO ROSSI":
+        ObjItem.brand = "스테파노로시";
+        break;
+      default:
+        ObjItem.brand = await papagoTranslate(jsonObj.brand.name, "en", "ko");
+
+        break;
+    }
+
+    ObjItem.salePrice = Number(jsonObj.offers.price);
+    let color = null;
+    let categoryName = null;
+    for (const item of $(".goodsspec").find("tr")) {
+      let th = $(item).find("th").text().trim();
+      let td = $(item).find("td").text().trim();
+
+      if (th === "商品名") {
+        ObjItem.title = td;
+      } else if (th === "カテゴリ") {
+        console.log("td", td);
+        categoryName = await papagoTranslate(td, "ja", "ko");
+        console.log("ObjItem.categoryName", categoryName);
+      } else if (th === "メーカー品番") {
+        ObjItem.modelName = td;
+      } else if (th === "カラー") {
+        color = await papagoTranslate(td, "auto", "ko");
+      }
+    }
+
+    ObjItem.korTitle = await papagoTranslate(ObjItem.title, "auto", "ko");
+
+    ObjItem.korTitle = `${ObjItem.brand} ${categoryName ? categoryName : ""} ${
+      ObjItem.korTitle
+    } ${color ? color : ""} ${ObjItem.modelName}`;
+
+    let category = await searchNaverKeyword({
+      title: ObjItem.korTitle,
+    });
+    if (category) {
+      if (category.category4Code) {
+        ObjItem.categoryID = category.category4Code;
+      } else {
+        ObjItem.categoryID = category.category3Code;
+      }
+    }
+
+    for (const item of $(".js-slick-product").children(".img_item")) {
+      ObjItem.content.push($(item).find("img").attr("data-zoom-image"));
+    }
+
+    ObjItem.mainImages = [ObjItem.content[0]];
+
+    let tempProp = [];
+    let tempOptions = [];
+
+    let sizeValues = [];
+    for (const item of $(".choosed_size_list").children("dl")) {
+      let size = $(item).find("dt").text().split("/")[0].trim();
+      let stock =
+        $(item).find("dt").find("span").text().trim() === "〇" ? 5 : 0;
+
+      let key = size.replace(/:/g, "");
+      let korValueName = size;
+      if (size.includes("cm")) {
+        korValueName = (Number(size.replace("cm", "")) * 10).toString();
+      }
+      sizeValues.push({
+        vid: key,
+        name: size,
+        korValueName,
+      });
+
+      tempOptions.push({
+        key,
+        propPath: `1:${key}`,
+        value: size,
+        korValue: korValueName,
+        price: ObjItem.salePrice,
+        stock,
+        disabled: false,
+        active: true,
+        weight: 1,
+        attributes: [
+          {
+            attributeTypeName: "사이즈",
+            attributeValueName: korValueName,
+          },
+        ],
+      });
+    }
+
+    if (sizeValues.length > 0) {
+      tempProp.push({
+        pid: "1",
+        name: "sizes",
+        korTypeName: "사이즈",
+        values: sizeValues,
+      });
+    }
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+
+    ObjItem.html += `<h1>${ObjItem.korTitle}</h1>`;
+    ObjItem.html += `<br>`;
+    if (jsonObj.description.length > 0) {
+      ObjItem.html += `<p>${jsonObj.description.replace(
+        "<br><br>※ご注文につきまして、カートに入れた時点で在庫は確保されません。<br>また、ご利用ガイド内でご説明差し上げておりますが、システム仕様上、ご注文完了後に在庫切れが発生する場合がございます。<br>その場合、キャンセル対応とさせていただきますので予めご了承ください。<br>ご購入後のご交換の場合、ご希望サイズ完売時にはご返品でのご案内となります。<br>人気商品の為通常の出荷スケジュールよりお時間頂戴する場合がございます。<br>商品外装箱につきましては商品を保護する梱包材の為、擦過痕や細かい傷、破れ、へこみ等が入荷した時点で生じている場合がございます。上記のような商品につきましては商品本体の破損と判断せず、仕様販売とさせて頂いておりますので、商品外装箱の痛みを理由とした交換・返品につきましては不良品対応の対象外とさせて頂きます。<br>ご購入後の初期不良については代替えの商品のご用意ができない場合、すべて返品での対応とさせていただきます。",
+        ""
+      )}</p>`;
+    }
+
+    let goodsspec = $(".goodsspec").html();
+    if (goodsspec) {
+      ObjItem.html += `<br>`;
+      ObjItem.html += `<h2>상품에 대하여</h2>`;
+      ObjItem.html += `<table border="1">${goodsspec.replace(
+        /<a\b[^>]*>(.*?)<\/a>/gi,
+        "$1"
+      )}</table>`;
+    }
+
+    let goodscomment1 = $(".goodscomment1").html();
+    if (goodscomment1) {
+      ObjItem.html += `<br>`;
+      ObjItem.html += `<h2>반드시 읽어주세요.</h2>`;
+      ObjItem.html += goodscomment1;
+    }
+
+    let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
+      (item) => item.trim().length > 0
+    );
+
+    let htmlKorObj = [];
+    const promiseArray = htmlTextArr.map((item) => {
+      return new Promise(async (resolve, reject) => {
+        try {
+          const korText = await papagoTranslate(item, "ja", "ko");
+
+          htmlKorObj.push({
+            key: item,
+            value: korText,
+          });
+
+          resolve();
+        } catch (e) {
+          reject();
+        }
+      });
+    });
+    await Promise.all(promiseArray);
+
+    htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
+
+    for (const item of htmlKorObj) {
+      const regex = new RegExp(
+        item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        "g"
+      );
+
+      ObjItem.html = ObjItem.html.replace(regex, (match) => {
+        if (match.toLowerCase() === item.key.toLowerCase()) {
+          return item.value;
+        } else {
+          return match;
+        }
+      });
+    }
+  } catch (e) {
+    console.log("getABCMart ", e);
   }
 };
 

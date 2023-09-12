@@ -164,11 +164,15 @@ const start = async ({ url, userID }) => {
                       individualShipping: false,
                       customShipping: {
                         postageSegment1:
+                          shipping &&
                           shipping.postageSegment &&
                           shipping.postageSegment.local
                             ? shipping.postageSegment.local
                             : 0,
-                        postageSegment2: shipping.singleItemShipping || 1,
+                        postageSegment2:
+                          shipping && shipping.singleItemShipping
+                            ? shipping.singleItemShipping
+                            : 1,
                         customTariffId: null,
                       },
                       deliverySetId: null,
@@ -210,7 +214,9 @@ const start = async ({ url, userID }) => {
           ObjItem.deliveryFee = results[0].fees.finalFee || 0;
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.log("--------------", e);
+    }
   } catch (e) {
     // console.log("findRakutenAPISimple - ", e);
     return null;

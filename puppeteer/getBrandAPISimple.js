@@ -55,6 +55,9 @@ const start = async ({ url }) => {
       case url.includes("converse.co.jp"):
         await getConverse({ ObjItem, url });
         break;
+      case url.includes("abc-mart.net/shop"):
+        await getABCMart({ ObjItem, url });
+        break;
       default:
         console.log("DEFAULT", url);
         break;
@@ -931,6 +934,122 @@ const getConverse = async ({ ObjItem, url }) => {
     ObjItem.options = tempOptions;
   } catch (e) {
     console.log("getConverse-- ", e);
+  }
+};
+
+const getABCMart = async ({ ObjItem, url }) => {
+  try {
+    let content = await axios({
+      url,
+      method: "GET",
+      headers: {
+        "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+        // "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7,zh;q=0.6",
+      },
+      responseType: "arraybuffer",
+    });
+
+    const decoder = new TextDecoder("shift-jis");
+    content = decoder.decode(new Uint8Array(content.data));
+
+    const $ = cheerio.load(content);
+
+    const temp1 = content
+      .split('<script type="application/ld+json">')[2]
+      .split("</script>")[0];
+
+    const descriptionPattern = /"description":"(.*?)",/;
+    const match = temp1.match(descriptionPattern);
+    let jsonObj = null;
+    if (match) {
+      const descriptionValue = match[1];
+
+      // 큰따옴표를 이스케이프하여 새로운 JSON 문자열 생성
+      const escapedDescription = JSON.stringify(descriptionValue);
+
+      // 원래 JSON 문자열에서 description 값을 바꾸어줍니다.
+      const escapedJsonString = temp1.replace(
+        descriptionPattern,
+        `"description":${escapedDescription},`
+      );
+      jsonObj = JSON.parse(escapedJsonString);
+    } else {
+      jsonObj = JSON.parse(temp1);
+    }
+
+    switch (jsonObj.brand.name) {
+      case "crocs":
+        ObjItem.brand = "크록스";
+        break;
+      case "NUOVO":
+        ObjItem.brand = "누오보";
+        break;
+      case "Dr.Martens":
+        ObjItem.brand = "닥터마틴";
+        break;
+      case "STEFANO ROSSI":
+        ObjItem.brand = "스테파노로시";
+        break;
+      default:
+        ObjItem.brand = await papagoTranslate(jsonObj.brand.name, "en", "ko");
+
+        break;
+    }
+
+    ObjItem.salePrice = Number(jsonObj.offers.price);
+
+    let tempProp = [];
+    let tempOptions = [];
+
+    let sizeValues = [];
+    for (const item of $(".choosed_size_list").children("dl")) {
+      let size = $(item).find("dt").text().split("/")[0].trim();
+      let stock =
+        $(item).find("dt").find("span").text().trim() === "〇" ? 5 : 0;
+
+      let key = size.replace(/:/g, "");
+      let korValueName = size;
+      if (size.includes("cm")) {
+        korValueName = (Number(size.replace("cm", "")) * 10).toString();
+      }
+      sizeValues.push({
+        vid: key,
+        name: size,
+        korValueName,
+      });
+
+      tempOptions.push({
+        key,
+        propPath: `1:${key}`,
+        value: size,
+        korValue: korValueName,
+        price: ObjItem.salePrice,
+        stock,
+        disabled: false,
+        active: true,
+        weight: 1,
+        attributes: [
+          {
+            attributeTypeName: "사이즈",
+            attributeValueName: korValueName,
+          },
+        ],
+      });
+    }
+
+    if (sizeValues.length > 0) {
+      tempProp.push({
+        pid: "1",
+        name: "sizes",
+        korTypeName: "사이즈",
+        values: sizeValues,
+      });
+    }
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+  } catch (e) {
+    console.log("getABCMart ", e);
   }
 };
 

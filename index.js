@@ -242,7 +242,8 @@ app.post("/amazon/isRegister", async (req, res) => {
       detailUrl.includes("jp.stussy.com") ||
       detailUrl.includes("goldwin.co.jp") ||
       detailUrl.includes("vans.co.jp") ||
-      detailUrl.includes("converse.co.jp")
+      detailUrl.includes("converse.co.jp") ||
+      detailUrl.includes("abc-mart.net/shop")
     ) {
       product = await Product.findOne({
         userID: ObjectId(userInfo._id),
@@ -355,7 +356,8 @@ app.post("/amazon/isRegisters", async (req, res) => {
         items[0].includes("jp.stussy.com") ||
         items[0].includes("goldwin.co.jp") ||
         items[0].includes("vans.co.jp") ||
-        items[0].includes("converse.co.jp")
+        items[0].includes("converse.co.jp") ||
+        items[0].includes("abc-mart.net/shop")
       ) {
         product = await Product.aggregate([
           {
@@ -427,6 +429,9 @@ app.post("/amazon/isRegisters", async (req, res) => {
                 {
                   "basic.url": { $regex: `.*converse.co.jp.*` },
                 },
+                {
+                  "basic.url": { $regex: `.*abc-mart.net/shop.*` },
+                },
               ],
             },
           },
@@ -497,7 +502,8 @@ app.post("/amazon/isRegisters", async (req, res) => {
               items[0].includes("jp.stussy.com") ||
               items[0].includes("goldwin.co.jp") ||
               items[0].includes("vans.co.jp") ||
-              items[0].includes("converse.co.jp")
+              items[0].includes("converse.co.jp") ||
+              items[0].includes("abc-mart.net/shop")
             ) {
               return pItem.basic.good_id === asin;
             } else {
@@ -1635,7 +1641,8 @@ app.post("/amazon/collectionItems", async (req, res) => {
                   item.detailUrl.includes("jp.stussy.com") ||
                   item.detailUrl.includes("goldwin.co.jp") ||
                   item.detailUrl.includes("vans.co.jp") ||
-                  item.detailUrl.includes("converse.co.jp")
+                  item.detailUrl.includes("converse.co.jp") ||
+                  item.detailUrl.includes("abc-mart.net/shop")
                 ) {
                   const asin = AmazonAsin(item.detailUrl);
                   if (!asin) {
@@ -2330,8 +2337,7 @@ const RakutenPriceSync = async () => {
       const products = await Product.aggregate([
         {
           $match: {
-            // userID: ObjectId("5f1947bd682563be2d22f008"),
-            // "options.key": {$in: asinArr},
+            // _id: ObjectId("64e41764a6a61e4cb961242c"),
 
             isDelete: false,
             "product.naver.smartstoreChannelProductNo": { $ne: null },
@@ -2714,6 +2720,9 @@ const BrandPriceSync = async () => {
               },
               {
                 "basic.url": { $regex: `.*converse.co.jp.*` },
+              },
+              {
+                "basic.url": { $regex: `.*abc-mart.net/shop.*` },
               },
             ],
           },
