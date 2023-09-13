@@ -2379,21 +2379,21 @@ const getABCMart = async ({ ObjItem, url, keyword }) => {
       let key = size.replace(/:/g, "");
       let korValueName = size;
 
-      if (size.includes("cm")) {
-        if (size.includes("(")) {
-          let temp = size.split("(")[1];
-          if (size.includes(")")) {
-            temp = temp.replace(")", "");
-          }
-          korValueName = (Number(temp.replace("cm", "")) * 10).toString();
-        } else {
-          korValueName = (Number(size.replace("cm", "")) * 10).toString();
-        }
-      }
+      // if (size.includes("cm")) {
+      //   if (size.includes("(")) {
+      //     let temp = size.split("(")[1];
+      //     if (size.includes(")")) {
+      //       temp = temp.replace(")", "");
+      //     }
+      //     korValueName = (Number(temp.replace("cm", "")) * 10).toString();
+      //   } else {
+      //     korValueName = (Number(size.replace("cm", "")) * 10).toString();
+      //   }
+      // }
 
-      if (korValueName === null || korValueName === NaN) {
-        korValueName = size;
-      }
+      // if (korValueName === null || korValueName === NaN) {
+      //   korValueName = size;
+      // }
 
       sizeValues.push({
         vid: key,
