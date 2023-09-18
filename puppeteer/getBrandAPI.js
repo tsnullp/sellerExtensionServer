@@ -2992,6 +2992,7 @@ const getMiharayasuhiro = async ({ ObjItem, url }) => {
   } catch (e) {
     console.log("getMiharayasuhiro ", e);
   } finally {
+    await page.waitForTimeout(10000);
     if (page) {
       await page.goto("about:blank");
       await page.close();
