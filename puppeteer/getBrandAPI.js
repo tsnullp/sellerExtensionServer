@@ -66,6 +66,12 @@ const start = async ({ url, keyword }) => {
       case url.includes("abc-mart.net/shop"):
         await getABCMart({ ObjItem, url, keyword });
         break;
+      case url.includes("viviennewestwood-tokyo.com"):
+        await getViviennewestwood({ ObjItem, url });
+        break;
+      case url.includes("miharayasuhiro.jp"):
+        await getMiharayasuhiro({ ObjItem, url });
+        break;
       default:
         console.log("DEFAULT", url);
         break;
@@ -2499,6 +2505,500 @@ const getABCMart = async ({ ObjItem, url, keyword }) => {
     }
   } catch (e) {
     console.log("getABCMart ", e);
+  }
+};
+
+const getViviennewestwood = async ({ ObjItem, url }) => {
+  try {
+    let content = await axios({
+      url,
+      method: "GET",
+      headers: {
+        "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+        // "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7,zh;q=0.6",
+      },
+      responseType: "arraybuffer",
+    });
+
+    const decoder = new TextDecoder("shift-jis");
+    content = decoder.decode(new Uint8Array(content.data));
+
+    const $ = cheerio.load(content);
+
+    const temp1 = content
+      .split("dataLayer.push(")[2]
+      .split(");")[0]
+      .replace(/\'/g, '"');
+
+    const jsonObj = JSON.parse(temp1);
+
+    ObjItem.salePrice = Number(jsonObj["rtg.item.price1"]);
+
+    ObjItem.brand = "비비안웨스트우드";
+    ObjItem.title = $(".c-quick-view__name").text();
+    ObjItem.korTitle = await papagoTranslate(ObjItem.title, "ja", "ko");
+
+    let color = $("#selected_color").text();
+
+    color = await papagoTranslate(color, "ja", "ko");
+
+    for (const item of $(".js-item-detail-slide").children(
+      ".c-item-detail-pictures__item"
+    )) {
+      let image = null;
+      if ($(item).find("img").attr("src")) {
+        image = $(item).find("img").attr("src");
+      } else {
+        image = $(item).find("img").attr("data-src");
+      }
+      if (image) {
+        ObjItem.content.push(image);
+      }
+    }
+    if (ObjItem.content.length > 0) {
+      ObjItem.mainImages = [ObjItem.content[0]];
+    }
+
+    let tempProp = [];
+    let tempOptions = [];
+    let sizeValues = [];
+
+    for (const item of $(".c-size-select__list").children("li")) {
+      const size = $(item).find("span").text();
+      let key = size.replace(/:/g, "");
+      let korValueName = size;
+
+      let stock = 0;
+      const onclick = $(item).find("a").attr("onclick");
+      if (!onclick) {
+        stock = 5;
+      }
+
+      sizeValues.push({
+        vid: key,
+        name: size,
+        korValueName,
+      });
+
+      tempOptions.push({
+        key,
+        propPath: `1:${key}`,
+        value: size,
+        korValue: korValueName,
+        price: ObjItem.salePrice,
+        stock,
+        disabled: false,
+        active: true,
+        weight: 1,
+        attributes: [
+          {
+            attributeTypeName: "사이즈",
+            attributeValueName: korValueName,
+          },
+        ],
+      });
+    }
+
+    if (sizeValues.length > 0) {
+      tempProp.push({
+        pid: "1",
+        name: "sizes",
+        korTypeName: "사이즈",
+        values: sizeValues,
+      });
+    }
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+
+    let description = $(".-is-description > p.c-item-info__text").html();
+
+    ObjItem.html += `<h1>${ObjItem.korTitle}</h1>`;
+    ObjItem.html += `<br>`;
+    if (description && description.length > 0) {
+      ObjItem.html += `<h2>상품설명</h2>`;
+      ObjItem.html += description;
+    }
+
+    let detail = "";
+    for (const item of $(".-is-detail > ul.c-item-info__list").children("li")) {
+      let text = $(item).text();
+      if (!text.includes("返品")) {
+        detail += `<p>${text}</p>`;
+      }
+
+      if (text.includes("商品番号：")) {
+        ObjItem.modelName = text.replace("商品番号：", "").trim();
+      }
+    }
+
+    if (detail && detail.length > 0) {
+      ObjItem.html += `<h2>상세</h2>`;
+      ObjItem.html += detail;
+      ObjItem.html += `<br>`;
+    }
+
+    let sizeHtml = "";
+    for (const item of $(".-is-size > ul.c-item-info__list").children("li")) {
+      let text = $(item).text();
+      sizeHtml += `<p>${text}</p>`;
+    }
+
+    if (sizeHtml && sizeHtml.length > 0) {
+      ObjItem.html += `<h2>사이즈</h2>`;
+      ObjItem.html += sizeHtml;
+      ObjItem.html += `<br>`;
+    }
+
+    ObjItem.korTitle = `${ObjItem.brand} ${ObjItem.korTitle} ${
+      color ? color : ""
+    } ${ObjItem.modelName ? ObjItem.modelName : ""}`.trim();
+
+    let category = await searchNaverKeyword({
+      title: ObjItem.korTitle,
+    });
+    if (category) {
+      if (category.category4Code) {
+        ObjItem.categoryID = category.category4Code;
+      } else {
+        ObjItem.categoryID = category.category3Code;
+      }
+    }
+
+    let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
+      (item) => item.trim().length > 0
+    );
+
+    let htmlKorObj = [];
+    const promiseArray = htmlTextArr.map((item) => {
+      return new Promise(async (resolve, reject) => {
+        try {
+          const korText = await papagoTranslate(item, "ja", "ko");
+
+          htmlKorObj.push({
+            key: item,
+            value: korText,
+          });
+
+          resolve();
+        } catch (e) {
+          reject();
+        }
+      });
+    });
+    await Promise.all(promiseArray);
+
+    htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
+
+    for (const item of htmlKorObj) {
+      const regex = new RegExp(
+        item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        "g"
+      );
+
+      ObjItem.html = ObjItem.html.replace(regex, (match) => {
+        if (match.toLowerCase() === item.key.toLowerCase()) {
+          return item.value;
+        } else {
+          return match;
+        }
+      });
+    }
+  } catch (e) {
+    console.log("getViviennewestwood", e);
+  }
+};
+
+const getMiharayasuhiro = async ({ ObjItem, url }) => {
+  const browser = await startBrowser(true);
+  const page = await browser.newPage();
+  await page.setJavaScriptEnabled(true);
+  try {
+    // const agent = new https.Agent({
+    //   rejectUnauthorized: false,
+    // });
+
+    // let content = await axios({
+    //   httpsAgent: agent,
+    //   method: "get",
+    //   url,
+    //   method: "GET",
+    //   headers: {
+    //     "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+    //     Host: "miharayasuhiro.jp",
+    //     "User-Agent":
+    //       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",
+    //   },
+    //   responseType: "binary",
+    // });
+
+    await page.goto(url, { waituntil: "networkidle0" });
+    const content = await page.content();
+
+    const $ = cheerio.load(content);
+
+    ObjItem.brand = "미하라야스히로";
+    let title = $("#item_spec_tit").text();
+    ObjItem.title = title;
+
+    ObjItem.korTitle = await papagoTranslate(title, "auto", "ko");
+
+    let price = $("#detail_price > li > span").text();
+
+    ObjItem.price = Number(price.replace(/,/g, "")) || 0;
+
+    let tempProp = [];
+    let tempOptions = [];
+
+    let colorValues = [];
+    for (const item of $("#color_block > ul").children("li")) {
+      let image = $(item).find("img").attr("data-src");
+      let colorValue = $(item).find("p").text();
+      let korValueName = await papagoTranslate(colorValue, "auto", "ko");
+      let vid = $(item).attr("data-class");
+      if (image) {
+        image = image.split("?")[0];
+        ObjItem.mainImages.push(image);
+      }
+
+      colorValues.push({
+        vid,
+        name: colorValue,
+        korValueName,
+        image,
+      });
+    }
+
+    if (colorValues.length > 0) {
+      tempProp.push({
+        pid: "1",
+        name: "colors",
+        korTypeName: "컬러",
+        values: colorValues,
+      });
+    }
+
+    let sizeValues = [];
+    for (const item of $("#size_block > ul").children("li")) {
+      let size = $(item).find("span:nth-child(1)").text();
+      sizeValues.push({
+        vid: size,
+        name: size,
+        korValueName: size,
+      });
+    }
+
+    if (sizeValues.length > 0) {
+      tempProp.push({
+        pid: "2",
+        name: "sizes",
+        korTypeName: "사이즈",
+        values: sizeValues,
+      });
+    }
+
+    const colorli = await page.$$("#color_block > ul > li");
+    let colorKey = 1;
+
+    for (const color of colorli) {
+      let propPath = "";
+      await color.tap();
+      await page.waitForTimeout(400);
+      let sizeContent = await page.content();
+      const $size = cheerio.load(sizeContent);
+
+      const colorName = await page.evaluate(
+        (el) => el.querySelector("p").textContent,
+        color
+      );
+
+      let image = null;
+
+      let korValue = await papagoTranslate(colorName, "auto", "ko");
+      for (const item of $size("#size_block > ul").children("li")) {
+        const colorObj = _.find(colorValues, { name: colorName });
+        if (colorObj) {
+          propPath = `1:${colorObj.vid}`;
+          image = colorObj.image;
+        }
+
+        let size = $size(item).find("span:nth-child(1)").text();
+        let style = $size(item).find("span:nth-child(2)").attr("style");
+        let stock = 0;
+        if (style.includes("none")) {
+          stock = 5;
+        }
+        const sizeObj = _.find(sizeValues, { name: size });
+        if (sizeObj) {
+          propPath += `;2:${sizeObj.vid}`;
+        }
+        tempOptions.push({
+          key: (colorKey++).toString(),
+          propPath,
+          value: `${colorName} ${size}`,
+          korValue: `${korValue} ${size}`,
+          image,
+          price: ObjItem.price,
+          weight: 1,
+          stock,
+          active: true,
+          attributes: [
+            {
+              attributeTypeName: "컬러",
+              attributeValueName: korValue,
+            },
+            {
+              attributeTypeName: "사이즈",
+              attributeValueName: size,
+            },
+          ],
+        });
+      }
+    }
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+
+    for (const item of $(".item_photo_thumb > ul").children("li")) {
+      let image = $(item).find("img").attr("data-src");
+      if (image) {
+        image = image.split("?")[0];
+      }
+      if (!ObjItem.mainImages.includes(image)) {
+        ObjItem.content.push(image);
+      }
+    }
+
+    const itemDetail = $("#item_detail_txt")
+      .html()
+      .replace(/<p class="mg_t10">.*?<\/p>/g, "");
+
+    if (itemDetail) {
+      ObjItem.html += `<h2>이 상품에 대해</h2>`;
+      ObjItem.html += itemDetail;
+      ObjItem.html += `<br>`;
+    }
+
+    let itemDetailSub = "";
+    for (const item of $("#item_detail_sub > ul").children("li")) {
+      let text1 = $(item).find("p:nth-child(1)").text();
+      let text2 = $(item).find("p:nth-child(2)").text();
+      if (!text1.includes("カテゴリ")) {
+        itemDetailSub += `<li>${text1} ${text2}</li>`;
+      }
+      if (text1.includes("品番")) {
+        ObjItem.modelName = text2;
+      }
+    }
+
+    if (itemDetailSub) {
+      ObjItem.html += `<ul>`;
+      ObjItem.html += itemDetailSub;
+      ObjItem.html += `</ul>`;
+      ObjItem.html += `<br>`;
+    }
+
+    let sizeTable = "";
+    let i = 0;
+    let sizeTableArr = [];
+    for (const ul of $("#size_table").children("ul")) {
+      if (!sizeTableArr[i] || !Array.isArray(sizeTableArr[i])) {
+        sizeTableArr[i] = [];
+      }
+      let j = 0;
+      for (const li of $(ul).children("li")) {
+        if (!sizeTableArr[j]) {
+          sizeTableArr[j] = [];
+        }
+        if (!sizeTableArr[j][i] || !Array.isArray(sizeTableArr[j][i])) {
+          sizeTableArr[j][i] = [];
+        }
+
+        sizeTableArr[j][i] = $(li).text();
+        j++;
+      }
+      i++;
+    }
+
+    for (const tr of sizeTableArr) {
+      sizeTable += `<tr>`;
+      for (const td of tr) {
+        sizeTable += `<td>${td}</td>`;
+      }
+      sizeTable += `</tr>`;
+    }
+
+    if (sizeTable) {
+      ObjItem.html += `<h2>사이즈</h2>`;
+      ObjItem.html += `<table border="1">`;
+      ObjItem.html += sizeTable;
+      ObjItem.html += `</table>`;
+      ObjItem.html += `<br>`;
+    }
+
+    ObjItem.korTitle =
+      `${ObjItem.brand} ${ObjItem.korTitle} ${ObjItem.modelName}`.trim();
+
+    let category = await searchNaverKeyword({
+      title: ObjItem.korTitle,
+    });
+    if (category) {
+      if (category.category4Code) {
+        ObjItem.categoryID = category.category4Code;
+      } else {
+        ObjItem.categoryID = category.category3Code;
+      }
+    }
+
+    let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
+      (item) => item.trim().length > 0
+    );
+
+    let htmlKorObj = [];
+    const promiseArray = htmlTextArr.map((item) => {
+      return new Promise(async (resolve, reject) => {
+        try {
+          const korText = await papagoTranslate(item, "ja", "ko");
+
+          htmlKorObj.push({
+            key: item,
+            value: korText,
+          });
+
+          resolve();
+        } catch (e) {
+          reject();
+        }
+      });
+    });
+    await Promise.all(promiseArray);
+
+    htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
+
+    for (const item of htmlKorObj) {
+      const regex = new RegExp(
+        item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        "g"
+      );
+
+      ObjItem.html = ObjItem.html.replace(regex, (match) => {
+        if (match.toLowerCase() === item.key.toLowerCase()) {
+          return item.value;
+        } else {
+          return match;
+        }
+      });
+    }
+  } catch (e) {
+    console.log("getMiharayasuhiro ", e);
+  } finally {
+    if (page) {
+      await page.goto("about:blank");
+      await page.close();
+    }
+    if (browser) {
+      await browser.close();
+    }
   }
 };
 

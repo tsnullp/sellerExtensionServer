@@ -58,6 +58,13 @@ const start = async ({ url }) => {
       case url.includes("abc-mart.net/shop"):
         await getABCMart({ ObjItem, url });
         break;
+      case url.includes("viviennewestwood-tokyo.com"):
+        await getViviennewestwood({ ObjItem, url });
+        break;
+      case url.includes("miharayasuhiro.jp"):
+        await getMiharayasuhiro({ ObjItem, url });
+        break;
+
       default:
         console.log("DEFAULT", url);
         break;
@@ -1064,6 +1071,226 @@ const getABCMart = async ({ ObjItem, url }) => {
     ObjItem.options = tempOptions;
   } catch (e) {
     console.log("getABCMart ", e);
+  }
+};
+
+const getViviennewestwood = async ({ ObjItem, url }) => {
+  try {
+    let content = await axios({
+      url,
+      method: "GET",
+      headers: {
+        "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+        // "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7,zh;q=0.6",
+      },
+      responseType: "arraybuffer",
+    });
+
+    const decoder = new TextDecoder("shift-jis");
+    content = decoder.decode(new Uint8Array(content.data));
+
+    const $ = cheerio.load(content);
+
+    const temp1 = content
+      .split("dataLayer.push(")[2]
+      .split(");")[0]
+      .replace(/\'/g, '"');
+
+    const jsonObj = JSON.parse(temp1);
+
+    ObjItem.salePrice = Number(jsonObj["rtg.item.price1"]);
+
+    let tempProp = [];
+    let tempOptions = [];
+    let sizeValues = [];
+
+    for (const item of $(".c-size-select__list").children("li")) {
+      const size = $(item).find("span").text();
+      let key = size.replace(/:/g, "");
+      let korValueName = size;
+
+      let stock = 0;
+      const onclick = $(item).find("a").attr("onclick");
+      if (!onclick) {
+        stock = 5;
+      }
+
+      sizeValues.push({
+        vid: key,
+        name: size,
+        korValueName,
+      });
+
+      tempOptions.push({
+        key,
+        propPath: `1:${key}`,
+        value: size,
+        korValue: korValueName,
+        price: ObjItem.salePrice,
+        stock,
+        disabled: false,
+        active: true,
+        weight: 1,
+        attributes: [
+          {
+            attributeTypeName: "사이즈",
+            attributeValueName: korValueName,
+          },
+        ],
+      });
+    }
+
+    if (sizeValues.length > 0) {
+      tempProp.push({
+        pid: "1",
+        name: "sizes",
+        korTypeName: "사이즈",
+        values: sizeValues,
+      });
+    }
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+  } catch (e) {
+    console.log("getViviennewestwood", e);
+  }
+};
+
+const getMiharayasuhiro = async ({ ObjItem, url }) => {
+  const browser = await startBrowser(true);
+  const page = await browser.newPage();
+  await page.setJavaScriptEnabled(true);
+  try {
+    await page.goto(url, { waituntil: "networkidle0" });
+    const content = await page.content();
+
+    const $ = cheerio.load(content);
+
+    let price = $("#detail_price > li > span").text();
+
+    ObjItem.price = Number(price.replace(/,/g, "")) || 0;
+
+    let tempProp = [];
+    let tempOptions = [];
+
+    let colorValues = [];
+    for (const item of $("#color_block > ul").children("li")) {
+      let image = $(item).find("img").attr("data-src");
+      let colorValue = $(item).find("p").text();
+      let korValueName = await papagoTranslate(colorValue, "auto", "ko");
+      let vid = $(item).attr("data-class");
+      if (image) {
+        image = image.split("?")[0];
+        ObjItem.mainImages.push(image);
+      }
+
+      colorValues.push({
+        vid,
+        name: colorValue,
+        korValueName,
+        image,
+      });
+    }
+
+    if (colorValues.length > 0) {
+      tempProp.push({
+        pid: "1",
+        name: "colors",
+        korTypeName: "컬러",
+        values: colorValues,
+      });
+    }
+
+    let sizeValues = [];
+    for (const item of $("#size_block > ul").children("li")) {
+      let size = $(item).find("span:nth-child(1)").text();
+      sizeValues.push({
+        vid: size,
+        name: size,
+        korValueName: size,
+      });
+    }
+
+    if (sizeValues.length > 0) {
+      tempProp.push({
+        pid: "2",
+        name: "sizes",
+        korTypeName: "사이즈",
+        values: sizeValues,
+      });
+    }
+
+    const colorli = await page.$$("#color_block > ul > li");
+    let colorKey = 1;
+
+    for (const color of colorli) {
+      let propPath = "";
+      await color.tap();
+      await page.waitForTimeout(400);
+      let sizeContent = await page.content();
+      const $size = cheerio.load(sizeContent);
+
+      const colorName = await page.evaluate(
+        (el) => el.querySelector("p").textContent,
+        color
+      );
+
+      let image = null;
+
+      let korValue = await papagoTranslate(colorName, "auto", "ko");
+      for (const item of $size("#size_block > ul").children("li")) {
+        const colorObj = _.find(colorValues, { name: colorName });
+        if (colorObj) {
+          propPath = `1:${colorObj.vid}`;
+          image = colorObj.image;
+        }
+
+        let size = $size(item).find("span:nth-child(1)").text();
+        let style = $size(item).find("span:nth-child(2)").attr("style");
+        let stock = 0;
+        if (style.includes("none")) {
+          stock = 5;
+        }
+        const sizeObj = _.find(sizeValues, { name: size });
+        if (sizeObj) {
+          propPath += `;2:${sizeObj.vid}`;
+        }
+        tempOptions.push({
+          key: (colorKey++).toString(),
+          propPath,
+          value: `${colorName} ${size}`,
+          korValue: `${korValue} ${size}`,
+          image,
+          price: ObjItem.price,
+          weight: 1,
+          stock,
+          active: true,
+          attributes: [
+            {
+              attributeTypeName: "컬러",
+              attributeValueName: korValue,
+            },
+            {
+              attributeTypeName: "사이즈",
+              attributeValueName: size,
+            },
+          ],
+        });
+      }
+    }
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+  } catch (e) {
+    console.log("getMiharayasuhiro ", e);
+  } finally {
+    if (page) {
+      await page.goto("about:blank");
+      await page.close();
+    }
+    if (browser) {
+      await browser.close();
+    }
   }
 };
 

@@ -243,7 +243,9 @@ app.post("/amazon/isRegister", async (req, res) => {
       detailUrl.includes("goldwin.co.jp") ||
       detailUrl.includes("vans.co.jp") ||
       detailUrl.includes("converse.co.jp") ||
-      detailUrl.includes("abc-mart.net/shop")
+      detailUrl.includes("abc-mart.net/shop") ||
+      detailUrl.includes("viviennewestwood-tokyo.com") ||
+      detailUrl.includes("miharayasuhiro.jp")
     ) {
       product = await Product.findOne({
         userID: ObjectId(userInfo._id),
@@ -357,7 +359,9 @@ app.post("/amazon/isRegisters", async (req, res) => {
         items[0].includes("goldwin.co.jp") ||
         items[0].includes("vans.co.jp") ||
         items[0].includes("converse.co.jp") ||
-        items[0].includes("abc-mart.net/shop")
+        items[0].includes("abc-mart.net/shop") ||
+        items[0].includes("viviennewestwood-tokyo.com") ||
+        items[0].includes("miharayasuhiro.jp")
       ) {
         product = await Product.aggregate([
           {
@@ -432,6 +436,12 @@ app.post("/amazon/isRegisters", async (req, res) => {
                 {
                   "basic.url": { $regex: `.*abc-mart.net/shop.*` },
                 },
+                {
+                  "basic.url": { $regex: `.*viviennewestwood-tokyo.com.*` },
+                },
+                {
+                  "basic.url": { $regex: `.*miharayasuhiro.jp.*` },
+                },
               ],
             },
           },
@@ -503,7 +513,9 @@ app.post("/amazon/isRegisters", async (req, res) => {
               items[0].includes("goldwin.co.jp") ||
               items[0].includes("vans.co.jp") ||
               items[0].includes("converse.co.jp") ||
-              items[0].includes("abc-mart.net/shop")
+              items[0].includes("abc-mart.net/shop") ||
+              items[0].includes("viviennewestwood-tokyo.com") ||
+              items[0].includes("miharayasuhiro.jp")
             ) {
               return pItem.basic.good_id === asin;
             } else {
@@ -1642,7 +1654,9 @@ app.post("/amazon/collectionItems", async (req, res) => {
                   item.detailUrl.includes("goldwin.co.jp") ||
                   item.detailUrl.includes("vans.co.jp") ||
                   item.detailUrl.includes("converse.co.jp") ||
-                  item.detailUrl.includes("abc-mart.net/shop")
+                  item.detailUrl.includes("abc-mart.net/shop") ||
+                  item.detailUrl.includes("viviennewestwood-tokyo.com") ||
+                  item.detailUrl.includes("miharayasuhiro.jp")
                 ) {
                   const asin = AmazonAsin(item.detailUrl);
                   if (!asin) {
@@ -2694,6 +2708,7 @@ const BrandPriceSync = async () => {
           $match: {
             // userID: ObjectId("5f1947bd682563be2d22f008"),
             // "options.key": {$in: asinArr},
+
             isDelete: false,
             "product.naver.smartstoreChannelProductNo": { $ne: null },
             $or: [
@@ -2724,6 +2739,9 @@ const BrandPriceSync = async () => {
               {
                 "basic.url": { $regex: `.*abc-mart.net/shop.*` },
               },
+              {
+                "basic.url": { $regex: `.*viviennewestwood-tokyo.com.*` },
+              },
             ],
           },
         },
@@ -2741,7 +2759,7 @@ const BrandPriceSync = async () => {
             url: product.basic.url,
             userID: product.userID,
           });
-
+          // console.log("response", response);
           if (
             response &&
             response.options &&
@@ -2889,8 +2907,6 @@ const BrandPriceSync = async () => {
                 userID: product.userID,
                 originProductNo: product.product.naver.originProductNo,
               });
-
-              // console.log("naverProduct", naverProduct.originProduct);
 
               if (naverProduct) {
                 if (
