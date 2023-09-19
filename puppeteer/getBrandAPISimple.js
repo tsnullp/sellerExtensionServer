@@ -64,7 +64,9 @@ const start = async ({ url }) => {
       case url.includes("miharayasuhiro.jp"):
         await getMiharayasuhiro({ ObjItem, url });
         break;
-
+      case url.includes("onlinestore.nepenthes.co.jp"):
+        await getNepenthes({ ObjItem, url });
+        break;
       default:
         console.log("DEFAULT", url);
         break;
@@ -1284,6 +1286,7 @@ const getMiharayasuhiro = async ({ ObjItem, url }) => {
   } catch (e) {
     console.log("getMiharayasuhiro ", e);
   } finally {
+    await page.waitForTimeout(10000);
     if (page) {
       await page.goto("about:blank");
       await page.close();
@@ -1291,6 +1294,111 @@ const getMiharayasuhiro = async ({ ObjItem, url }) => {
     if (browser) {
       await browser.close();
     }
+  }
+};
+
+const getNepenthes = async ({ ObjItem, url }) => {
+  try {
+    const agent = new https.Agent({
+      rejectUnauthorized: false,
+    });
+    let content = await axios({
+      httpsAgent: agent,
+      url,
+      method: "GET",
+      headers: {
+        // "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+      },
+      responseType: "binary",
+    });
+
+    content = content.data;
+
+    const temp1 = content
+      .split(
+        '<script type="application/json" id="ProductJson-product-template">'
+      )[1]
+      .split("</script>")[0];
+    // .replace(/\'/g, '"');
+
+    const jsonObj = JSON.parse(temp1);
+    const $ = cheerio.load(content);
+
+    let tempProp = [];
+    let tempOptions = [];
+
+    let colorValues = [];
+    let sizeValues = [];
+    for (const item of jsonObj.variants) {
+      if (!ObjItem.modelName || ObjItem.modelName.length === 0) {
+        ObjItem.modelName = item.sku.split(" ")[0].trim();
+      }
+      let color = item.option1;
+      let korColorName = await papagoTranslate(color, "auto", "ko");
+      let size = item.option2;
+      let findColorValue = _.find(colorValues, { name: color });
+      if (!findColorValue) {
+        colorValues.push({
+          vid: color,
+          name: color,
+          korValueName: korColorName,
+        });
+      }
+
+      let findSizeValue = _.find(sizeValues, { name: size });
+      if (!findSizeValue) {
+        sizeValues.push({
+          vid: size,
+          name: size,
+          korValueName: size,
+        });
+      }
+
+      tempOptions.push({
+        key: item.id,
+        proPath: `1:${color.replace(/:/g, "").replace(/;/g, "")};2:${size
+          .replace(/:/g, "")
+          .replace(/;/g, "")}`,
+        value: `${color} ${size}`,
+        korValue: `${korColorName} ${size}`,
+        price: item.price / 100 + 500,
+        stock: item.available ? 5 : 0,
+        weight: item.weight + 0.5,
+        active: true,
+        disabled: false,
+        attributes: [
+          {
+            attributeTypeName: "컬러",
+            attributeValueName: korColorName,
+          },
+          {
+            attributeTypeName: "사이즈",
+            attributeValueName: size,
+          },
+        ],
+      });
+    }
+
+    if (colorValues.length > 0) {
+      tempProp.push({
+        pid: "1",
+        name: "colors",
+        korTypeName: "컬러",
+        values: colorValues,
+      });
+    }
+    if (sizeValues.length > 0) {
+      tempProp.push({
+        pid: "1",
+        name: "sizes",
+        korTypeName: "사이즈",
+        values: sizeValues,
+      });
+    }
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+  } catch (e) {
+    console.log("getNepenthes ", e);
   }
 };
 

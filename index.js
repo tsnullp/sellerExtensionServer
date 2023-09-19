@@ -245,7 +245,8 @@ app.post("/amazon/isRegister", async (req, res) => {
       detailUrl.includes("converse.co.jp") ||
       detailUrl.includes("abc-mart.net/shop") ||
       detailUrl.includes("viviennewestwood-tokyo.com") ||
-      detailUrl.includes("miharayasuhiro.jp")
+      detailUrl.includes("miharayasuhiro.jp") ||
+      detailUrl.includes("onlinestore.nepenthes.co.jp")
     ) {
       product = await Product.findOne({
         userID: ObjectId(userInfo._id),
@@ -361,7 +362,8 @@ app.post("/amazon/isRegisters", async (req, res) => {
         items[0].includes("converse.co.jp") ||
         items[0].includes("abc-mart.net/shop") ||
         items[0].includes("viviennewestwood-tokyo.com") ||
-        items[0].includes("miharayasuhiro.jp")
+        items[0].includes("miharayasuhiro.jp") ||
+        items[0].includes("onlinestore.nepenthes.co.jp")
       ) {
         product = await Product.aggregate([
           {
@@ -442,6 +444,9 @@ app.post("/amazon/isRegisters", async (req, res) => {
                 {
                   "basic.url": { $regex: `.*miharayasuhiro.jp.*` },
                 },
+                {
+                  "basic.url": { $regex: `.*onlinestore.nepenthes.co.jp.*` },
+                },
               ],
             },
           },
@@ -515,7 +520,8 @@ app.post("/amazon/isRegisters", async (req, res) => {
               items[0].includes("converse.co.jp") ||
               items[0].includes("abc-mart.net/shop") ||
               items[0].includes("viviennewestwood-tokyo.com") ||
-              items[0].includes("miharayasuhiro.jp")
+              items[0].includes("miharayasuhiro.jp") ||
+              items[0].includes("onlinestore.nepenthes.co.jp")
             ) {
               return pItem.basic.good_id === asin;
             } else {
@@ -1656,7 +1662,8 @@ app.post("/amazon/collectionItems", async (req, res) => {
                   item.detailUrl.includes("converse.co.jp") ||
                   item.detailUrl.includes("abc-mart.net/shop") ||
                   item.detailUrl.includes("viviennewestwood-tokyo.com") ||
-                  item.detailUrl.includes("miharayasuhiro.jp")
+                  item.detailUrl.includes("miharayasuhiro.jp") ||
+                  item.detailUrl.includes("onlinestore.nepenthes.co.jp")
                 ) {
                   const asin = AmazonAsin(item.detailUrl);
                   if (!asin) {
@@ -2390,14 +2397,16 @@ const RakutenPriceSync = async () => {
             let changeStock = false;
             for (const option of response.options) {
               try {
-                const findOption = _.find(product.options, { key: option.key });
+                const findOption = _.find(product.options, {
+                  key: option.key.toString(),
+                });
                 // console.log("findOption --> ", findOption);
                 // console.log("가격", findOption.price, option.price);
                 // console.log("재고", findOption.stock, option.stock);
 
                 // console.log("111", exchange);
 
-                findOption.margin = 20;
+                // findOption.margin = 20;
 
                 let salePrice =
                   Math.ceil(
@@ -2742,6 +2751,12 @@ const BrandPriceSync = async () => {
               {
                 "basic.url": { $regex: `.*viviennewestwood-tokyo.com.*` },
               },
+              {
+                "basic.url": { $regex: `.*miharayasuhiro.jp.*` },
+              },
+              {
+                "basic.url": { $regex: `.*onlinestore.nepenthes.co.jp.*` },
+              },
             ],
           },
         },
@@ -2759,7 +2774,7 @@ const BrandPriceSync = async () => {
             url: product.basic.url,
             userID: product.userID,
           });
-          // console.log("response", response);
+
           if (
             response &&
             response.options &&
@@ -2770,14 +2785,16 @@ const BrandPriceSync = async () => {
             let changeStock = false;
             for (const option of response.options) {
               try {
-                const findOption = _.find(product.options, { key: option.key });
-                // console.log("findOption --> ", findOption);
+                const findOption = _.find(product.options, {
+                  key: option.key.toString(),
+                });
+
                 // console.log("가격", findOption.price, option.price);
                 // console.log("재고", findOption.stock, option.stock);
 
                 // console.log("111", exchange);
 
-                findOption.margin = 20;
+                // findOption.margin = 20;
 
                 let salePrice =
                   Math.ceil(
@@ -2803,7 +2820,9 @@ const BrandPriceSync = async () => {
                   findOption.stock = option.stock;
                 }
                 // await sleep(1000);
-              } catch (e) {}
+              } catch (e) {
+                console.log("---", e);
+              }
             }
 
             if (changePrice || changeStock) {

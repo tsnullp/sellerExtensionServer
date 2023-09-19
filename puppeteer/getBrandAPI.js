@@ -72,6 +72,9 @@ const start = async ({ url, keyword }) => {
       case url.includes("miharayasuhiro.jp"):
         await getMiharayasuhiro({ ObjItem, url });
         break;
+      case url.includes("onlinestore.nepenthes.co.jp"):
+        await getNepenthes({ ObjItem, url });
+        break;
       default:
         console.log("DEFAULT", url);
         break;
@@ -3000,6 +3003,225 @@ const getMiharayasuhiro = async ({ ObjItem, url }) => {
     if (browser) {
       await browser.close();
     }
+  }
+};
+
+const getNepenthes = async ({ ObjItem, url, keyword }) => {
+  try {
+    const agent = new https.Agent({
+      rejectUnauthorized: false,
+    });
+    let content = await axios({
+      httpsAgent: agent,
+      url,
+      method: "GET",
+      headers: {
+        // "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+      },
+      responseType: "binary",
+    });
+
+    content = content.data;
+
+    const temp1 = content
+      .split(
+        '<script type="application/json" id="ProductJson-product-template">'
+      )[1]
+      .split("</script>")[0];
+    // .replace(/\'/g, '"');
+
+    const jsonObj = JSON.parse(temp1);
+    const $ = cheerio.load(content);
+
+    let brand = jsonObj.type;
+    if (keyword && keyword.length > 0) {
+      brand = keyword;
+    }
+
+    switch (true) {
+      case brand.includes("Needles"):
+        brand = "니들스";
+        break;
+      case brand.includes("Engineered Garments"):
+        brand = "엔지니어드가먼츠";
+        break;
+      case brand.includes("Suicoke"):
+        brand = "수이코크";
+        break;
+      case brand.includes("Troentorp"):
+        brand = "트로앤토프";
+        break;
+      default:
+        break;
+    }
+
+    ObjItem.brand = brand;
+    ObjItem.title = jsonObj.title;
+    ObjItem.korTitle = await papagoTranslate(jsonObj.title, "auto", "ko");
+
+    ObjItem.salePrice = jsonObj.price / 100;
+    ObjItem.content = jsonObj.images.map((item) => {
+      return `https:${item}`;
+    });
+
+    ObjItem.mainImages = [ObjItem.content[0]];
+
+    let tempProp = [];
+    let tempOptions = [];
+
+    let colorValues = [];
+    let sizeValues = [];
+    for (const item of jsonObj.variants) {
+      if (!ObjItem.modelName || ObjItem.modelName.length === 0) {
+        ObjItem.modelName = item.sku.split(" ")[0].trim();
+      }
+      let color = item.option1;
+      let korColorName = await papagoTranslate(color, "auto", "ko");
+      let size = item.option2;
+      let findColorValue = _.find(colorValues, { name: color });
+      if (!findColorValue) {
+        colorValues.push({
+          vid: color,
+          name: color,
+          korValueName: korColorName,
+        });
+      }
+
+      let findSizeValue = _.find(sizeValues, { name: size });
+      if (!findSizeValue) {
+        sizeValues.push({
+          vid: size,
+          name: size,
+          korValueName: size,
+        });
+      }
+
+      tempOptions.push({
+        key: item.id,
+        proPath: `1:${color.replace(/:/g, "").replace(/;/g, "")};2:${size
+          .replace(/:/g, "")
+          .replace(/;/g, "")}`,
+        value: `${color} ${size}`,
+        korValue: `${korColorName} ${size}`,
+        price: item.price / 100,
+        stock: item.available ? 5 : 0,
+        weight: item.weight + 0.5,
+        active: true,
+        disabled: false,
+        attributes: [
+          {
+            attributeTypeName: "컬러",
+            attributeValueName: korColorName,
+          },
+          {
+            attributeTypeName: "사이즈",
+            attributeValueName: size,
+          },
+        ],
+      });
+    }
+
+    if (colorValues.length > 0) {
+      tempProp.push({
+        pid: "1",
+        name: "colors",
+        korTypeName: "컬러",
+        values: colorValues,
+      });
+    }
+    if (sizeValues.length > 0) {
+      tempProp.push({
+        pid: "1",
+        name: "sizes",
+        korTypeName: "사이즈",
+        values: sizeValues,
+      });
+    }
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+
+    ObjItem.korTitle =
+      `${ObjItem.brand} ${ObjItem.korTitle} ${ObjItem.modelName}`.trim();
+
+    let category = await searchNaverKeyword({
+      title: ObjItem.korTitle,
+    });
+    if (category) {
+      if (category.category4Code) {
+        ObjItem.categoryID = category.category4Code;
+      } else {
+        ObjItem.categoryID = category.category3Code;
+      }
+    }
+
+    let description = jsonObj.description
+      .replace(/<meta[^>]*>/g, "")
+      .replace(/<p[^>]*>(<span[^>]*>.*?<\/span>)<\/p>/g, "");
+
+    if (description) {
+      ObjItem.html += `<h2>이 상품에 대해</h2>`;
+      ObjItem.html += description;
+      ObjItem.html += `<br>`;
+    }
+
+    let sizeTable = $(".metafield-multi_line_text_field:nth-child(1)").html();
+
+    if (sizeTable) {
+      ObjItem.html += `<h2>사이즈</h2>`;
+      ObjItem.html += sizeTable;
+      ObjItem.html += `<br>`;
+    }
+
+    let infoTable = $(
+      "#tab-box > div:nth-child(3) > .metafield-multi_line_text_field"
+    ).html();
+    if (infoTable) {
+      ObjItem.html += `<h2>제품 정보</h2>`;
+      ObjItem.html += infoTable;
+      ObjItem.html += `<br>`;
+    }
+
+    let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
+      (item) => item.trim().length > 0
+    );
+
+    let htmlKorObj = [];
+    const promiseArray = htmlTextArr.map((item) => {
+      return new Promise(async (resolve, reject) => {
+        try {
+          const korText = await papagoTranslate(item, "ja", "ko");
+
+          htmlKorObj.push({
+            key: item,
+            value: korText,
+          });
+
+          resolve();
+        } catch (e) {
+          reject();
+        }
+      });
+    });
+    await Promise.all(promiseArray);
+
+    htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
+
+    for (const item of htmlKorObj) {
+      const regex = new RegExp(
+        item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        "g"
+      );
+
+      ObjItem.html = ObjItem.html.replace(regex, (match) => {
+        if (match.toLowerCase() === item.key.toLowerCase()) {
+          return item.value;
+        } else {
+          return match;
+        }
+      });
+    }
+  } catch (e) {
+    console.log("getNepenthes ", e);
   }
 };
 
