@@ -1363,7 +1363,7 @@ const getNepenthes = async ({ ObjItem, url }) => {
         korValue: `${korColorName} ${size}`,
         price: item.price / 100 + 500,
         stock: item.available ? 5 : 0,
-        weight: item.weight + 0.5,
+        weight: item.weight > 0 ? item.weight + 0.5 : 1,
         active: true,
         disabled: false,
         attributes: [

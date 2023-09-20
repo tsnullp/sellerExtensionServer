@@ -2712,7 +2712,7 @@ const BrandPriceSync = async () => {
 
       exchange = exchange / 100;
 
-      const products = await Product.aggregate([
+      let products = await Product.aggregate([
         {
           $match: {
             // userID: ObjectId("5f1947bd682563be2d22f008"),
@@ -2766,7 +2766,7 @@ const BrandPriceSync = async () => {
           },
         },
       ]);
-
+      products.sort(() => Math.random() - 0.5);
       for (const product of products) {
         try {
           //
@@ -3005,7 +3005,7 @@ const BrandPriceSync = async () => {
                 console.log(
                   "======================================================================================"
                 );
-                await sleep(10000);
+                await sleep(2000);
               }
             }
           } else {
@@ -3055,7 +3055,7 @@ const BrandPriceSync = async () => {
               console.log("deleteReponse", updateReponse);
             }
           }
-          await sleep(10000);
+          await sleep(2000);
         } catch (e) {
           console.log("eeeee", e);
         }
