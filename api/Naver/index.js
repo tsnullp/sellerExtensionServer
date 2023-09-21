@@ -276,6 +276,9 @@ exports.NaverModifyOption = async ({ userID, originProductNo, product }) => {
   } catch (e) {
     console.log("NaverModifyOption e", e.response.data);
     // console.log("originProductNo", JSON.stringify(product));
+    if (e.response.data.message === "입력한 데이터가 유효하지 않습니다.") {
+      console.log("originProduct", JSON.stringify(product));
+    }
   }
 };
 

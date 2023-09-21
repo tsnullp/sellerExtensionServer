@@ -67,6 +67,12 @@ const start = async ({ url }) => {
       case url.includes("onlinestore.nepenthes.co.jp"):
         await getNepenthes({ ObjItem, url });
         break;
+      case url.includes("doverstreetmarket.com"):
+        await getDoverstreetmarkets({ ObjItem, url });
+        break;
+      case url.includes("titleist.co.jp"):
+        await getTitleist({ ObjItem, url });
+        break;
       default:
         console.log("DEFAULT", url);
         break;
@@ -1399,6 +1405,367 @@ const getNepenthes = async ({ ObjItem, url }) => {
     ObjItem.options = tempOptions;
   } catch (e) {
     console.log("getNepenthes ", e);
+  }
+};
+
+const getDoverstreetmarkets = async ({ ObjItem, url }) => {
+  try {
+    const agent = new https.Agent({
+      rejectUnauthorized: false,
+    });
+    let content = await axios({
+      httpsAgent: agent,
+      url,
+      method: "GET",
+      responseType: "binary",
+    });
+    content = content.data;
+
+    const $ = cheerio.load(content);
+
+    const temp1 = content
+      .split('<script type="application/ld+json">')[2]
+      .split("</script>")[0];
+
+    const jsonObj = JSON.parse(temp1);
+
+    // const temp2 = content.split("var meta = ")[1].split(";")[0];
+
+    // const productObj = JSON.parse(temp2);
+
+    const temp3 = content.split("initData: ")[1].split(",},function")[0];
+
+    const initData = JSON.parse(temp3);
+
+    let tempProp = [];
+    let tempOptions = [];
+
+    let sizeValues = [];
+
+    for (const item of initData.productVariants) {
+      let stock = 0;
+
+      let stockObj = _.find(jsonObj.offers, { sku: item.sku });
+      if (stockObj) {
+        if (stockObj.availability.includes("InStock")) {
+          stock = 5;
+        }
+      }
+
+      let sizeNames = item.title.split(" ");
+
+      let korValueName = item.title;
+      if (sizeNames.length > 1) {
+        korValueName = await papagoTranslate(sizeNames[0], "auto", "ko");
+        korValueName = `${korValueName} ${sizeNames[1]}`;
+      }
+
+      sizeValues.push({
+        vid: item.sku,
+        name: item.title,
+        korValueName,
+      });
+
+      tempOptions.push({
+        key: item.id,
+        propPath: `1:${item.sku}`,
+        value: item.title,
+        korValue: korValueName,
+        price: item.price.amount,
+        stock,
+        active: true,
+        disabled: false,
+        attributes: [
+          {
+            attributeTypeName: "사이즈",
+            attributeValueName: korValueName,
+          },
+        ],
+      });
+    }
+
+    if (sizeValues.length > 0) {
+      tempProp.push({
+        pid: "1",
+        name: "sizes",
+        korTypeName: "사이즈",
+        values: sizeValues,
+      });
+    }
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+  } catch (e) {
+    console.log("getDoverstreetmarkets ", e);
+  }
+};
+
+const getTitleist = async ({ ObjItem, url }) => {
+  const browser = await startBrowser(true);
+  const page = await browser.newPage();
+  await page.setJavaScriptEnabled(true);
+  try {
+    await page.goto(url, { waituntil: "networkidle0" });
+
+    let existMenu = true;
+    try {
+      await page.waitForSelector(".select-menu", { timeout: 3000 });
+    } catch (e) {
+      existMenu = false;
+    }
+
+    const content = await page.content();
+    const $ = cheerio.load(content);
+
+    let tempProp = [];
+    let tempOptions = [];
+
+    let propValues = [];
+    let optionName = null;
+    if (existMenu) {
+      optionName = $("div.variation-item > .label > label").text();
+
+      if (optionName.includes("カラー")) {
+        optionName = "컬러";
+      } else if (optionName.includes("サイズ")) {
+        optionName = "사이즈";
+      }
+
+      const mainContentHtml = $("div.main_content > p")
+        .not(":last-child")
+        .not(":nth-last-child(2)");
+      let mainContentDescription = "";
+      for (const element of mainContentHtml) {
+        mainContentDescription += `<p>${$(element).text()}</p>`;
+      }
+
+      if (mainContentDescription.length > 0) {
+        ObjItem.html += `<h2>이 상품에 대해</h2>`;
+        ObjItem.html += mainContentDescription;
+        ObjItem.html += `<br>`;
+      }
+
+      const spceHtml = $("ul.product_spec > li");
+      let specDescription = "";
+      for (const element of spceHtml) {
+        let spec = $(element).text();
+        if (spec.includes("品番")) {
+          ObjItem.modelName = spec.split("：")[1];
+        }
+        if (spec.includes("重量")) {
+          const weight = extractWeight(spec);
+          if (weight) {
+            ObjItem.weight = weight;
+          }
+        }
+        if (spec.includes("サイズ")) {
+          spec = spec.replace("サイズ：サイズガイドはこちらサイズ", "");
+        }
+
+        specDescription += `<p>${spec}</p>`;
+      }
+
+      if (specDescription.length > 0) {
+        ObjItem.html += `<h2>사양</h2>`;
+        ObjItem.html += specDescription;
+        ObjItem.html += `<br>`;
+      }
+
+      const selectElement = await page.$(".select-menu > select");
+      const optionElement = await page.$$(".select-menu > select > option");
+
+      let i = 1;
+      for (const option of optionElement) {
+        const optionText = await option.evaluate((node) => node.textContent);
+
+        if (optionText === "選択してください") {
+          continue;
+        }
+        await page.select(".select-menu > select", optionText);
+
+        await page.waitForTimeout(1000);
+        // 다음 옵션을 선택하기 위해 다시 select 요소를 클릭
+
+        const stockElement = await page.$("p.stock");
+
+        // 선택한 요소의 텍스트 내용을 가져오기
+        const stockText = await page.evaluate(
+          (stockElement) => stockElement.textContent,
+          stockElement
+        );
+
+        const name = optionText;
+        const korValueName = await papagoTranslate(name, "ja", "ko");
+
+        // 정규 표현식을 사용하여 숫자만 추출
+        const numberPattern = /(\d{1,3}(,\d{3})*(\.\d+)?)|(\.\d+)/;
+        let matches = stockText.match(numberPattern);
+
+        // 숫자 값 가져오기
+        let stockNumber = null;
+        if (matches && matches.length > 0) {
+          const matchedText = matches[0].replace(/,/g, "");
+          stockNumber = parseFloat(matchedText);
+        } else {
+          if (stockText === "在庫あり") {
+            stockNumber = 5;
+          } else {
+            stockNumber = 0;
+          }
+        }
+
+        const priceElement = await page.$("span.woocommerce-Price-amount");
+
+        // 선택한 요소의 텍스트 내용을 가져오기
+        const priceText = await page.evaluate(
+          (priceElement) => priceElement.textContent,
+          priceElement
+        );
+
+        let priceNumber = 0;
+        matches = priceText.match(numberPattern);
+        if (matches && matches.length > 0) {
+          const matchedText = matches[0].replace(/,/g, "");
+          priceNumber = parseFloat(matchedText);
+        }
+
+        let image = null;
+        try {
+          const imageElement = await page.$("div.flex-active-slide");
+          const imgElementHandle = await imageElement.$("img");
+          // 선택한 요소의 텍스트 내용을 가져오기
+          const imageSrc = await page.evaluate(
+            (img) => img.getAttribute("src"),
+            imgElementHandle
+          );
+
+          if (imageSrc) {
+            image = imageSrc.replace("-600x600", "");
+            ObjItem.mainImages.push(image);
+          }
+        } catch (e) {}
+
+        await selectElement.click();
+
+        propValues.push({
+          vid: i.toString(),
+          name,
+          korValueName,
+          image,
+        });
+
+        tempOptions.push({
+          key: i.toString(),
+          propPath: `1:${i.toString()}`,
+          value: name,
+          korValue: korValueName,
+          price: priceNumber >= 11000 ? priceNumber : priceNumber + 660,
+          stock: stockNumber,
+          weight: ObjItem.weight ? ObjItem.weight : 1,
+          active: true,
+          disabled: false,
+          attributes: [
+            {
+              attributeTypeName: optionName,
+              attributeValueName: korValueName,
+            },
+          ],
+        });
+
+        i++;
+      }
+    } else {
+      const stockElement = await page.$("p.stock");
+
+      // 선택한 요소의 텍스트 내용을 가져오기
+      const stockText = await page.evaluate(
+        (stockElement) => stockElement.textContent,
+        stockElement
+      );
+
+      // 정규 표현식을 사용하여 숫자만 추출
+      const numberPattern = /(\d{1,3}(,\d{3})*(\.\d+)?)|(\.\d+)/;
+      let matches = stockText.match(numberPattern);
+
+      // 숫자 값 가져오기
+      let stockNumber = null;
+      if (matches && matches.length > 0) {
+        const matchedText = matches[0].replace(/,/g, "");
+        stockNumber = parseFloat(matchedText);
+      } else {
+        if (stockText === "在庫あり") {
+          stockNumber = 5;
+        } else {
+          stockNumber = 0;
+        }
+      }
+
+      const priceElement = await page.$("span.woocommerce-Price-amount");
+
+      // 선택한 요소의 텍스트 내용을 가져오기
+      const priceText = await page.evaluate(
+        (priceElement) => priceElement.textContent,
+        priceElement
+      );
+
+      let priceNumber = 0;
+      matches = priceText.match(numberPattern);
+      if (matches && matches.length > 0) {
+        const matchedText = matches[0].replace(/,/g, "");
+        priceNumber = parseFloat(matchedText);
+      }
+
+      tempProp.push({
+        pid: "1",
+        name: "종류",
+        korTypeName: "종류",
+        values: [
+          {
+            vid: "1",
+            name: "단일상품",
+            korValueName: "단일상품",
+          },
+        ],
+      });
+      tempOptions.push({
+        key: "1",
+        propPath: "1:1",
+        value: "단일상품",
+        korValue: "단일상품",
+        price: priceNumber >= 11000 ? priceNumber : priceNumber + 660,
+        stock: stockNumber,
+        weight: ObjItem.weight ? ObjItem.weight : 1,
+        active: true,
+        disabled: false,
+        attributes: [
+          {
+            attributeTypeName: "종류",
+            attributeValueName: "단일상품",
+          },
+        ],
+      });
+    }
+
+    if (propValues.length > 0) {
+      tempProp.push({
+        pid: "1",
+        name: optionName,
+        korTypeName: optionName,
+        values: propValues,
+      });
+    }
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+  } catch (e) {
+    console.log("getTitleist - ", e);
+  } finally {
+    if (page) {
+      await page.goto("about:blank");
+      await page.close();
+    }
+    if (browser) {
+      await browser.close();
+    }
   }
 };
 

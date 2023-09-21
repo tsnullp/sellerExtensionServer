@@ -75,6 +75,12 @@ const start = async ({ url, keyword }) => {
       case url.includes("onlinestore.nepenthes.co.jp"):
         await getNepenthes({ ObjItem, url });
         break;
+      case url.includes("doverstreetmarket.com"):
+        await getDoverstreetmarkets({ ObjItem, url });
+        break;
+      case url.includes("titleist.co.jp"):
+        await getTitleist({ ObjItem, url });
+        break;
       default:
         console.log("DEFAULT", url);
         break;
@@ -152,16 +158,7 @@ const getUniqlo = async ({ ObjItem, url }) => {
     ObjItem.korTitle =
       `${ObjItem.brand} ${ObjItem.korTitle} ${ObjItem.modelName}`.trim();
 
-    let category = await searchNaverKeyword({
-      title: ObjItem.korTitle,
-    });
-    if (category) {
-      if (category.category4Code) {
-        ObjItem.categoryID = category.category4Code;
-      } else {
-        ObjItem.categoryID = category.category3Code;
-      }
-    }
+    ObjItem.categoryID = await getCategory(ObjItem.korTitle);
 
     let videos = [];
 
@@ -340,45 +337,7 @@ const getUniqlo = async ({ ObjItem, url }) => {
     ObjItem.prop = tempProp;
     ObjItem.options = tempOptions;
 
-    let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
-      (item) => item.trim().length > 0
-    );
-
-    let htmlKorObj = [];
-    const promiseArray = htmlTextArr.map((item) => {
-      return new Promise(async (resolve, reject) => {
-        try {
-          const korText = await papagoTranslate(item, "ja", "ko");
-
-          htmlKorObj.push({
-            key: item,
-            value: korText,
-          });
-
-          resolve();
-        } catch (e) {
-          reject();
-        }
-      });
-    });
-    await Promise.all(promiseArray);
-
-    htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
-
-    for (const item of htmlKorObj) {
-      const regex = new RegExp(
-        item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-        "g"
-      );
-
-      ObjItem.html = ObjItem.html.replace(regex, (match) => {
-        if (match.toLowerCase() === item.key.toLowerCase()) {
-          return item.value;
-        } else {
-          return match;
-        }
-      });
-    }
+    await translateHtml(ObjItem);
   } catch (e) {
     console.log("getUniqlo", e);
   }
@@ -448,16 +407,7 @@ const getCharleskeith = async ({ ObjItem, url }) => {
       "ko"
     )} ${ObjItem.modelName}`;
 
-    let category = await searchNaverKeyword({
-      title: ObjItem.korTitle,
-    });
-    if (category) {
-      if (category.category4Code) {
-        ObjItem.categoryID = category.category4Code;
-      } else {
-        ObjItem.categoryID = category.category3Code;
-      }
-    }
+    ObjItem.categoryID = await getCategory(ObjItem.korTitle);
 
     let detailHtml = $(".product_text.locondo > div").html();
 
@@ -509,45 +459,7 @@ const getCharleskeith = async ({ ObjItem, url }) => {
     ObjItem.html += detailHtml;
     ObjItem.html += detailTable;
 
-    let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
-      (item) => item.trim().length > 0
-    );
-
-    let htmlKorObj = [];
-    const promiseArray = htmlTextArr.map((item) => {
-      return new Promise(async (resolve, reject) => {
-        try {
-          const korText = await papagoTranslate(item, "ja", "ko");
-
-          htmlKorObj.push({
-            key: item,
-            value: korText,
-          });
-
-          resolve();
-        } catch (e) {
-          reject();
-        }
-      });
-    });
-    await Promise.all(promiseArray);
-
-    htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
-
-    for (const item of htmlKorObj) {
-      const regex = new RegExp(
-        item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-        "g"
-      );
-
-      ObjItem.html = ObjItem.html.replace(regex, (match) => {
-        if (match.toLowerCase() === item.key.toLowerCase()) {
-          return item.value;
-        } else {
-          return match;
-        }
-      });
-    }
+    await translateHtml(ObjItem);
 
     if (ObjItem.mainImages.length === 0 && ObjItem.content.length > 0) {
       ObjItem.mainImages = [ObjItem.content[0]];
@@ -670,16 +582,7 @@ const getCrocs = async ({ ObjItem, url }) => {
     ObjItem.modelName = productID;
     ObjItem.korTitle = `${ObjItem.brand} ${ObjItem.korTitle} ${ObjItem.modelName}`;
 
-    let category = await searchNaverKeyword({
-      title: ObjItem.korTitle,
-    });
-    if (category) {
-      if (category.category4Code) {
-        ObjItem.categoryID = category.category4Code;
-      } else {
-        ObjItem.categoryID = category.category3Code;
-      }
-    }
+    ObjItem.categoryID = await getCategory(ObjItem.korTitle);
 
     ObjItem.html += `<h1>${ObjItem.korTitle}</h1>`;
     ObjItem.html += `<h2>${product.localizedName}</h2>`;
@@ -692,45 +595,7 @@ const getCrocs = async ({ ObjItem, url }) => {
       .replace(/<img\b[^>]*>.*?>/g, "")
       .replace(/<a\b[^>]*>.*?<\/a>/g, "");
 
-    let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
-      (item) => item.trim().length > 0
-    );
-
-    let htmlKorObj = [];
-    const promiseArray = htmlTextArr.map((item) => {
-      return new Promise(async (resolve, reject) => {
-        try {
-          const korText = await papagoTranslate(item, "ja", "ko");
-
-          htmlKorObj.push({
-            key: item,
-            value: korText,
-          });
-
-          resolve();
-        } catch (e) {
-          reject();
-        }
-      });
-    });
-    await Promise.all(promiseArray);
-
-    htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
-
-    for (const item of htmlKorObj) {
-      const regex = new RegExp(
-        item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-        "g"
-      );
-
-      ObjItem.html = ObjItem.html.replace(regex, (match) => {
-        if (match.toLowerCase() === item.key.toLowerCase()) {
-          return item.value;
-        } else {
-          return match;
-        }
-      });
-    }
+    await translateHtml(ObjItem);
 
     const weight = extractWeight(ObjItem.html);
 
@@ -986,60 +851,13 @@ const getBarns = async ({ ObjItem, url }) => {
     ObjItem.korTitle = await papagoTranslate(jsonObj.title, "auto", "ko");
     ObjItem.korTitle = `${ObjItem.brand} ${ObjItem.korTitle} ${ObjItem.modelName}`;
 
-    let category = await searchNaverKeyword({
-      title: ObjItem.korTitle,
-    });
-    if (category) {
-      if (category.category4Code) {
-        ObjItem.categoryID = category.category4Code;
-      } else {
-        ObjItem.categoryID = category.category3Code;
-      }
-    }
+    ObjItem.categoryID = await getCategory(ObjItem.korTitle);
 
     ObjItem.html += `<h1>${ObjItem.korTitle}</h1>`;
     ObjItem.html += `<br>`;
     ObjItem.html += jsonObj.content;
 
-    let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
-      (item) => item.trim().length > 0
-    );
-
-    let htmlKorObj = [];
-    const promiseArray = htmlTextArr.map((item) => {
-      return new Promise(async (resolve, reject) => {
-        try {
-          const korText = await papagoTranslate(item, "ja", "ko");
-
-          htmlKorObj.push({
-            key: item,
-            value: korText,
-          });
-
-          resolve();
-        } catch (e) {
-          reject();
-        }
-      });
-    });
-    await Promise.all(promiseArray);
-
-    htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
-
-    for (const item of htmlKorObj) {
-      const regex = new RegExp(
-        item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-        "g"
-      );
-
-      ObjItem.html = ObjItem.html.replace(regex, (match) => {
-        if (match.toLowerCase() === item.key.toLowerCase()) {
-          return item.value;
-        } else {
-          return match;
-        }
-      });
-    }
+    await translateHtml(ObjItem);
 
     ObjItem.content = jsonObj.images.map((item) => {
       return `https:${item.split("?")[0]}`;
@@ -1205,16 +1023,7 @@ const getAsics = async ({ ObjItem, url }) => {
     ObjItem.modelName = jsonObj.product_style.join(" ");
 
     ObjItem.korTitle = `${ObjItem.brand} ${ObjItem.korTitle} ${color} ${ObjItem.modelName}`;
-    let category = await searchNaverKeyword({
-      title: ObjItem.korTitle,
-    });
-    if (category) {
-      if (category.category4Code) {
-        ObjItem.categoryID = category.category4Code;
-      } else {
-        ObjItem.categoryID = category.category3Code;
-      }
-    }
+    ObjItem.categoryID = await getCategory(ObjItem.korTitle);
 
     const imageElements = await page.$$("li.thumb > a");
 
@@ -1288,45 +1097,7 @@ const getAsics = async ({ ObjItem, url }) => {
       }
     } catch (e) {}
 
-    let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
-      (item) => item.trim().length > 0
-    );
-
-    let htmlKorObj = [];
-    const promiseArray = htmlTextArr.map((item) => {
-      return new Promise(async (resolve, reject) => {
-        try {
-          const korText = await papagoTranslate(item, "ja", "ko");
-
-          htmlKorObj.push({
-            key: item,
-            value: korText,
-          });
-
-          resolve();
-        } catch (e) {
-          reject();
-        }
-      });
-    });
-    await Promise.all(promiseArray);
-
-    htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
-
-    for (const item of htmlKorObj) {
-      const regex = new RegExp(
-        item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-        "g"
-      );
-
-      ObjItem.html = ObjItem.html.replace(regex, (match) => {
-        if (match.toLowerCase() === item.key.toLowerCase()) {
-          return item.value;
-        } else {
-          return match;
-        }
-      });
-    }
+    await translateHtml(ObjItem);
 
     let tempProp = [];
     let tempOptions = [];
@@ -1497,16 +1268,7 @@ const getStussy = async ({ ObjItem, url }) => {
 
     ObjItem.korTitle = `${ObjItem.brand} ${ObjItem.korTitle} ${color}`;
 
-    let category = await searchNaverKeyword({
-      title: ObjItem.korTitle,
-    });
-    if (category) {
-      if (category.category4Code) {
-        ObjItem.categoryID = category.category4Code;
-      } else {
-        ObjItem.categoryID = category.category3Code;
-      }
-    }
+    ObjItem.categoryID = await getCategory(ObjItem.korTitle);
 
     ObjItem.html += `<h1>${ObjItem.korTitle}</h1>`;
     ObjItem.html += `<br>`;
@@ -1537,45 +1299,7 @@ const getStussy = async ({ ObjItem, url }) => {
 
       ObjItem.html += tableHtml;
 
-      let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
-        (item) => item.trim().length > 0
-      );
-
-      let htmlKorObj = [];
-      const promiseArray = htmlTextArr.map((item) => {
-        return new Promise(async (resolve, reject) => {
-          try {
-            const korText = await papagoTranslate(item, "ja", "ko");
-
-            htmlKorObj.push({
-              key: item,
-              value: korText,
-            });
-
-            resolve();
-          } catch (e) {
-            reject();
-          }
-        });
-      });
-      await Promise.all(promiseArray);
-
-      htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
-
-      for (const item of htmlKorObj) {
-        const regex = new RegExp(
-          item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-          "g"
-        );
-
-        ObjItem.html = ObjItem.html.replace(regex, (match) => {
-          if (match.toLowerCase() === item.key.toLowerCase()) {
-            return item.value;
-          } else {
-            return match;
-          }
-        });
-      }
+      await translateHtml(ObjItem);
     }
   } catch (e) {
     console.log("getStussy -- ", e);
@@ -1784,16 +1508,7 @@ const getNorthFace = async ({ ObjItem, url }) => {
     ObjItem.korTitle = await papagoTranslate(ObjItem.title, "auto", "ko");
     ObjItem.korTitle = `${ObjItem.brand} ${ObjItem.korTitle} ${ObjItem.modelName}`;
 
-    let category = await searchNaverKeyword({
-      title: ObjItem.korTitle,
-    });
-    if (category) {
-      if (category.category4Code) {
-        ObjItem.categoryID = category.category4Code;
-      } else {
-        ObjItem.categoryID = category.category3Code;
-      }
-    }
+    ObjItem.categoryID = await getCategory(ObjItem.korTitle);
 
     ObjItem.html += `<h1>${ObjItem.korTitle}</h1>`;
     ObjItem.html += `<br>`;
@@ -1822,45 +1537,7 @@ const getNorthFace = async ({ ObjItem, url }) => {
       }
     } catch (e) {}
 
-    let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
-      (item) => item.trim().length > 0
-    );
-
-    let htmlKorObj = [];
-    const promiseArray = htmlTextArr.map((item) => {
-      return new Promise(async (resolve, reject) => {
-        try {
-          const korText = await papagoTranslate(item, "ja", "ko");
-
-          htmlKorObj.push({
-            key: item,
-            value: korText,
-          });
-
-          resolve();
-        } catch (e) {
-          reject();
-        }
-      });
-    });
-    await Promise.all(promiseArray);
-
-    htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
-
-    for (const item of htmlKorObj) {
-      const regex = new RegExp(
-        item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-        "g"
-      );
-
-      ObjItem.html = ObjItem.html.replace(regex, (match) => {
-        if (match.toLowerCase() === item.key.toLowerCase()) {
-          return item.value;
-        } else {
-          return match;
-        }
-      });
-    }
+    await translateHtml(ObjItem);
   } catch (e) {
     console.log("getNorthFace -- ", e);
   }
@@ -1987,16 +1664,7 @@ const getVans = async ({ ObjItem, url }) => {
     ObjItem.korTitle = await papagoTranslate(ObjItem.title, "auto", "ko");
     ObjItem.korTitle = `${ObjItem.brand} ${ObjItem.korTitle} ${color} ${ObjItem.modelName}`;
 
-    let category = await searchNaverKeyword({
-      title: ObjItem.korTitle,
-    });
-    if (category) {
-      if (category.category4Code) {
-        ObjItem.categoryID = category.category4Code;
-      } else {
-        ObjItem.categoryID = category.category3Code;
-      }
-    }
+    ObjItem.categoryID = await getCategory(ObjItem.korTitle);
 
     ObjItem.html += `<h1>${ObjItem.korTitle}</h1>`;
     ObjItem.html += `<br>`;
@@ -2025,45 +1693,7 @@ const getVans = async ({ ObjItem, url }) => {
       ObjItem.html += `<br>`;
     }
 
-    let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
-      (item) => item.trim().length > 0
-    );
-
-    let htmlKorObj = [];
-    const promiseArray = htmlTextArr.map((item) => {
-      return new Promise(async (resolve, reject) => {
-        try {
-          const korText = await papagoTranslate(item, "ja", "ko");
-
-          htmlKorObj.push({
-            key: item,
-            value: korText,
-          });
-
-          resolve();
-        } catch (e) {
-          reject();
-        }
-      });
-    });
-    await Promise.all(promiseArray);
-
-    htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
-
-    for (const item of htmlKorObj) {
-      const regex = new RegExp(
-        item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-        "g"
-      );
-
-      ObjItem.html = ObjItem.html.replace(regex, (match) => {
-        if (match.toLowerCase() === item.key.toLowerCase()) {
-          return item.value;
-        } else {
-          return match;
-        }
-      });
-    }
+    await translateHtml(ObjItem);
   } catch (e) {
     console.log("getVans ", e);
   }
@@ -2112,16 +1742,7 @@ const getConverse = async ({ ObjItem, url }) => {
 
     ObjItem.korTitle = `${ObjItem.brand} ${ObjItem.korTitle} ${color} ${ObjItem.modelName}`;
 
-    let category = await searchNaverKeyword({
-      title: ObjItem.korTitle,
-    });
-    if (category) {
-      if (category.category4Code) {
-        ObjItem.categoryID = category.category4Code;
-      } else {
-        ObjItem.categoryID = category.category3Code;
-      }
-    }
+    ObjItem.categoryID = await getCategory(ObjItem.korTitle);
 
     ObjItem.html += `<h1>${ObjItem.korTitle}</h1>`;
     ObjItem.html += `<br>`;
@@ -2172,45 +1793,7 @@ const getConverse = async ({ ObjItem, url }) => {
       ObjItem.html += `<table border="1" >${sizeTable}</table>`;
       ObjItem.html += `<br>`;
     }
-    let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
-      (item) => item.trim().length > 0
-    );
-
-    let htmlKorObj = [];
-    const promiseArray = htmlTextArr.map((item) => {
-      return new Promise(async (resolve, reject) => {
-        try {
-          const korText = await papagoTranslate(item, "ja", "ko");
-
-          htmlKorObj.push({
-            key: item,
-            value: korText,
-          });
-
-          resolve();
-        } catch (e) {
-          reject();
-        }
-      });
-    });
-    await Promise.all(promiseArray);
-
-    htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
-
-    for (const item of htmlKorObj) {
-      const regex = new RegExp(
-        item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-        "g"
-      );
-
-      ObjItem.html = ObjItem.html.replace(regex, (match) => {
-        if (match.toLowerCase() === item.key.toLowerCase()) {
-          return item.value;
-        } else {
-          return match;
-        }
-      });
-    }
+    await translateHtml(ObjItem);
 
     ObjItem.mainImages = [`https:${productJson.featured_image}`];
     ObjItem.content = productJson.images.map((item) => {
@@ -2359,16 +1942,7 @@ const getABCMart = async ({ ObjItem, url, keyword }) => {
       ObjItem.korTitle
     } ${color ? color : ""} ${ObjItem.modelName}`;
 
-    let category = await searchNaverKeyword({
-      title: ObjItem.korTitle,
-    });
-    if (category) {
-      if (category.category4Code) {
-        ObjItem.categoryID = category.category4Code;
-      } else {
-        ObjItem.categoryID = category.category3Code;
-      }
-    }
+    ObjItem.categoryID = await getCategory(ObjItem.korTitle);
 
     for (const item of $(".js-slick-product").children(".img_item")) {
       ObjItem.content.push($(item).find("img").attr("data-zoom-image"));
@@ -2467,45 +2041,7 @@ const getABCMart = async ({ ObjItem, url, keyword }) => {
       ObjItem.html += goodscomment1;
     }
 
-    let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
-      (item) => item.trim().length > 0
-    );
-
-    let htmlKorObj = [];
-    const promiseArray = htmlTextArr.map((item) => {
-      return new Promise(async (resolve, reject) => {
-        try {
-          const korText = await papagoTranslate(item, "ja", "ko");
-
-          htmlKorObj.push({
-            key: item,
-            value: korText,
-          });
-
-          resolve();
-        } catch (e) {
-          reject();
-        }
-      });
-    });
-    await Promise.all(promiseArray);
-
-    htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
-
-    for (const item of htmlKorObj) {
-      const regex = new RegExp(
-        item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-        "g"
-      );
-
-      ObjItem.html = ObjItem.html.replace(regex, (match) => {
-        if (match.toLowerCase() === item.key.toLowerCase()) {
-          return item.value;
-        } else {
-          return match;
-        }
-      });
-    }
+    await translateHtml(ObjItem);
   } catch (e) {
     console.log("getABCMart ", e);
   }
@@ -2657,56 +2193,9 @@ const getViviennewestwood = async ({ ObjItem, url }) => {
       color ? color : ""
     } ${ObjItem.modelName ? ObjItem.modelName : ""}`.trim();
 
-    let category = await searchNaverKeyword({
-      title: ObjItem.korTitle,
-    });
-    if (category) {
-      if (category.category4Code) {
-        ObjItem.categoryID = category.category4Code;
-      } else {
-        ObjItem.categoryID = category.category3Code;
-      }
-    }
+    ObjItem.categoryID = await getCategory(ObjItem.korTitle);
 
-    let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
-      (item) => item.trim().length > 0
-    );
-
-    let htmlKorObj = [];
-    const promiseArray = htmlTextArr.map((item) => {
-      return new Promise(async (resolve, reject) => {
-        try {
-          const korText = await papagoTranslate(item, "ja", "ko");
-
-          htmlKorObj.push({
-            key: item,
-            value: korText,
-          });
-
-          resolve();
-        } catch (e) {
-          reject();
-        }
-      });
-    });
-    await Promise.all(promiseArray);
-
-    htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
-
-    for (const item of htmlKorObj) {
-      const regex = new RegExp(
-        item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-        "g"
-      );
-
-      ObjItem.html = ObjItem.html.replace(regex, (match) => {
-        if (match.toLowerCase() === item.key.toLowerCase()) {
-          return item.value;
-        } else {
-          return match;
-        }
-      });
-    }
+    await translateHtml(ObjItem);
   } catch (e) {
     console.log("getViviennewestwood", e);
   }
@@ -2942,56 +2431,9 @@ const getMiharayasuhiro = async ({ ObjItem, url }) => {
     ObjItem.korTitle =
       `${ObjItem.brand} ${ObjItem.korTitle} ${ObjItem.modelName}`.trim();
 
-    let category = await searchNaverKeyword({
-      title: ObjItem.korTitle,
-    });
-    if (category) {
-      if (category.category4Code) {
-        ObjItem.categoryID = category.category4Code;
-      } else {
-        ObjItem.categoryID = category.category3Code;
-      }
-    }
+    ObjItem.categoryID = await getCategory(ObjItem.korTitle);
 
-    let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
-      (item) => item.trim().length > 0
-    );
-
-    let htmlKorObj = [];
-    const promiseArray = htmlTextArr.map((item) => {
-      return new Promise(async (resolve, reject) => {
-        try {
-          const korText = await papagoTranslate(item, "ja", "ko");
-
-          htmlKorObj.push({
-            key: item,
-            value: korText,
-          });
-
-          resolve();
-        } catch (e) {
-          reject();
-        }
-      });
-    });
-    await Promise.all(promiseArray);
-
-    htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
-
-    for (const item of htmlKorObj) {
-      const regex = new RegExp(
-        item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-        "g"
-      );
-
-      ObjItem.html = ObjItem.html.replace(regex, (match) => {
-        if (match.toLowerCase() === item.key.toLowerCase()) {
-          return item.value;
-        } else {
-          return match;
-        }
-      });
-    }
+    await translateHtml(ObjItem);
   } catch (e) {
     console.log("getMiharayasuhiro ", e);
   } finally {
@@ -3143,16 +2585,7 @@ const getNepenthes = async ({ ObjItem, url, keyword }) => {
     ObjItem.korTitle =
       `${ObjItem.brand} ${ObjItem.korTitle} ${ObjItem.modelName}`.trim();
 
-    let category = await searchNaverKeyword({
-      title: ObjItem.korTitle,
-    });
-    if (category) {
-      if (category.category4Code) {
-        ObjItem.categoryID = category.category4Code;
-      } else {
-        ObjItem.categoryID = category.category3Code;
-      }
-    }
+    ObjItem.categoryID = await getCategory(ObjItem.korTitle);
 
     let description = jsonObj.description
       .replace(/<meta[^>]*>/g, "")
@@ -3181,47 +2614,559 @@ const getNepenthes = async ({ ObjItem, url, keyword }) => {
       ObjItem.html += `<br>`;
     }
 
-    let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
-      (item) => item.trim().length > 0
-    );
-
-    let htmlKorObj = [];
-    const promiseArray = htmlTextArr.map((item) => {
-      return new Promise(async (resolve, reject) => {
-        try {
-          const korText = await papagoTranslate(item, "ja", "ko");
-
-          htmlKorObj.push({
-            key: item,
-            value: korText,
-          });
-
-          resolve();
-        } catch (e) {
-          reject();
-        }
-      });
-    });
-    await Promise.all(promiseArray);
-
-    htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
-
-    for (const item of htmlKorObj) {
-      const regex = new RegExp(
-        item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-        "g"
-      );
-
-      ObjItem.html = ObjItem.html.replace(regex, (match) => {
-        if (match.toLowerCase() === item.key.toLowerCase()) {
-          return item.value;
-        } else {
-          return match;
-        }
-      });
-    }
+    await translateHtml(ObjItem);
   } catch (e) {
     console.log("getNepenthes ", e);
+  }
+};
+
+const getDoverstreetmarkets = async ({ ObjItem, url }) => {
+  const browser = await startBrowser(false);
+  const page = await browser.newPage();
+  await page.setJavaScriptEnabled(true);
+  try {
+    // const agent = new https.Agent({
+    //   rejectUnauthorized: false,
+    // });
+    // let content = await axios({
+    //   httpsAgent: agent,
+    //   url,
+    //   method: "GET",
+    //   responseType: "binary",
+    // });
+    // content = content.data;
+
+    await page.goto(url, { waituntil: "networkidle0" });
+    await page.waitForSelector("h2.typesquare_option:nth-child(1) > button");
+    await page.click("h2.typesquare_option:nth-child(1) > button");
+    await page.waitForSelector("table.esc-size-guide--table");
+
+    const content = await page.content();
+
+    const $ = cheerio.load(content);
+
+    const temp1 = content
+      .split('<script type="application/ld+json">')[2]
+      .split("</script>")[0];
+
+    const jsonObj = JSON.parse(temp1);
+
+    // const temp2 = content.split("var meta = ")[1].split(";")[0];
+
+    // const productObj = JSON.parse(temp2);
+
+    const temp3 = content.split("initData: ")[1].split(",},function")[0];
+
+    const initData = JSON.parse(temp3);
+
+    ObjItem.brand = "꼼데가르송";
+    ObjItem.title = jsonObj.name;
+    ObjItem.korTitle = await papagoTranslate(jsonObj.name, "auto", "ko");
+
+    for (const item of $("ul.w-full").children("li.w-full")) {
+      let image = $(item).find("img").attr("src");
+
+      if (image && image.includes("//shop-jp.doverstreetmarket.com")) {
+        image = `https:${image}`;
+        ObjItem.content.push(image);
+      }
+    }
+
+    ObjItem.mainImages = [ObjItem.content[0]];
+
+    let tempProp = [];
+    let tempOptions = [];
+
+    let sizeValues = [];
+
+    for (const item of initData.productVariants) {
+      let stock = 0;
+
+      let stockObj = _.find(jsonObj.offers, { sku: item.sku });
+      if (stockObj) {
+        if (stockObj.availability.includes("InStock")) {
+          stock = 5;
+        }
+      }
+
+      let sizeNames = item.title.split(" ");
+
+      let korValueName = item.title;
+      if (sizeNames.length > 1) {
+        korValueName = await papagoTranslate(sizeNames[0], "auto", "ko");
+        korValueName = `${korValueName} ${sizeNames[1]}`;
+      }
+
+      sizeValues.push({
+        vid: item.sku,
+        name: item.title,
+        korValueName,
+      });
+
+      tempOptions.push({
+        key: item.id,
+        propPath: `1:${item.sku}`,
+        value: item.title,
+        korValue: korValueName,
+        price: item.price.amount,
+        stock,
+        active: true,
+        disabled: false,
+        attributes: [
+          {
+            attributeTypeName: "사이즈",
+            attributeValueName: korValueName,
+          },
+        ],
+      });
+    }
+
+    if (sizeValues.length > 0) {
+      tempProp.push({
+        pid: "1",
+        name: "sizes",
+        korTypeName: "사이즈",
+        values: sizeValues,
+      });
+    }
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+
+    let styleHtml = $("div.max-md\\:order-last > p:nth-child(2)").html();
+    if (!styleHtml) {
+      styleHtml = $("div.max-md\\:order-last > p").html();
+    }
+    let styleCodes = [];
+
+    if (styleHtml) {
+      let styleCodePattern = /code:\s([A-Z0-9-]+)/g;
+
+      let match;
+
+      while ((match = styleCodePattern.exec(styleHtml)) !== null) {
+        styleCodes.push(match[1]);
+      }
+
+      if (styleCodes.length > 0) {
+        ObjItem.modelName = styleCodes[0];
+      }
+    }
+
+    ObjItem.korTitle = `${ObjItem.brand} ${ObjItem.korTitle
+      .replace(/ - /g, " ")
+      .replace(/\(/g, "")
+      .replace(/\)/g, "")} ${styleCodes.join(" ")}`;
+
+    ObjItem.categoryID = await getCategory(ObjItem.korTitle);
+
+    let descriptionHtml = $(
+      "#shopify-section-template--15104433094918__product-main > section > div.col-span-full.md\\:col-span-3.xl\\:col-span-4.xl\\:ml-12.space-y-6.md\\:self-start.md\\:sticky.md\\:top-4.\\[\\.is-active-fullscreen_\\&\\]\\:hidden > div > div.max-md\\:order-last.text-sm.leading-xs.md\\:mb-6.last\\:mb-0.\\[\\&_\\>_\\*\\]\\:mb-4.\\[\\&_\\>_\\:last-child\\]\\:mb-0"
+    ).html();
+
+    if (descriptionHtml && descriptionHtml.length > 0) {
+      ObjItem.html += `<br>`;
+      ObjItem.html += `<h2>이 상품에 대하여</h2>`;
+      ObjItem.html += `${descriptionHtml.replace(
+        /<a\b[^>]*>(.*?)<\/a>/gi,
+        ""
+      )}`;
+      ObjItem.html += `<br>`;
+    } else if (jsonObj.description && jsonObj.description.length > 0) {
+      let descriptionArr = jsonObj.description.split("/");
+      ObjItem.html += `<br>`;
+      ObjItem.html += `<h2>이 상품에 대하여</h2>`;
+      for (const item of descriptionArr) {
+        let descriptionArr2 = item.split(".");
+        for (const item2 of descriptionArr2) {
+          let descriptionArr3 = item2.split("。");
+          for (const item3 of descriptionArr3) {
+            if (item3.includes("Style") || item3.includes("style")) {
+              let styleArr = item3.split("Style");
+              if (styleArr.length === 2) {
+                ObjItem.html += `<p>${styleArr[0]}</p>`;
+                ObjItem.html += `<p>Style${styleArr[1]}</p>`;
+              } else if (styleArr.length === 3) {
+                ObjItem.html += `<p>${styleArr[0]}</p>`;
+                ObjItem.html += `<p>Style${styleArr[1]}</p>`;
+                ObjItem.html += `<p>Style${styleArr[2]}</p>`;
+              } else {
+                styleArr = item3.split("style");
+                if (styleArr.length === 2) {
+                  ObjItem.html += `<p>${styleArr[0]}</p>`;
+                  ObjItem.html += `<p>Style${styleArr[1]}</p>`;
+                } else if (styleArr.length === 3) {
+                  ObjItem.html += `<p>${styleArr[0]}</p>`;
+                  ObjItem.html += `<p>Style${styleArr[1]}</p>`;
+                  ObjItem.html += `<p>Style${styleArr[2]}</p>`;
+                }
+              }
+            } else {
+              ObjItem.html += `<p>${item3}</p>`;
+            }
+          }
+        }
+      }
+      ObjItem.html += `<br>`;
+    }
+
+    let sizeTable = $("table.esc-size-guide--table").html();
+
+    if (sizeTable && sizeTable.length > 0) {
+      sizeTable = `<table border="1" >${sizeTable}</table>`;
+      const size$ = cheerio.load(sizeTable);
+      const table = size$("table"); // 테이블 요소 선택
+      // 데이터 배열 초기화
+      const data = [];
+
+      // 테이블의 각 행을 반복하면서 데이터 추출
+      table.find("tr").each((rowIndex, row) => {
+        const rowData = [];
+
+        $(row)
+          .find("td, th")
+          .each((cellIndex, cell) => {
+            const cellText = $(cell).text().trim();
+            rowData.push(cellText);
+          });
+
+        // 행의 모든 셀이 비어 있지 않으면 데이터에 추가
+        if (rowData.some((cellText) => cellText !== "")) {
+          data.push(rowData);
+        }
+      });
+
+      // HTML 표 생성
+      const createHTMLTable = (data) => {
+        const table = $("<table></table>");
+        data.forEach((row) => {
+          const tr = $("<tr></tr>");
+          row.forEach((cell) => {
+            const td = $("<td></td>").text(cell);
+            tr.append(td);
+          });
+          table.append(tr);
+        });
+        return table;
+      };
+
+      // 데이터를 HTML 표로 변환
+      sizeTable = createHTMLTable(data);
+
+      ObjItem.html += `<br>`;
+      ObjItem.html += `<h2>사이즈</h2>`;
+      ObjItem.html += `<table border="1">${sizeTable.html()}</table>`;
+      ObjItem.html += `<br>`;
+    }
+
+    await translateHtml(ObjItem);
+  } catch (e) {
+    console.log("getDoverstreetmarkets ", e);
+  } finally {
+    if (page) {
+      await page.goto("about:blank");
+      await page.close();
+    }
+    if (browser) {
+      await browser.close();
+    }
+  }
+};
+
+const getTitleist = async ({ ObjItem, url }) => {
+  const browser = await startBrowser(true);
+  const page = await browser.newPage();
+  await page.setJavaScriptEnabled(true);
+  try {
+    await page.goto(url, { waituntil: "networkidle0" });
+
+    let existMenu = true;
+    try {
+      await page.waitForSelector(".select-menu", { timeout: 3000 });
+    } catch (e) {
+      existMenu = false;
+    }
+
+    const content = await page.content();
+    const $ = cheerio.load(content);
+
+    ObjItem.brand = "타이틀리스트";
+    ObjItem.title = $(".product_title.entry-title").text();
+    ObjItem.korTitle = await papagoTranslate(ObjItem.title, "ja", "ko");
+
+    let tempProp = [];
+    let tempOptions = [];
+
+    let propValues = [];
+    let optionName = null;
+    if (existMenu) {
+      optionName = $("div.variation-item > .label > label").text();
+
+      if (optionName.includes("カラー")) {
+        optionName = "컬러";
+      } else if (optionName.includes("サイズ")) {
+        optionName = "사이즈";
+      }
+
+      const mainContentHtml = $("div.main_content > p")
+        .not(":last-child")
+        .not(":nth-last-child(2)");
+      let mainContentDescription = "";
+      for (const element of mainContentHtml) {
+        mainContentDescription += `<p>${$(element).text()}</p>`;
+      }
+
+      if (mainContentDescription.length > 0) {
+        ObjItem.html += `<h2>이 상품에 대해</h2>`;
+        ObjItem.html += mainContentDescription;
+        ObjItem.html += `<br>`;
+      }
+
+      const spceHtml = $("ul.product_spec > li");
+      let specDescription = "";
+      for (const element of spceHtml) {
+        let spec = $(element).text();
+        if (spec.includes("品番")) {
+          ObjItem.modelName = spec.split("：")[1];
+        }
+        if (spec.includes("重量")) {
+          const weight = extractWeight(spec);
+          if (weight) {
+            ObjItem.weight = weight;
+          }
+        }
+        if (spec.includes("サイズ")) {
+          spec = spec.replace("サイズ：サイズガイドはこちらサイズ", "");
+        }
+
+        specDescription += `<p>${spec}</p>`;
+      }
+
+      if (specDescription.length > 0) {
+        ObjItem.html += `<h2>사양</h2>`;
+        ObjItem.html += specDescription;
+        ObjItem.html += `<br>`;
+      }
+
+      const selectElement = await page.$(".select-menu > select");
+      const optionElement = await page.$$(".select-menu > select > option");
+
+      let i = 1;
+      for (const option of optionElement) {
+        const optionText = await option.evaluate((node) => node.textContent);
+
+        if (optionText === "選択してください") {
+          continue;
+        }
+        await page.select(".select-menu > select", optionText);
+
+        await page.waitForTimeout(1000);
+        // 다음 옵션을 선택하기 위해 다시 select 요소를 클릭
+
+        const stockElement = await page.$("p.stock");
+
+        // 선택한 요소의 텍스트 내용을 가져오기
+        const stockText = await page.evaluate(
+          (stockElement) => stockElement.textContent,
+          stockElement
+        );
+
+        const name = optionText;
+        const korValueName = await papagoTranslate(name, "ja", "ko");
+
+        // 정규 표현식을 사용하여 숫자만 추출
+        const numberPattern = /(\d{1,3}(,\d{3})*(\.\d+)?)|(\.\d+)/;
+        let matches = stockText.match(numberPattern);
+
+        // 숫자 값 가져오기
+        let stockNumber = null;
+        if (matches && matches.length > 0) {
+          const matchedText = matches[0].replace(/,/g, "");
+          stockNumber = parseFloat(matchedText);
+        } else {
+          if (stockText === "在庫あり") {
+            stockNumber = 5;
+          } else {
+            stockNumber = 0;
+          }
+        }
+
+        const priceElement = await page.$("span.woocommerce-Price-amount");
+
+        // 선택한 요소의 텍스트 내용을 가져오기
+        const priceText = await page.evaluate(
+          (priceElement) => priceElement.textContent,
+          priceElement
+        );
+
+        let priceNumber = 0;
+        matches = priceText.match(numberPattern);
+        if (matches && matches.length > 0) {
+          const matchedText = matches[0].replace(/,/g, "");
+          priceNumber = parseFloat(matchedText);
+        }
+
+        let image = null;
+        try {
+          const imageElement = await page.$("div.flex-active-slide");
+          const imgElementHandle = await imageElement.$("img");
+          // 선택한 요소의 텍스트 내용을 가져오기
+          const imageSrc = await page.evaluate(
+            (img) => img.getAttribute("src"),
+            imgElementHandle
+          );
+
+          if (imageSrc) {
+            image = imageSrc.replace("-600x600", "");
+            ObjItem.mainImages.push(image);
+          }
+        } catch (e) {}
+
+        await selectElement.click();
+
+        propValues.push({
+          vid: i.toString(),
+          name,
+          korValueName,
+          image,
+        });
+
+        tempOptions.push({
+          key: i.toString(),
+          propPath: `1:${i.toString()}`,
+          value: name,
+          korValue: korValueName,
+          price: priceNumber >= 11000 ? priceNumber : priceNumber + 660,
+          stock: stockNumber,
+          weight: ObjItem.weight ? ObjItem.weight : 1,
+          active: true,
+          disabled: false,
+          attributes: [
+            {
+              attributeTypeName: optionName,
+              attributeValueName: korValueName,
+            },
+          ],
+        });
+
+        i++;
+      }
+    } else {
+      const stockElement = await page.$("p.stock");
+
+      // 선택한 요소의 텍스트 내용을 가져오기
+      const stockText = await page.evaluate(
+        (stockElement) => stockElement.textContent,
+        stockElement
+      );
+
+      // 정규 표현식을 사용하여 숫자만 추출
+      const numberPattern = /(\d{1,3}(,\d{3})*(\.\d+)?)|(\.\d+)/;
+      let matches = stockText.match(numberPattern);
+
+      // 숫자 값 가져오기
+      let stockNumber = null;
+      if (matches && matches.length > 0) {
+        const matchedText = matches[0].replace(/,/g, "");
+        stockNumber = parseFloat(matchedText);
+      } else {
+        if (stockText === "在庫あり") {
+          stockNumber = 5;
+        } else {
+          stockNumber = 0;
+        }
+      }
+
+      const priceElement = await page.$("span.woocommerce-Price-amount");
+
+      // 선택한 요소의 텍스트 내용을 가져오기
+      const priceText = await page.evaluate(
+        (priceElement) => priceElement.textContent,
+        priceElement
+      );
+
+      let priceNumber = 0;
+      matches = priceText.match(numberPattern);
+      if (matches && matches.length > 0) {
+        const matchedText = matches[0].replace(/,/g, "");
+        priceNumber = parseFloat(matchedText);
+      }
+
+      tempProp.push({
+        pid: "1",
+        name: "종류",
+        korTypeName: "종류",
+        values: [
+          {
+            vid: "1",
+            name: "단일상품",
+            korValueName: "단일상품",
+          },
+        ],
+      });
+      tempOptions.push({
+        key: "1",
+        propPath: "1:1",
+        value: "단일상품",
+        korValue: "단일상품",
+        price: priceNumber >= 11000 ? priceNumber : priceNumber + 660,
+        stock: stockNumber,
+        weight: ObjItem.weight ? ObjItem.weight : 1,
+        active: true,
+        disabled: false,
+        attributes: [
+          {
+            attributeTypeName: "종류",
+            attributeValueName: "단일상품",
+          },
+        ],
+      });
+    }
+
+    if (propValues.length > 0) {
+      tempProp.push({
+        pid: "1",
+        name: optionName,
+        korTypeName: optionName,
+        values: propValues,
+      });
+    }
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+
+    for (const item of $("ol.flex-control-thumbs").children("li")) {
+      let image = $(item).find("img").attr("src").replace("-100x100", "");
+      if (image && image.includes("jpg")) {
+        ObjItem.content.push(image);
+      }
+    }
+
+    if (ObjItem.content.length === 0) {
+      let image = $("img.zoomImg").attr("src");
+
+      ObjItem.content.push(image);
+    }
+
+    if (ObjItem.mainImages.length === 0) {
+      ObjItem.mainImages = [ObjItem.content[0]];
+    }
+
+    await translateHtml(ObjItem);
+
+    ObjItem.korTitle = `${ObjItem.brand} ${ObjItem.korTitle} ${
+      ObjItem.modelName ? ObjItem.modelName : ""
+    }`.trim();
+    ObjItem.categoryID = await getCategory(ObjItem.korTitle);
+  } catch (e) {
+    console.log("getTitleist - ", e);
+  } finally {
+    if (page) {
+      await page.goto("about:blank");
+      await page.close();
+    }
+    if (browser) {
+      await browser.close();
+    }
   }
 };
 
@@ -3264,4 +3209,63 @@ const decodeUnicode = (unicodeString) => {
     return String.fromCharCode(parseInt(grp, 16));
   });
   return unescape(unicodeString);
+};
+
+const getCategory = async (korTitle) => {
+  let category = await searchNaverKeyword({
+    title: korTitle,
+  });
+  if (category) {
+    if (category.category4Code) {
+      return category.category4Code;
+    } else {
+      return category.category3Code;
+    }
+  }
+};
+
+const translateHtml = async (ObjItem) => {
+  try {
+    let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
+      (item) => item.trim().length > 0
+    );
+
+    let htmlKorObj = [];
+    const promiseArray = htmlTextArr.map((item) => {
+      return new Promise(async (resolve, reject) => {
+        try {
+          const korText = await papagoTranslate(item, "ja", "ko");
+
+          htmlKorObj.push({
+            key: item,
+            value: korText,
+          });
+
+          resolve();
+        } catch (e) {
+          reject();
+        }
+      });
+    });
+    await Promise.all(promiseArray);
+
+    htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
+
+    for (const item of htmlKorObj) {
+      const regex = new RegExp(
+        item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        "g"
+      );
+
+      ObjItem.html = ObjItem.html.replace(regex, (match) => {
+        if (match.toLowerCase() === item.key.toLowerCase()) {
+          return item.value;
+        } else {
+          return match;
+        }
+      });
+    }
+  } catch (e) {
+    console.log("333", e);
+  }
 };

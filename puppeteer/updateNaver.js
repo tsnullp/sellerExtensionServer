@@ -248,6 +248,19 @@ const updateNaver = async ({
           pageTitle: product.pageTitle.replace(/[\\*?"<>]/g, ""),
           metaDescription: product.korTitle.replace(/[\\*?"<>]/g, ""),
           sellerTags: _.uniqBy(tag, "code")
+            .filter((item) => {
+              let prohibit = [
+                "심플리티",
+                "여성",
+                "폭신폭신",
+                "사계절",
+                "즐거움",
+              ];
+              if (prohibit.includes(item.text)) {
+                return false;
+              }
+              return true;
+            })
             .filter((item, i) => i < 10 && item.code !== "1")
             .map((item) => {
               if (item.code) {

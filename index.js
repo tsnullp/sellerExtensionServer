@@ -246,7 +246,9 @@ app.post("/amazon/isRegister", async (req, res) => {
       detailUrl.includes("abc-mart.net/shop") ||
       detailUrl.includes("viviennewestwood-tokyo.com") ||
       detailUrl.includes("miharayasuhiro.jp") ||
-      detailUrl.includes("onlinestore.nepenthes.co.jp")
+      detailUrl.includes("onlinestore.nepenthes.co.jp") ||
+      detailUrl.includes("doverstreetmarket.com") ||
+      detailUrl.includes("titleist.co.jp")
     ) {
       product = await Product.findOne({
         userID: ObjectId(userInfo._id),
@@ -363,7 +365,9 @@ app.post("/amazon/isRegisters", async (req, res) => {
         items[0].includes("abc-mart.net/shop") ||
         items[0].includes("viviennewestwood-tokyo.com") ||
         items[0].includes("miharayasuhiro.jp") ||
-        items[0].includes("onlinestore.nepenthes.co.jp")
+        items[0].includes("onlinestore.nepenthes.co.jp") ||
+        items[0].includes("doverstreetmarket.com") ||
+        items[0].includes("titleist.co.jp")
       ) {
         product = await Product.aggregate([
           {
@@ -447,6 +451,9 @@ app.post("/amazon/isRegisters", async (req, res) => {
                 {
                   "basic.url": { $regex: `.*onlinestore.nepenthes.co.jp.*` },
                 },
+                {
+                  "basic.url": { $regex: `.*doverstreetmarket.com.*` },
+                },
               ],
             },
           },
@@ -521,7 +528,9 @@ app.post("/amazon/isRegisters", async (req, res) => {
               items[0].includes("abc-mart.net/shop") ||
               items[0].includes("viviennewestwood-tokyo.com") ||
               items[0].includes("miharayasuhiro.jp") ||
-              items[0].includes("onlinestore.nepenthes.co.jp")
+              items[0].includes("onlinestore.nepenthes.co.jp") ||
+              items[0].includes("doverstreetmarket.com") ||
+              items[0].includes("titleist.co.jp")
             ) {
               return pItem.basic.good_id === asin;
             } else {
@@ -1663,7 +1672,9 @@ app.post("/amazon/collectionItems", async (req, res) => {
                   item.detailUrl.includes("abc-mart.net/shop") ||
                   item.detailUrl.includes("viviennewestwood-tokyo.com") ||
                   item.detailUrl.includes("miharayasuhiro.jp") ||
-                  item.detailUrl.includes("onlinestore.nepenthes.co.jp")
+                  item.detailUrl.includes("onlinestore.nepenthes.co.jp") ||
+                  item.detailUrl.includes("doverstreetmarket.com") ||
+                  item.detailUrl.includes("titleist.co.jp")
                 ) {
                   const asin = AmazonAsin(item.detailUrl);
                   if (!asin) {
@@ -2330,6 +2341,7 @@ app.post("/taobao/getSimbaUrl", async (req, res) => {
 });
 
 const RakutenPriceSync = async () => {
+  let prohibit = ["심플리티", "여성", "폭신폭신", "사계절", "즐거움"];
   const SyncFun = async () => {
     let isFirst = true;
     while (isFirst) {
@@ -2588,6 +2600,16 @@ const RakutenPriceSync = async () => {
                 }
                 // console.log("naverProduct", naverProduct.originProduct);
 
+                naverProduct.originProduct.detailAttribute.seoInfo.sellerTags =
+                  naverProduct.originProduct.detailAttribute.seoInfo.sellerTags.filter(
+                    (item) => {
+                      if (prohibit.includes(item.text)) {
+                        return false;
+                      }
+                      return true;
+                    }
+                  );
+
                 const updateReponse = await NaverModifyOption({
                   userID: product.userID,
                   originProductNo: product.product.naver.originProductNo,
@@ -2644,7 +2666,16 @@ const RakutenPriceSync = async () => {
                 .detailAttribute.optionInfo.optionCombinations) {
                 optionItem.stockQuantity = 0;
               }
-              // console.log("naverProduct", naverProduct);
+              naverProduct.originProduct.detailAttribute.seoInfo.sellerTags =
+                naverProduct.originProduct.detailAttribute.seoInfo.sellerTags.filter(
+                  (item) => {
+                    if (prohibit.includes(item.text)) {
+                      return false;
+                    }
+                    return true;
+                  }
+                );
+
               const updateReponse = await NaverModifyOption({
                 userID: product.userID,
                 originProductNo: product.product.naver.originProductNo,
@@ -2687,6 +2718,7 @@ const RakutenPriceSync = async () => {
 };
 
 const BrandPriceSync = async () => {
+  let prohibit = ["심플리티", "여성", "폭신폭신", "사계절", "즐거움"];
   const SyncFun = async () => {
     let isFirst = true;
     while (isFirst) {
@@ -2757,6 +2789,9 @@ const BrandPriceSync = async () => {
               {
                 "basic.url": { $regex: `.*onlinestore.nepenthes.co.jp.*` },
               },
+              {
+                "basic.url": { $regex: `.*doverstreetmarket.com.*` },
+              },
             ],
           },
         },
@@ -2788,13 +2823,9 @@ const BrandPriceSync = async () => {
                 const findOption = _.find(product.options, {
                   key: option.key.toString(),
                 });
-
-                // console.log("가격", findOption.price, option.price);
-                // console.log("재고", findOption.stock, option.stock);
-
-                // console.log("111", exchange);
-
-                // findOption.margin = 20;
+                if (!findOption) {
+                  continue;
+                }
 
                 let salePrice =
                   Math.ceil(
@@ -2821,7 +2852,9 @@ const BrandPriceSync = async () => {
                 }
                 // await sleep(1000);
               } catch (e) {
+                console.log("url --- ", product.basic.url);
                 console.log("---", e);
+                console.log("response == ", response);
               }
             }
 
@@ -2968,6 +3001,15 @@ const BrandPriceSync = async () => {
                   },
                 };
 
+                naverProduct.originProduct.detailAttribute.seoInfo.sellerTags =
+                  naverProduct.originProduct.detailAttribute.seoInfo.sellerTags.filter(
+                    (item) => {
+                      if (prohibit.includes(item.text)) {
+                        return false;
+                      }
+                      return true;
+                    }
+                  );
                 // console.log("naverProduct", naverProduct.originProduct);
 
                 const updateReponse = await NaverModifyOption({
@@ -3027,6 +3069,16 @@ const BrandPriceSync = async () => {
                 optionItem.stockQuantity = 0;
               }
               // console.log("naverProduct", naverProduct);
+              naverProduct.originProduct.detailAttribute.seoInfo.sellerTags =
+                naverProduct.originProduct.detailAttribute.seoInfo.sellerTags.filter(
+                  (item) => {
+                    if (prohibit.includes(item.text)) {
+                      return false;
+                    }
+                    return true;
+                  }
+                );
+
               const updateReponse = await NaverModifyOption({
                 userID: product.userID,
                 originProductNo: product.product.naver.originProductNo,
