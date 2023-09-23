@@ -7,6 +7,7 @@ const { regExp_test, AmazonAsin } = require("../lib/userFunc");
 const _ = require("lodash");
 const iconv = require("iconv-lite");
 const startBrowser = require("./startBrowser");
+const FormData = require("form-data");
 
 const start = async ({ url }) => {
   const ObjItem = {
@@ -1501,187 +1502,180 @@ const getDoverstreetmarkets = async ({ ObjItem, url }) => {
 };
 
 const getTitleist = async ({ ObjItem, url }) => {
-  const browser = await startBrowser(true);
-  const page = await browser.newPage();
-  await page.setJavaScriptEnabled(true);
   try {
-    await page.goto(url, { waituntil: "networkidle0" });
+    // const content = await page.content();
+
+    const agent = new https.Agent({
+      rejectUnauthorized: false,
+    });
+    let content = await axios({
+      httpsAgent: agent,
+      url,
+      method: "GET",
+      headers: {
+        // "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+      },
+      responseType: "binary",
+    });
+
+    content = content.data;
+
+    const $ = cheerio.load(content);
 
     let existMenu = true;
-    try {
-      await page.waitForSelector(".select-menu", { timeout: 3000 });
-    } catch (e) {
+    const isMenu = $(".select-menu").html();
+    if (isMenu && isMenu.trim().length > 0) {
+      existMenu = true;
+    } else {
       existMenu = false;
     }
-
-    const content = await page.content();
-    const $ = cheerio.load(content);
 
     let tempProp = [];
     let tempOptions = [];
 
     let propValues = [];
     let optionName = null;
+    let optionKorName = null;
     if (existMenu) {
-      optionName = $("div.variation-item > .label > label").text();
+      optionName = $("div.variation-item > .label > label")
+        .text()
+        .replace("：", "")
+        .trim();
 
       if (optionName.includes("カラー")) {
-        optionName = "컬러";
+        optionKorName = "컬러";
       } else if (optionName.includes("サイズ")) {
-        optionName = "사이즈";
+        optionKorName = "사이즈";
+      } else if (optionName.includes("プレーナンバー")) {
+        optionKorName = "플레이 넘버";
+      } else {
+        optionKorName = await papagoTranslate(optionName, "ja", "ko");
       }
 
-      const mainContentHtml = $("div.main_content > p")
-        .not(":last-child")
-        .not(":nth-last-child(2)");
-      let mainContentDescription = "";
-      for (const element of mainContentHtml) {
-        mainContentDescription += `<p>${$(element).text()}</p>`;
-      }
+      let productID = $("form.variations_form").attr("data-product_id");
+      // console.log("productID", productID);
 
-      if (mainContentDescription.length > 0) {
-        ObjItem.html += `<h2>이 상품에 대해</h2>`;
-        ObjItem.html += mainContentDescription;
-        ObjItem.html += `<br>`;
-      }
-
-      const spceHtml = $("ul.product_spec > li");
-      let specDescription = "";
-      for (const element of spceHtml) {
-        let spec = $(element).text();
-        if (spec.includes("品番")) {
-          ObjItem.modelName = spec.split("：")[1];
-        }
-        if (spec.includes("重量")) {
-          const weight = extractWeight(spec);
-          if (weight) {
-            ObjItem.weight = weight;
-          }
-        }
-        if (spec.includes("サイズ")) {
-          spec = spec.replace("サイズ：サイズガイドはこちらサイズ", "");
-        }
-
-        specDescription += `<p>${spec}</p>`;
-      }
-
-      if (specDescription.length > 0) {
-        ObjItem.html += `<h2>사양</h2>`;
-        ObjItem.html += specDescription;
-        ObjItem.html += `<br>`;
-      }
-
-      const selectElement = await page.$(".select-menu > select");
-      const optionElement = await page.$$(".select-menu > select > option");
-
+      let temp = $("form.variations_form").attr("data-product_variations");
       let i = 1;
-      for (const option of optionElement) {
-        const optionText = await option.evaluate((node) => node.textContent);
-
-        if (optionText === "選択してください") {
-          continue;
-        }
-        await page.select(".select-menu > select", optionText);
-
-        await page.waitForTimeout(1000);
-        // 다음 옵션을 선택하기 위해 다시 select 요소를 클릭
-
-        const stockElement = await page.$("p.stock");
-
-        // 선택한 요소의 텍스트 내용을 가져오기
-        const stockText = await page.evaluate(
-          (stockElement) => stockElement.textContent,
-          stockElement
-        );
-
-        const name = optionText;
-        const korValueName = await papagoTranslate(name, "ja", "ko");
-
-        // 정규 표현식을 사용하여 숫자만 추출
-        const numberPattern = /(\d{1,3}(,\d{3})*(\.\d+)?)|(\.\d+)/;
-        let matches = stockText.match(numberPattern);
-
-        // 숫자 값 가져오기
-        let stockNumber = null;
-        if (matches && matches.length > 0) {
-          const matchedText = matches[0].replace(/,/g, "");
-          stockNumber = parseFloat(matchedText);
-        } else {
-          if (stockText === "在庫あり") {
-            stockNumber = 5;
-          } else {
-            stockNumber = 0;
+      if (temp && temp !== "false") {
+        const optinoJson = JSON.parse(temp);
+        for (const item of optinoJson) {
+          const keys = Object.keys(item.attributes);
+          let name = null;
+          // 첫 번째 키에 해당하는 값을 가져옵니다.
+          if (keys.length > 0) {
+            name = item.attributes[keys[0]];
           }
-        }
 
-        const priceElement = await page.$("span.woocommerce-Price-amount");
+          // const name = item.attributes[
+          //   `attribute_${encodeURI(optionName).toLowerCase()}`
+          // ].replace("【新色】", "");
+          const korValueName = await papagoTranslate(name, "ja", "ko");
 
-        // 선택한 요소의 텍스트 내용을 가져오기
-        const priceText = await page.evaluate(
-          (priceElement) => priceElement.textContent,
-          priceElement
-        );
+          const image = item.image.url;
+          const price = item.display_price;
+          const stock = item.is_in_stock ? item.max_qty : 0;
 
-        let priceNumber = 0;
-        matches = priceText.match(numberPattern);
-        if (matches && matches.length > 0) {
-          const matchedText = matches[0].replace(/,/g, "");
-          priceNumber = parseFloat(matchedText);
-        }
-
-        let image = null;
-        try {
-          const imageElement = await page.$("div.flex-active-slide");
-          const imgElementHandle = await imageElement.$("img");
-          // 선택한 요소의 텍스트 내용을 가져오기
-          const imageSrc = await page.evaluate(
-            (img) => img.getAttribute("src"),
-            imgElementHandle
-          );
-
-          if (imageSrc) {
-            image = imageSrc.replace("-600x600", "");
+          if (image) {
             ObjItem.mainImages.push(image);
           }
-        } catch (e) {}
+          propValues.push({
+            vid: i.toString(),
+            name,
+            korValueName,
+            image,
+          });
 
-        await selectElement.click();
+          tempOptions.push({
+            key: i.toString(),
+            propPath: `1:${i.toString()}`,
+            value: name,
+            korValue: korValueName,
+            price: price >= 11000 ? price + 500 : price + 660 + 500,
+            stock,
+            weight: ObjItem.weight ? ObjItem.weight : 1,
+            active: true,
+            disabled: false,
+            attributes: [
+              {
+                attributeTypeName: optionName,
+                attributeValueName: korValueName,
+              },
+            ],
+          });
+          i++;
+        }
+      } else {
+        for (const item of $(".select-menu > select").children("option")) {
+          let optionValue = $(item).text();
 
-        propValues.push({
-          vid: i.toString(),
-          name,
-          korValueName,
-          image,
-        });
+          if (optionValue === "選択してください") {
+            continue;
+          }
 
-        tempOptions.push({
-          key: i.toString(),
-          propPath: `1:${i.toString()}`,
-          value: name,
-          korValue: korValueName,
-          price: priceNumber >= 11000 ? priceNumber : priceNumber + 660,
-          stock: stockNumber,
-          weight: ObjItem.weight ? ObjItem.weight : 1,
-          active: true,
-          disabled: false,
-          attributes: [
-            {
-              attributeTypeName: optionName,
-              attributeValueName: korValueName,
+          let data = new FormData();
+
+          data.append(
+            `attribute_${encodeURI(optionName).toLowerCase()}`,
+            optionValue
+          );
+
+          data.append(`product_id`, productID);
+
+          const response = await axios({
+            method: "POST",
+            url: `https://www.titleist.co.jp/teamtitleist/?wc-ajax=get_variation`,
+            headers: {
+              ...data.getHeaders(),
             },
-          ],
-        });
+            // data: JSON.stringify(data),
+            data,
+          });
 
-        i++;
+          if (!response.data) {
+            console.log("설마 ? ", response);
+            continue;
+          }
+
+          const name = optionValue.replace("【新色】", "");
+          const korValueName = await papagoTranslate(name, "ja", "ko");
+          const image = response.data.image.url;
+          const price = response.data.display_price;
+          const stock = response.data.is_in_stock ? response.data.max_qty : 0;
+
+          if (image) {
+            ObjItem.mainImages.push(image);
+          }
+          propValues.push({
+            vid: i.toString(),
+            name,
+            korValueName,
+            image,
+          });
+
+          tempOptions.push({
+            key: i.toString(),
+            propPath: `1:${i.toString()}`,
+            value: name,
+            korValue: korValueName,
+            price: price >= 11000 ? price + 500 : price + 660 + 500,
+            stock,
+            weight: ObjItem.weight ? ObjItem.weight : 1,
+            active: true,
+            disabled: false,
+            attributes: [
+              {
+                attributeTypeName: optionName,
+                attributeValueName: korValueName,
+              },
+            ],
+          });
+
+          i++;
+        }
       }
     } else {
-      const stockElement = await page.$("p.stock");
-
-      // 선택한 요소의 텍스트 내용을 가져오기
-      const stockText = await page.evaluate(
-        (stockElement) => stockElement.textContent,
-        stockElement
-      );
+      const stockText = $("p.stock").text();
 
       // 정규 표현식을 사용하여 숫자만 추출
       const numberPattern = /(\d{1,3}(,\d{3})*(\.\d+)?)|(\.\d+)/;
@@ -1700,13 +1694,15 @@ const getTitleist = async ({ ObjItem, url }) => {
         }
       }
 
-      const priceElement = await page.$("span.woocommerce-Price-amount");
+      // const priceElement = await page.$("span.woocommerce-Price-amount");
 
       // 선택한 요소의 텍스트 내용을 가져오기
-      const priceText = await page.evaluate(
-        (priceElement) => priceElement.textContent,
-        priceElement
-      );
+      // const priceText = await page.evaluate(
+      //   (priceElement) => priceElement.textContent,
+      //   priceElement
+      // );
+
+      const priceText = $("span.woocommerce-Price-amount").text();
 
       let priceNumber = 0;
       matches = priceText.match(numberPattern);
@@ -1732,7 +1728,8 @@ const getTitleist = async ({ ObjItem, url }) => {
         propPath: "1:1",
         value: "단일상품",
         korValue: "단일상품",
-        price: priceNumber >= 11000 ? priceNumber : priceNumber + 660,
+        price:
+          priceNumber >= 11000 ? priceNumber + 500 : priceNumber + 660 + 500,
         stock: stockNumber,
         weight: ObjItem.weight ? ObjItem.weight : 1,
         active: true,
@@ -1750,7 +1747,7 @@ const getTitleist = async ({ ObjItem, url }) => {
       tempProp.push({
         pid: "1",
         name: optionName,
-        korTypeName: optionName,
+        korTypeName: optionKorName,
         values: propValues,
       });
     }
@@ -1758,14 +1755,6 @@ const getTitleist = async ({ ObjItem, url }) => {
     ObjItem.options = tempOptions;
   } catch (e) {
     console.log("getTitleist - ", e);
-  } finally {
-    if (page) {
-      await page.goto("about:blank");
-      await page.close();
-    }
-    if (browser) {
-      await browser.close();
-    }
   }
 };
 

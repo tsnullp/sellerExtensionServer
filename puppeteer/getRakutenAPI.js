@@ -56,8 +56,18 @@ const start = async ({ url, userID, keyword }) => {
           } = JSON.parse(temp2).api.data.itemInfoSku;
           // console.log("title", iconv.decode(title, "EUC-JP"));
 
-          ObjItem.salePrice =
-            purchaseInfo.purchaseBySellType.normalPurchase.preTaxPrice;
+          if (
+            purchaseInfo.purchaseBySellType.normalPurchase &&
+            purchaseInfo.purchaseBySellType.normalPurchase.price &&
+            purchaseInfo.purchaseBySellType.normalPurchase.price.minPrice
+          ) {
+            ObjItem.salePrice =
+              purchaseInfo.purchaseBySellType.normalPurchase.price.minPrice;
+          } else {
+            ObjItem.salePrice =
+              purchaseInfo.purchaseBySellType.normalPurchase.preTaxPrice;
+          }
+
           ObjItem.title = iconv.decode(title, "EUC-JP");
           ObjItem.korTitle = await papagoTranslate(ObjItem.title, "auto", "ko");
           // console.log("korTItle---", ObjItem.korTitle);
@@ -479,7 +489,14 @@ const start = async ({ url, userID, keyword }) => {
                   .shopUnit1.results;
               if (results && Array.isArray(results) && results.length > 0) {
                 ObjItem.deliveryFee = results[0].fees.finalFee || 0;
-
+                if (
+                  ObjItem.deliveryFee === 0 &&
+                  shipping &&
+                  shipping.fee &&
+                  shipping.fee !== 0
+                ) {
+                  ObjItem.deliveryFee = shipping.fee || 0;
+                }
                 // console.log("ObjItem.deliveryFee", ObjItem.deliveryFee);
               }
             }

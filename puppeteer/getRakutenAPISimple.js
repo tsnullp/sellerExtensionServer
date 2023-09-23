@@ -46,8 +46,17 @@ const start = async ({ url, userID }) => {
       pcFields,
     } = JSON.parse(temp2).api.data.itemInfoSku;
 
-    ObjItem.salePrice =
-      purchaseInfo.purchaseBySellType.normalPurchase.preTaxPrice;
+    if (
+      purchaseInfo.purchaseBySellType.normalPurchase &&
+      purchaseInfo.purchaseBySellType.normalPurchase.price &&
+      purchaseInfo.purchaseBySellType.normalPurchase.price.minPrice
+    ) {
+      ObjItem.salePrice =
+        purchaseInfo.purchaseBySellType.normalPurchase.price.minPrice;
+    } else {
+      ObjItem.salePrice =
+        purchaseInfo.purchaseBySellType.normalPurchase.preTaxPrice;
+    }
 
     let tempOptions = [];
 
@@ -212,6 +221,14 @@ const start = async ({ url, userID }) => {
             .results;
         if (results && Array.isArray(results) && results.length > 0) {
           ObjItem.deliveryFee = results[0].fees.finalFee || 0;
+          if (
+            ObjItem.deliveryFee === 0 &&
+            shipping &&
+            shipping.fee &&
+            shipping.fee !== 0
+          ) {
+            ObjItem.deliveryFee = shipping.fee || 0;
+          }
         }
       }
     } catch (e) {

@@ -2341,7 +2341,27 @@ app.post("/taobao/getSimbaUrl", async (req, res) => {
 });
 
 const RakutenPriceSync = async () => {
-  let prohibit = ["심플리티", "여성", "폭신폭신", "사계절", "즐거움"];
+  let prohibit = [
+    "심플리티",
+    "여성",
+    "폭신폭신",
+    "사계절",
+    "즐거움",
+    "무난",
+    "행복한주방",
+    "은은한",
+    "커피그라인더",
+    "유니크",
+    "멋진",
+    "쿨러백",
+    "캠핑용",
+    "훈훈한",
+    "쿨러가방",
+    "모던",
+    "민물낚시대",
+    "커플룩",
+    "케렌시아",
+  ];
   const SyncFun = async () => {
     let isFirst = true;
     while (isFirst) {
@@ -2718,7 +2738,27 @@ const RakutenPriceSync = async () => {
 };
 
 const BrandPriceSync = async () => {
-  let prohibit = ["심플리티", "여성", "폭신폭신", "사계절", "즐거움"];
+  let prohibit = [
+    "심플리티",
+    "여성",
+    "폭신폭신",
+    "사계절",
+    "즐거움",
+    "무난",
+    "행복한주방",
+    "은은한",
+    "커피그라인더",
+    "유니크",
+    "멋진",
+    "쿨러백",
+    "캠핑용",
+    "훈훈한",
+    "쿨러가방",
+    "모던",
+    "민물낚시대",
+    "커플룩",
+    "케렌시아",
+  ];
   const SyncFun = async () => {
     let isFirst = true;
     while (isFirst) {
