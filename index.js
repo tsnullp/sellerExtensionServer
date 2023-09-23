@@ -166,6 +166,35 @@ app.post("/crocs/cookie", async (req, res) => {
     });
   }
 });
+app.post("/crocs/userAgent", async (req, res) => {
+  try {
+    const { userAgent } = req.body;
+
+    await Cookie.findOneAndUpdate(
+      {
+        name: "userAgent",
+      },
+      {
+        $set: {
+          name: "userAgent",
+          cookie: userAgent,
+          lastUpdate: moment().toDate(),
+        },
+      },
+      {
+        upsert: true,
+      }
+    );
+    res.json({
+      message: "success",
+    });
+  } catch (e) {
+    console.log("/taobao/cookie", e);
+    res.json({
+      message: "fail",
+    });
+  }
+});
 
 app.post("/seller/userGroup", async (req, res) => {
   try {
@@ -2361,6 +2390,9 @@ const RakutenPriceSync = async () => {
     "민물낚시대",
     "커플룩",
     "케렌시아",
+    "신혼여행",
+    "유니크한",
+    "일상룩",
   ];
   const SyncFun = async () => {
     let isFirst = true;
@@ -2758,6 +2790,8 @@ const BrandPriceSync = async () => {
     "민물낚시대",
     "커플룩",
     "케렌시아",
+    "신혼여행",
+    "일상룩",
   ];
   const SyncFun = async () => {
     let isFirst = true;
@@ -2798,6 +2832,9 @@ const BrandPriceSync = async () => {
               },
               {
                 "basic.url": { $regex: `.*charleskeith.jp.*` },
+              },
+              {
+                "basic.url": { $regex: `.*crocs.co.jp.*` },
               },
               {
                 "basic.url": { $regex: `.*barns.jp.*` },
@@ -2849,7 +2886,9 @@ const BrandPriceSync = async () => {
             url: product.basic.url,
             userID: product.userID,
           });
-
+          // if (product.basic.url.includes("crocs.co.jp")) {
+          //   console.log("response --", response.options);
+          // }
           if (
             response &&
             response.options &&
@@ -3087,64 +3126,77 @@ const BrandPriceSync = async () => {
                 console.log(
                   "======================================================================================"
                 );
+
+                if (!updateReponse) {
+                  console.log("실패 -- ", product.basic.url);
+                  console.log("실패 --- ", response.options);
+                }
                 await sleep(2000);
               }
             }
           } else {
-            const naverProduct = await NaverOriginProducts({
-              userID: product.userID,
-              originProductNo: product.product.naver.originProductNo,
-            });
-
-            if (naverProduct) {
-              for (const option of product.options) {
-                option.stock = 0;
-              }
-
-              naverProduct.originProduct.stockQuantity = 0;
-              naverProduct.originProduct.statusType = "SUSPENSION";
-
-              for (const optionItem of naverProduct.originProduct
-                .detailAttribute.optionInfo.optionCombinations) {
-                optionItem.stockQuantity = 0;
-              }
-              // console.log("naverProduct", naverProduct);
-              naverProduct.originProduct.detailAttribute.seoInfo.sellerTags =
-                naverProduct.originProduct.detailAttribute.seoInfo.sellerTags.filter(
-                  (item) => {
-                    if (prohibit.includes(item.text)) {
-                      return false;
-                    }
-                    return true;
-                  }
-                );
-
-              const updateReponse = await NaverModifyOption({
+            if (
+              product.basic.url.includes("crocs.co.jp") &&
+              response &&
+              response === 429
+            ) {
+              console.log("크록스 실패", response);
+            } else {
+              const naverProduct = await NaverOriginProducts({
                 userID: product.userID,
                 originProductNo: product.product.naver.originProductNo,
-                product: naverProduct,
               });
 
-              if (
-                updateReponse &&
-                updateReponse.originProductNo &&
-                updateReponse.originProductNo.toString() ===
-                  product.product.naver.originProductNo
-              ) {
-                await Product.findOneAndUpdate(
-                  {
-                    _id: product._id,
-                  },
-                  {
-                    $set: {
-                      options: product.options,
-                    },
-                  }
-                );
-              }
+              if (naverProduct) {
+                for (const option of product.options) {
+                  option.stock = 0;
+                }
 
-              console.log("product.basic.url", product.basic.url);
-              console.log("deleteReponse", updateReponse);
+                naverProduct.originProduct.stockQuantity = 0;
+                naverProduct.originProduct.statusType = "SUSPENSION";
+
+                for (const optionItem of naverProduct.originProduct
+                  .detailAttribute.optionInfo.optionCombinations) {
+                  optionItem.stockQuantity = 0;
+                }
+                // console.log("naverProduct", naverProduct);
+                naverProduct.originProduct.detailAttribute.seoInfo.sellerTags =
+                  naverProduct.originProduct.detailAttribute.seoInfo.sellerTags.filter(
+                    (item) => {
+                      if (prohibit.includes(item.text)) {
+                        return false;
+                      }
+                      return true;
+                    }
+                  );
+
+                const updateReponse = await NaverModifyOption({
+                  userID: product.userID,
+                  originProductNo: product.product.naver.originProductNo,
+                  product: naverProduct,
+                });
+
+                if (
+                  updateReponse &&
+                  updateReponse.originProductNo &&
+                  updateReponse.originProductNo.toString() ===
+                    product.product.naver.originProductNo
+                ) {
+                  await Product.findOneAndUpdate(
+                    {
+                      _id: product._id,
+                    },
+                    {
+                      $set: {
+                        options: product.options,
+                      },
+                    }
+                  );
+                }
+
+                console.log("product.basic.url", product.basic.url);
+                console.log("deleteReponse", updateReponse);
+              }
             }
           }
           await sleep(2000);

@@ -532,6 +532,9 @@ const getCrocs = async ({ ObjItem, url }) => {
       name: "crocs",
     });
 
+    const userAgent = await Cookie.findOne({
+      name: "userAgent",
+    });
     if (!cookie || cookie.cookie.length === 0) {
       return;
     }
@@ -541,8 +544,7 @@ const getCrocs = async ({ ObjItem, url }) => {
       maxBodyLength: Infinity,
       url,
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",
+        "User-Agent": userAgent.cookie,
         Host: "www.crocs.co.jp",
         Cookie: cookie.cookie,
       },
@@ -743,9 +745,10 @@ const getCrocs = async ({ ObjItem, url }) => {
 
       for (const key of Object.keys(variantion.colors)) {
         const colorItem = variantion.colors[key];
-        if (colorItem.colors.includes(item.color)) {
-          price = colorItem.price;
-        }
+        // if (colorItem.colors.includes(item.color)) {
+        //   price = colorItem.price;
+        // }
+        price = colorItem.price;
       }
       if (keyArray.length > 0) {
         productID = keyArray[0];
@@ -811,6 +814,9 @@ const getCrocs = async ({ ObjItem, url }) => {
     ObjItem.options = tempOptions;
   } catch (e) {
     console.log("getCrocs", e);
+    if (e.response && e.response.status) {
+      return e.response.status;
+    }
   }
 };
 
