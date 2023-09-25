@@ -20,10 +20,12 @@ const startBrowser = async (headless = true) => {
       headless,
       executablePath: path.join(__dirname, executablePath),
       defaultViewport: null,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
     return browser;
   } catch (e) {
+    console.log("eeeee", e);
     return null;
   }
 };

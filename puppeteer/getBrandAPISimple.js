@@ -78,6 +78,12 @@ const start = async ({ url }) => {
       case url.includes("titleist.co.jp"):
         await getTitleist({ ObjItem, url });
         break;
+      case url.includes("amiacalva.shop-pro.jp"):
+        await getAmiacalva({ ObjItem, url });
+        break;
+      case url.includes("shop.ordinary-fits.online"):
+        await getOrdinaryfits({ ObjItem, url });
+        break;
       default:
         console.log("DEFAULT", url);
         break;
@@ -2024,6 +2030,254 @@ const getTitleist = async ({ ObjItem, url }) => {
     ObjItem.options = tempOptions;
   } catch (e) {
     console.log("getTitleist - ", e);
+  }
+};
+
+const getAmiacalva = async ({ ObjItem, url }) => {
+  try {
+    const agent = new https.Agent({
+      rejectUnauthorized: false,
+    });
+    let content = await axios({
+      httpsAgent: agent,
+      url,
+      method: "GET",
+      headers: {
+        "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+        "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7,zh;q=0.6",
+      },
+      responseType: "arraybuffer",
+    });
+
+    content = iconv.decode(content.data, "EUC-JP");
+    const $ = cheerio.load(content);
+
+    let temp1 = content.split("var Colorme = ")[1];
+    temp1 = temp1.split(";")[0];
+
+    const colorme = JSON.parse(temp1);
+
+    let descriptionHtml = $("#caption").html();
+
+    if (descriptionHtml && descriptionHtml.length > 0) {
+      descriptionHtml = descriptionHtml.replace(
+        /<span style="font-size:x-small;"><em><span style="color:#0000FF">OVERSEA SHIPPING REQEST<\/span><\/em><br>[\s\S]*<\/span>/,
+        ""
+      );
+
+      ObjItem.html += `<h2>이 상품에 관하여</h2>`;
+      ObjItem.html += `${descriptionHtml
+        .replace("/国産", "")
+        .replace(/ style="[^"]*"/gi, "")}`;
+      ObjItem.html += `<br>`;
+      const weight = extractWeight(descriptionHtml);
+
+      if (weight) {
+        ObjItem.weight = weight;
+      }
+    }
+
+    let tempProp = [];
+    let tempOptions = [];
+    const colorValues = [];
+    for (const item of colorme.product.variants) {
+      const colorName = await papagoTranslate(item.title, "en", "ko");
+      colorValues.push({
+        vid: item.id,
+        name: item.title,
+        korValueName: colorName,
+      });
+      tempOptions.push({
+        key: item.id,
+        propPath: `1:${item.id}`,
+        value: item.title,
+        korValue: colorName,
+        price:
+          item.option_price_including_tax >= 11000
+            ? item.option_price_including_tax
+            : item.option_price_including_tax + 550,
+        stock: item.stock_num || 0,
+        disabled: false,
+        active: true,
+        weight: ObjItem.weight ? ObjItem.weight : 0.5,
+        attributes: [
+          {
+            attributeTypeName: "컬러",
+            attributeValueName: colorName,
+          },
+        ],
+      });
+    }
+
+    if (colorValues.length > 0) {
+      tempProp.push({
+        pid: "1",
+        name: "colors",
+        korTypeName: "컬러",
+        values: colorValues,
+      });
+    } else {
+      tempProp.push({
+        pid: "1",
+        name: "종류",
+        korTypeName: "종류",
+        values: [
+          {
+            vid: "1",
+            name: "단일상품",
+            korValueName: "단일상품",
+          },
+        ],
+      });
+    }
+
+    if (colorValues.length === 0) {
+      tempOptions.push({
+        key: colorme.accoumt_id,
+        propPath: "1:1",
+        value: "단일상품",
+        korValue: "단일상품",
+        price:
+          colorme.product.sales_price_including_tax >= 11000
+            ? colorme.product.sales_price_including_tax
+            : colorme.product.sales_price_including_tax + 550,
+        stock: colorme.product.stock_num || 0,
+        disabled: false,
+        active: true,
+        weight: ObjItem.weight ? ObjItem.weight : 0.5,
+        attributes: [
+          {
+            attributeTypeName: "종류",
+            attributeValueName: "단일상품",
+          },
+        ],
+      });
+    }
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+  } catch (e) {
+    console.log("getAmiacalva - ", e);
+  }
+};
+
+const getOrdinaryfits = async ({ ObjItem, url }) => {
+  try {
+    const agent = new https.Agent({
+      rejectUnauthorized: false,
+    });
+    let content = await axios({
+      httpsAgent: agent,
+      url,
+      method: "GET",
+      headers: {
+        "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+        "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7,zh;q=0.6",
+      },
+      responseType: "arraybuffer",
+    });
+
+    content = iconv.decode(content.data, "EUC-JP");
+    const $ = cheerio.load(content);
+
+    let temp1 = content.split("var Colorme = ")[1];
+    temp1 = temp1.split(";")[0];
+
+    const colorme = JSON.parse(temp1);
+
+    let jsonObj = await axios({
+      httpsAgent: agent,
+      url: `https://colorme.worldshopping.jp/v1/product?shopKey=shop_ordinary-fits_online&productId=${colorme.product.id}`,
+      method: "GET",
+      headers: {
+        "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+        "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7,zh;q=0.6",
+      },
+      responseType: "binary",
+    });
+
+    jsonObj = jsonObj.data;
+
+    let tempProp = [];
+    let tempOptions = [];
+    for (const item of jsonObj.options) {
+      let name = item.name;
+      let korTypeName = "";
+      if (name === "COLOR") {
+        korTypeName = "컬러";
+      } else if (name === "SIZE") {
+        korTypeName = "사이즈";
+      } else {
+        korTypeName = await papagoTranslate(name, "en", "ko");
+      }
+
+      let values = [];
+      for (const vItem of item.values) {
+        let korValueName = vItem;
+        values.push({
+          vid: vItem,
+          name: vItem,
+          korValueName,
+        });
+      }
+      tempProp.push({
+        pid: item.id,
+        name,
+        korTypeName,
+        values,
+      });
+    }
+
+    for (const item of jsonObj.variants) {
+      let propPath = ``;
+
+      const findColorObj = _.find(tempProp[0].values, {
+        vid: item.option1_value,
+      });
+      const findSizeObj = _.find(tempProp[1].values, {
+        vid: item.option2_value,
+      });
+
+      let value = ``;
+      let korValue = ``;
+      let attributes = [];
+      if (findColorObj && findSizeObj) {
+        propPath += `${tempProp[0].pid}:${findColorObj.vid};${tempProp[1].pid}:${findSizeObj.vid}`;
+        value = `${findColorObj.name} ${findSizeObj.name}`;
+        korValue = `${findColorObj.korValueName} ${findSizeObj.korValueName}`;
+        attributes.push(
+          {
+            attributeTypeName: "컬러",
+            attributeValueName: findColorObj.korValueName,
+          },
+          {
+            attributeTypeName: "사이즈",
+            attributeValueName: findSizeObj.korValueName,
+          }
+        );
+      }
+
+      tempOptions.push({
+        key: item.model_number,
+        propPath,
+        value,
+        korValue,
+        price:
+          item.option_price_including_tax >= 20000
+            ? item.option_price_including_tax
+            : item.option_price_including_tax + 880,
+        stock: item.stocks,
+        weight: 1,
+        active: true,
+        disabled: false,
+        attributes,
+      });
+    }
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+  } catch (e) {
+    console.log("getOrdinaryfits ", e);
   }
 };
 

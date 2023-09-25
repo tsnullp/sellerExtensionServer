@@ -277,7 +277,9 @@ app.post("/amazon/isRegister", async (req, res) => {
       detailUrl.includes("miharayasuhiro.jp") ||
       detailUrl.includes("onlinestore.nepenthes.co.jp") ||
       detailUrl.includes("doverstreetmarket.com") ||
-      detailUrl.includes("titleist.co.jp")
+      detailUrl.includes("titleist.co.jp") ||
+      detailUrl.includes("amiacalva.shop-pro.jp") ||
+      detailUrl.includes("shop.ordinary-fits.online")
     ) {
       product = await Product.findOne({
         userID: ObjectId(userInfo._id),
@@ -396,7 +398,9 @@ app.post("/amazon/isRegisters", async (req, res) => {
         items[0].includes("miharayasuhiro.jp") ||
         items[0].includes("onlinestore.nepenthes.co.jp") ||
         items[0].includes("doverstreetmarket.com") ||
-        items[0].includes("titleist.co.jp")
+        items[0].includes("titleist.co.jp") ||
+        items[0].includes("amiacalva.shop-pro.jp") ||
+        items[0].includes("shop.ordinary-fits.online")
       ) {
         product = await Product.aggregate([
           {
@@ -559,7 +563,9 @@ app.post("/amazon/isRegisters", async (req, res) => {
               items[0].includes("miharayasuhiro.jp") ||
               items[0].includes("onlinestore.nepenthes.co.jp") ||
               items[0].includes("doverstreetmarket.com") ||
-              items[0].includes("titleist.co.jp")
+              items[0].includes("titleist.co.jp") ||
+              items[0].includes("amiacalva.shop-pro.jp") ||
+              items[0].includes("shop.ordinary-fits.online")
             ) {
               return pItem.basic.good_id === asin;
             } else {
@@ -1703,7 +1709,9 @@ app.post("/amazon/collectionItems", async (req, res) => {
                   item.detailUrl.includes("miharayasuhiro.jp") ||
                   item.detailUrl.includes("onlinestore.nepenthes.co.jp") ||
                   item.detailUrl.includes("doverstreetmarket.com") ||
-                  item.detailUrl.includes("titleist.co.jp")
+                  item.detailUrl.includes("titleist.co.jp") ||
+                  item.detailUrl.includes("amiacalva.shop-pro.jp") ||
+                  item.detailUrl.includes("shop.ordinary-fits.online")
                 ) {
                   const asin = AmazonAsin(item.detailUrl);
                   if (!asin) {
@@ -2393,6 +2401,8 @@ const RakutenPriceSync = async () => {
     "신혼여행",
     "유니크한",
     "일상룩",
+    "데일리스타일",
+    "머스트해브",
   ];
   const SyncFun = async () => {
     let isFirst = true;
@@ -2792,6 +2802,8 @@ const BrandPriceSync = async () => {
     "케렌시아",
     "신혼여행",
     "일상룩",
+    "데일리스타일",
+    "머스트해브",
   ];
   const SyncFun = async () => {
     let isFirst = true;
