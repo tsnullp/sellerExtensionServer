@@ -90,6 +90,9 @@ const start = async ({ url }) => {
       case url.includes("ware-house.co.jp"):
         await getWareHouse({ ObjItem, url });
         break;
+      case url.includes("onitsukatiger.com"):
+        await getOnitsukatiger({ ObjItem, url });
+        break;
       default:
         console.log("DEFAULT", url);
         break;
@@ -2483,6 +2486,118 @@ const getWareHouse = async ({ ObjItem, url }) => {
     ObjItem.options = tempOptions;
   } catch (e) {
     console.log("getWareHouse - ", e);
+  }
+};
+
+const getOnitsukatiger = async ({ ObjItem, url }) => {
+  try {
+    const response = await axios({
+      url,
+      method: "get",
+    });
+    let content = response.data;
+
+    const temp2 = content
+      .split('"[data-role=swatch-options]": ')[1]
+      .split("</script>")[0];
+    let dataJson = JSON.parse(`{"dataOptions": ${temp2}`);
+
+    dataJson = dataJson.dataOptions["Magento_Swatches/js/swatch-renderer"];
+
+    let tempProp = [];
+    let tempOptions = [];
+    for (const key of Object.keys(dataJson.jsonConfig.attributes)) {
+      const propObj = dataJson.jsonConfig.attributes[key];
+      const korTypeName = await papagoTranslate(propObj.code, "en", "ko");
+      tempProp.push({
+        pid: key,
+        name: propObj.code,
+        korTypeName,
+        values: propObj.options.map((item) => {
+          return {
+            vid: item.id,
+            name: item.label,
+            korValueName: item.label,
+          };
+        }),
+      });
+    }
+
+    for (const key of Object.keys(dataJson.jsonConfig.index)) {
+      const indexObj = dataJson.jsonConfig.index[key];
+
+      let propPath = "";
+      let value = "";
+      let korValue = "";
+      let attributes = [];
+      for (const subKey of Object.keys(indexObj)) {
+        if (propPath.length !== 0) {
+          propPath += `;`;
+        }
+        propPath += `${subKey}:${indexObj[subKey]}`;
+
+        const propObj = _.find(tempProp, { pid: subKey });
+        const findPropValue = _.find(propObj.values, {
+          vid: indexObj[subKey].toString(),
+        });
+        if (value.length > 0) {
+          value = " ";
+        }
+        if (korValue.length > 0) {
+          korValue = " ";
+        }
+        value += `${findPropValue.name}`;
+        korValue += `${findPropValue.korValueName}`;
+
+        attributes.push({
+          attributeTypeName: propObj.korTypeName,
+          attributeValueName: findPropValue.korValueName,
+        });
+      }
+
+      let price = Number(
+        dataJson.jsonConfig.optionPrices[key].finalPrice.amount.toFixed(0)
+      );
+
+      let quantityUrl = `https://www.onitsukatiger.com/jp/ja-jp/inventory_catalog/product/getQty/?sku=${dataJson.jsonConfig.sku[key]}&channel=website&salesChannelCode=base`;
+      let stock = 0;
+      const response = await axios({
+        url: quantityUrl,
+        method: "get",
+      });
+
+      if (response.data && response.data.qty) {
+        stock = response.data.qty;
+      }
+      await sleep(500);
+      tempOptions.push({
+        key: dataJson.jsonConfig.sku[key],
+        propPath,
+        value,
+        korValue,
+        stock,
+        price: price >= 11000 ? price : price + 550,
+        weight: 1,
+        active: true,
+        disabled: false,
+        attributes,
+      });
+    }
+
+    // console.log("tempProp", tempProp);
+    // console.log("tempOtpinos", tempOptions);
+    // for (const item of dataJson.jsonConfig.images) {
+    //   console.log("images == ", item);
+    // }
+
+    // for (const item of dataJson.jsonConfig.optionPrices) {
+    //   console.log("optionPrices == ", item);
+    // }
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+  } catch (e) {
+    console.log("getOnitsukatiger - ", e);
   }
 };
 
