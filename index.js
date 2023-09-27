@@ -128,7 +128,7 @@ app.get("/brandRequest", async (req, res) => {
       // },
       // data: form,
     });
-
+    console.log("response.data", response.data);
     res.json({
       code: "SUCCESS",
       data: response.data,
