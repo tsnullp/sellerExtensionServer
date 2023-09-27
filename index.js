@@ -119,7 +119,10 @@ app.get("/brandRequest", async (req, res) => {
       // url: `https://www.onitsukatiger.com/jp/ja-jp/inventory_catalog/product/getQty/?sku=1183C149_001_22.5&channel=website&salesChannelCode=base&_=1695780196151`,
       url: req.query.url,
       method: "get",
-
+      headers: {
+        Cookie:
+          "PHPSESSID=0726b9216cd8671ca2a237d43633bdf3; _abck=0B2DE18DAFB1E0A5C4E62110F49AFA9F~-1~YAAQZuPfrXYcgMqKAQAAtyzu1AoN738BbHrOXvKy3ztjOdPEtemStstvxW/ps4hWaMsOKsxwpk2TCxGpte5wAo2VZBispDAhXwMtsuhfzalsZ07tFB0IfcfVM7GHsR5mc1HHZ8rYeON0ncQyIE8+5LX9vjXY9txbRpuc1Q7OgrPar/Gad01ywWW2+cLAx5SU9c6PbYu/WDd5T9uveTka2TOvwqbqHKVur4sy0mVZX+CqD2lrBsO8k35VrPtsFW8HBzevYY6yFejTFid7jcU+LxF5UEuYzyqSuPASXJHOsFj5Kaz/F59LYpUYRHviQvs5YaMnKWPYesSkTsLuNJSb84ChIzk4s5dP0lIZ6afXlwAsKv2K1HbIRSWey8qa/3qj~-1~-1~-1; ak_bmsc=36F4B6761DD99A691823BCD9BD045E34~000000000000000000000000000000~YAAQZuPfrXccgMqKAQAAtyzu1BWJ9krNRrJn7FRv8XIp3xz/zdK9a33vH1mQaCrm7Q2QUVJ8stFtvqLl0ik11bsLYFEXYSuNUZus+Z8ZNIXKjBjGuVa/bGwF9v+tLrtFiInRJ+NHVYqrgAYZ7RcW/wy2c9KnxJGqBThW7A9Zw3dn4/lg9rVI054lWRoHorwPVOi0AEFS0Mqhed99+6aU19SyRKay2VK4SQifeC7RejfUxYN8rLYPrjpxdu6d7MgZru4r04/2niXbZYiI5+FpTUaQcoOvemvY6KQT0CiRHA/AXe7FICwQUNb7gMP1ZUCBkjIO1kEpVmplnem9m8m36F/m9s7ZqIAWUUyk0/QL7EjRAsvvAADhdQKBYXzjUUCexykh; bm_sz=63EAD28C526EEF1CDDA7206F84B27DAB~YAAQZuPfrXgcgMqKAQAAtyzu1BWiaq81/9wz+9xsFpf/o3bud0l1MB3A8exCq6GfnhkF5qHVMmd8Na19vZRqsDMXs/B+qUhLbTlgGCc6TiL0Iis7UpMY42U5k3c2WDt01VI59t7u9Lqpi+K2cGHUwdhO4nzYwJxarDyR4JXNQ+kOWgzeo28zugXwn5/O+kcuKajAgIwUIEFH6WKSRpWqcOuTuoZS4AZcQtGzDNNTbL1lksYjO7ZJedD4ixlJhZhBxYuCe0rIxsH3hZLCjkApwnJkF5RTsvjEncTY9Fkah2wJAD2m5UVDKqpv~3617589~3621684; X-Magento-Vary=9e3ffb41bfb757d6150aefc5bc0625289145ee73; user_country=KR; wp_ga4_customerGroup=NOT%20LOGGED%20IN",
+      },
       // headers: {
       //   ...form.getHeaders(),
       //   // "content-type": "multipart/form-data",
