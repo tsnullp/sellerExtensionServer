@@ -1,6 +1,7 @@
 const axios = require("axios");
 const CryptoJS = require("crypto-js");
 const Market = require("../../models/Market");
+const Cookie = require("../../models/Cookie");
 const bcrypt = require("bcrypt");
 const download = require("image-downloader");
 const FormData = require("form-data");
@@ -279,6 +280,41 @@ exports.NaverModifyOption = async ({ userID, originProductNo, product }) => {
     if (e.response.data.message === "입력한 데이터가 유효하지 않습니다.") {
       console.log("originProduct", JSON.stringify(product));
     }
+  }
+};
+
+exports.NaverTagRestrict = async (tags) => {
+  if (!tags || !Array.isArray(tags)) {
+    return [];
+  }
+  let newTags = [];
+  try {
+    const cookie = await Cookie.findOne({
+      name: "smartstore",
+    });
+    for (const item of tags) {
+      try {
+        const response = await axios({
+          url: `https://sell.smartstore.naver.com/api/product/shared/is-restrict-tag?_action=isRestrictTag&tag=${encodeURI(
+            item.text
+          )}`,
+          method: "GET",
+          headers: {
+            Cookie: cookie.cookie,
+          },
+        });
+
+        if (response && response.data) {
+          if (response.data.restricted === true) {
+            continue;
+          }
+        }
+        newTags.push(item);
+      } catch (e) {}
+    }
+  } catch (e) {
+  } finally {
+    return newTags;
   }
 };
 

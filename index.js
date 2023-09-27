@@ -61,7 +61,11 @@ const {
   skModifyOption,
 } = require("./api/11st");
 
-const { NaverOriginProducts, NaverModifyOption } = require("./api/Naver");
+const {
+  NaverOriginProducts,
+  NaverModifyOption,
+  NaverTagRestrict,
+} = require("./api/Naver");
 
 const cron = require("node-cron");
 const _ = require("lodash");
@@ -101,6 +105,39 @@ app.listen(PORT, () =>
   console.log(`Example app listening at http://localhost:${PORT}`)
 );
 
+app.get("/brandRequest", async (req, res) => {
+  try {
+    if (!req.query.url) {
+      res.json({
+        code: "ERROR",
+        message: "url 없음",
+      });
+      return;
+    }
+
+    const response = await axios({
+      // url: `https://www.onitsukatiger.com/jp/ja-jp/inventory_catalog/product/getQty/?sku=1183C149_001_22.5&channel=website&salesChannelCode=base&_=1695780196151`,
+      url,
+      method: "get",
+
+      // headers: {
+      //   ...form.getHeaders(),
+      //   // "content-type": "multipart/form-data",
+      // },
+      // data: form,
+    });
+
+    res.json({
+      code: "SUCCESS",
+      data: response.data,
+    });
+  } catch (e) {
+    res.json({
+      code: "ERROR",
+      message: e.message,
+    });
+  }
+});
 app.post("/taobao/cookie", async (req, res) => {
   try {
     const { nick, cookie } = req.body;
@@ -118,6 +155,36 @@ app.post("/taobao/cookie", async (req, res) => {
       {
         $set: {
           name: nick,
+          cookie,
+          lastUpdate: moment().toDate(),
+        },
+      },
+      {
+        upsert: true,
+      }
+    );
+    res.json({
+      message: "success",
+    });
+  } catch (e) {
+    console.log("/taobao/cookie", e);
+    res.json({
+      message: "fail",
+    });
+  }
+});
+
+app.post("/smartstore/cookie", async (req, res) => {
+  try {
+    const { cookie } = req.body;
+
+    await Cookie.findOneAndUpdate(
+      {
+        name: "smartstore",
+      },
+      {
+        $set: {
+          name: "smartstore",
           cookie,
           lastUpdate: moment().toDate(),
         },
@@ -279,7 +346,9 @@ app.post("/amazon/isRegister", async (req, res) => {
       detailUrl.includes("doverstreetmarket.com") ||
       detailUrl.includes("titleist.co.jp") ||
       detailUrl.includes("amiacalva.shop-pro.jp") ||
-      detailUrl.includes("shop.ordinary-fits.online")
+      detailUrl.includes("shop.ordinary-fits.online") ||
+      detailUrl.includes("fullcount-online.com") ||
+      detailUrl.includes("ware-house.co.jp")
     ) {
       product = await Product.findOne({
         userID: ObjectId(userInfo._id),
@@ -400,7 +469,9 @@ app.post("/amazon/isRegisters", async (req, res) => {
         items[0].includes("doverstreetmarket.com") ||
         items[0].includes("titleist.co.jp") ||
         items[0].includes("amiacalva.shop-pro.jp") ||
-        items[0].includes("shop.ordinary-fits.online")
+        items[0].includes("shop.ordinary-fits.online") ||
+        items[0].includes("fullcount-online.com") ||
+        items[0].includes("ware-house.co.jp")
       ) {
         product = await Product.aggregate([
           {
@@ -565,7 +636,9 @@ app.post("/amazon/isRegisters", async (req, res) => {
               items[0].includes("doverstreetmarket.com") ||
               items[0].includes("titleist.co.jp") ||
               items[0].includes("amiacalva.shop-pro.jp") ||
-              items[0].includes("shop.ordinary-fits.online")
+              items[0].includes("shop.ordinary-fits.online") ||
+              items[0].includes("fullcount-online.com") ||
+              items[0].includes("ware-house.co.jp")
             ) {
               return pItem.basic.good_id === asin;
             } else {
@@ -1711,7 +1784,9 @@ app.post("/amazon/collectionItems", async (req, res) => {
                   item.detailUrl.includes("doverstreetmarket.com") ||
                   item.detailUrl.includes("titleist.co.jp") ||
                   item.detailUrl.includes("amiacalva.shop-pro.jp") ||
-                  item.detailUrl.includes("shop.ordinary-fits.online")
+                  item.detailUrl.includes("shop.ordinary-fits.online") ||
+                  item.detailUrl.includes("fullcount-online.com") ||
+                  item.detailUrl.includes("ware-house.co.jp")
                 ) {
                   const asin = AmazonAsin(item.detailUrl);
                   if (!asin) {
@@ -2403,6 +2478,9 @@ const RakutenPriceSync = async () => {
     "일상룩",
     "데일리스타일",
     "머스트해브",
+    "멋진",
+    "고퀄리티",
+    "댄디",
   ];
   const SyncFun = async () => {
     let isFirst = true;
@@ -2663,13 +2741,15 @@ const RakutenPriceSync = async () => {
                 // console.log("naverProduct", naverProduct.originProduct);
 
                 naverProduct.originProduct.detailAttribute.seoInfo.sellerTags =
-                  naverProduct.originProduct.detailAttribute.seoInfo.sellerTags.filter(
-                    (item) => {
-                      if (prohibit.includes(item.text)) {
-                        return false;
+                  await NaverTagRestrict(
+                    naverProduct.originProduct.detailAttribute.seoInfo.sellerTags.filter(
+                      (item) => {
+                        if (prohibit.includes(item.text)) {
+                          return false;
+                        }
+                        return true;
                       }
-                      return true;
-                    }
+                    )
                   );
 
                 const updateReponse = await NaverModifyOption({
@@ -2729,13 +2809,15 @@ const RakutenPriceSync = async () => {
                 optionItem.stockQuantity = 0;
               }
               naverProduct.originProduct.detailAttribute.seoInfo.sellerTags =
-                naverProduct.originProduct.detailAttribute.seoInfo.sellerTags.filter(
-                  (item) => {
-                    if (prohibit.includes(item.text)) {
-                      return false;
+                await NaverTagRestrict(
+                  naverProduct.originProduct.detailAttribute.seoInfo.sellerTags.filter(
+                    (item) => {
+                      if (prohibit.includes(item.text)) {
+                        return false;
+                      }
+                      return true;
                     }
-                    return true;
-                  }
+                  )
                 );
 
               const updateReponse = await NaverModifyOption({
@@ -2804,6 +2886,9 @@ const BrandPriceSync = async () => {
     "일상룩",
     "데일리스타일",
     "머스트해브",
+    "멋진",
+    "고퀄리티",
+    "댄디",
   ];
   const SyncFun = async () => {
     let isFirst = true;
