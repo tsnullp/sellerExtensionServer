@@ -90,6 +90,22 @@ const _ = require("lodash");
 
 database();
 
+// const test = async () => {
+//   const response = await axios({
+//     url: "https://www.onitsukatiger.com/jp/ja-jp/inventory_catalog/product/getQty/?sku=1183C149_001_24.5&channel=website&salesChannelCode=base",
+//     method: "get",
+
+//     // headers: {
+//     //   ...form.getHeaders(),
+//     //   // "content-type": "multipart/form-data",
+//     // },
+//     // data: form,
+//   });
+
+//   console.log("resposne---", response.data);
+// };
+
+// test();
 const PORT = process.env.PORT || 3300;
 const app = express();
 app.use(express.json({ limit: "50mb" }));
@@ -114,21 +130,19 @@ app.get("/brandRequest", async (req, res) => {
       });
       return;
     }
-
+    console.log("req.query.url -- ", req.query.url);
     const response = await axios({
       // url: `https://www.onitsukatiger.com/jp/ja-jp/inventory_catalog/product/getQty/?sku=1183C149_001_22.5&channel=website&salesChannelCode=base&_=1695780196151`,
       url: req.query.url,
       method: "get",
-      Headers: {
-        Host: "www.onitsukatiger.com",
-      },
+
       // headers: {
       //   ...form.getHeaders(),
       //   // "content-type": "multipart/form-data",
       // },
       // data: form,
     });
-    console.log("response.data", response.data);
+
     res.json({
       code: "SUCCESS",
       data: response.data,
