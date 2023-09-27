@@ -130,7 +130,7 @@ app.get("/brandRequest", async (req, res) => {
       });
       return;
     }
-    console.log("req.query.url -- ", req.query.url);
+
     const response = await axios({
       // url: `https://www.onitsukatiger.com/jp/ja-jp/inventory_catalog/product/getQty/?sku=1183C149_001_22.5&channel=website&salesChannelCode=base&_=1695780196151`,
       url: req.query.url,
