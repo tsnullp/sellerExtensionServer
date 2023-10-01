@@ -355,7 +355,7 @@ const getUniqlo = async ({ ObjItem, url }) => {
 
     await translateHtml(ObjItem);
   } catch (e) {
-    console.log("getUniqlo", e);
+    // console.log("getUniqlo", e);
   }
 };
 
@@ -426,7 +426,9 @@ const getCharleskeith = async ({ ObjItem, url }) => {
     ObjItem.categoryID = await getCategory(ObjItem.korTitle);
 
     let detailHtml = $(".product_text.locondo > div").html();
-
+    if (!detailHtml || detailHtml === null) {
+      detailHtml = $(".product_text.locolet > div").html();
+    }
     if (detailHtml && detailHtml.length > 0) {
       detailHtml = `
         <br>
@@ -465,7 +467,7 @@ const getCharleskeith = async ({ ObjItem, url }) => {
     const weight = extractWeight(detailTable);
 
     if (weight) {
-      ObjItem.weight = weight;
+      ObjItem.weight = weight * 2;
     }
 
     ObjItem.html += `
@@ -492,12 +494,17 @@ const getCharleskeith = async ({ ObjItem, url }) => {
         korValueName: detailItem.sizeLabel,
       });
 
+      let price = stockInfo.data.commodityStock.unitPrice;
+      if (stockInfo.data.commodityStock.discountPrice) {
+        price = stockInfo.data.commodityStock.discountPrice;
+      }
+
       tempOptions.push({
         key: detailItem.supplierBarCode,
         propPath: `1:1;2:${detailItem.skuCode}`,
         value: `${stockInfo.data.commodityStock.colorName} ${detailItem.sizeLabel}`,
         korValue: `${colorName} ${detailItem.sizeLabel}`,
-        price: stockInfo.data.commodityStock.unitPrice + 500,
+        price: price + 500,
         stock: detailItem.availableStockQuantity,
         disabled: false,
         active: true,
@@ -537,7 +544,7 @@ const getCharleskeith = async ({ ObjItem, url }) => {
     ObjItem.prop = tempProp;
     ObjItem.options = tempOptions;
   } catch (e) {
-    console.log("getCharleskeith", e);
+    // console.log("getCharleskeith", e);
   }
 };
 
@@ -828,7 +835,7 @@ const getCrocs = async ({ ObjItem, url }) => {
     ObjItem.prop = tempProp;
     ObjItem.options = tempOptions;
   } catch (e) {
-    console.log("getCrocs", e);
+    // console.log("getCrocs", e);
     if (e.response && e.response.status) {
       return e.response.status;
     }
@@ -1013,7 +1020,7 @@ const getBarns = async ({ ObjItem, url }) => {
       ObjItem.mainImages = ObjItem.content.filter((_, i) => i < 10);
     }
   } catch (e) {
-    console.log("getBarns ", e);
+    // console.log("getBarns ", e);
   }
 };
 
@@ -1171,7 +1178,7 @@ const getAsics = async ({ ObjItem, url }) => {
     ObjItem.prop = tempProp;
     ObjItem.options = tempOptions;
   } catch (e) {
-    console.log("getAsics", e);
+    // console.log("getAsics", e);
   } finally {
     if (page) {
       await page.goto("about:blank");
@@ -1324,7 +1331,7 @@ const getStussy = async ({ ObjItem, url }) => {
       await translateHtml(ObjItem);
     }
   } catch (e) {
-    console.log("getStussy -- ", e);
+    // console.log("getStussy -- ", e);
   }
 };
 
@@ -1561,7 +1568,7 @@ const getNorthFace = async ({ ObjItem, url }) => {
 
     await translateHtml(ObjItem);
   } catch (e) {
-    console.log("getNorthFace -- ", e);
+    // console.log("getNorthFace -- ", e);
   }
 };
 
@@ -1717,7 +1724,7 @@ const getVans = async ({ ObjItem, url }) => {
 
     await translateHtml(ObjItem);
   } catch (e) {
-    console.log("getVans ", e);
+    // console.log("getVans ", e);
   }
 };
 
@@ -1873,7 +1880,7 @@ const getConverse = async ({ ObjItem, url }) => {
     ObjItem.prop = tempProp;
     ObjItem.options = tempOptions;
   } catch (e) {
-    console.log("getConverse-- ", e);
+    // console.log("getConverse-- ", e);
   }
 };
 
@@ -2065,7 +2072,7 @@ const getABCMart = async ({ ObjItem, url, keyword }) => {
 
     await translateHtml(ObjItem);
   } catch (e) {
-    console.log("getABCMart ", e);
+    // console.log("getABCMart ", e);
   }
 };
 
@@ -2219,7 +2226,7 @@ const getViviennewestwood = async ({ ObjItem, url }) => {
 
     await translateHtml(ObjItem);
   } catch (e) {
-    console.log("getViviennewestwood", e);
+    // console.log("getViviennewestwood", e);
   }
 };
 
@@ -2457,7 +2464,7 @@ const getMiharayasuhiro = async ({ ObjItem, url }) => {
 
     await translateHtml(ObjItem);
   } catch (e) {
-    console.log("getMiharayasuhiro ", e);
+    // console.log("getMiharayasuhiro ", e);
   } finally {
     await page.waitForTimeout(10000);
     if (page) {
@@ -2638,7 +2645,7 @@ const getNepenthes = async ({ ObjItem, url, keyword }) => {
 
     await translateHtml(ObjItem);
   } catch (e) {
-    console.log("getNepenthes ", e);
+    // console.log("getNepenthes ", e);
   }
 };
 
@@ -2902,7 +2909,7 @@ const getDoverstreetmarkets = async ({ ObjItem, url }) => {
 
     await translateHtml(ObjItem);
   } catch (e) {
-    console.log("getDoverstreetmarkets ", e);
+    // console.log("getDoverstreetmarkets ", e);
   } finally {
     if (page) {
       await page.goto("about:blank");
@@ -3363,7 +3370,7 @@ const getTitleist = async ({ ObjItem, url }) => {
     }`.trim();
     ObjItem.categoryID = await getCategory(ObjItem.korTitle);
   } catch (e) {
-    console.log("getTitleist - ", e);
+    // console.log("getTitleist - ", e);
   }
 };
 
@@ -3512,7 +3519,7 @@ const getAmiacalva = async ({ ObjItem, url }) => {
 
     await translateHtml(ObjItem);
   } catch (e) {
-    console.log("getAmiacalva - ", e);
+    // console.log("getAmiacalva - ", e);
   }
 };
 
@@ -3682,7 +3689,7 @@ const getOrdinaryfits = async ({ ObjItem, url }) => {
 
     await translateHtml(ObjItem);
   } catch (e) {
-    console.log("getOrdinaryfits ", e);
+    // console.log("getOrdinaryfits ", e);
   }
 };
 
@@ -3761,15 +3768,21 @@ const getFullcount = async ({ ObjItem, url }) => {
         korValueName: sizeName,
       });
 
+      let price = 0;
+      if (dataSize.price_for_sale) {
+        price = Number(dataSize.price_for_sale);
+      } else {
+        price = Number(dataSize.product_detail_saleoff_price);
+      }
+      if (price === 0) {
+        price = Number(dataSize.product_detail_price);
+      }
       tempOptions.push({
         key: dataSize.SeqNo,
         propPath: `1:${dataSize.color_code};2:${dataSize.size_code}`,
         value: `${dataSize.color_display} ${sizeName}`,
         korValue: `${colorName} ${sizeName}`,
-        price:
-          dataSize.price_for_sale >= 11000
-            ? dataSize.price_for_sale
-            : dataSize.price_for_sale + 1000,
+        price: price >= 11000 ? price : price + 1000,
         stock: dataSize.stock_num ? dataSize.stock_num : 0,
         active: true,
         disabled: false,
@@ -3872,7 +3885,7 @@ const getFullcount = async ({ ObjItem, url }) => {
 
     await translateHtml(ObjItem);
   } catch (e) {
-    console.log("getFullcount - ", e);
+    // console.log("getFullcount - ", e);
   }
 };
 
@@ -4006,7 +4019,7 @@ const getWareHouse = async ({ ObjItem, url }) => {
 
     await translateHtml(ObjItem);
   } catch (e) {
-    console.log("getWareHouse - ", e);
+    // console.log("getWareHouse - ", e);
   }
 };
 
@@ -4162,7 +4175,7 @@ const getOnitsukatiger = async ({ ObjItem, url }) => {
 
     await translateHtml(ObjItem);
   } catch (e) {
-    console.log("getOnitsukatiger - ", e);
+    // console.log("getOnitsukatiger - ", e);
   }
 };
 

@@ -2986,6 +2986,24 @@ const BrandPriceSync = async () => {
               {
                 "basic.url": { $regex: `.*doverstreetmarket.com.*` },
               },
+              {
+                "basic.url": { $regex: `.*titleist.co.jp.*` },
+              },
+              {
+                "basic.url": { $regex: `.*amiacalva.shop-pro.jp.*` },
+              },
+              {
+                "basic.url": { $regex: `.*shop.ordinary-fits.online.*` },
+              },
+              {
+                "basic.url": { $regex: `.*fullcount-online.com.*` },
+              },
+              {
+                "basic.url": { $regex: `.*ware-house.co.jp.*` },
+              },
+              {
+                "basic.url": { $regex: `.*onitsukatiger.com.*` },
+              },
             ],
           },
         },
@@ -2997,7 +3015,7 @@ const BrandPriceSync = async () => {
       ]);
       products.sort(() => Math.random() - 0.5);
 
-      for (const productArr of DimensionArray(products, 10)) {
+      for (const productArr of DimensionArray(products, 5)) {
         const promiseProduct = productArr.map((product) => {
           return new Promise(async (resolve, reject) => {
             try {
