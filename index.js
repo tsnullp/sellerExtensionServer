@@ -3242,16 +3242,21 @@ const BrandPriceSync = async () => {
                       updateReponse.originProductNo.toString() ===
                         product.product.naver.originProductNo
                     ) {
-                      await Product.findOneAndUpdate(
-                        {
-                          _id: product._id,
-                        },
-                        {
-                          $set: {
-                            options: product.options,
+                      try {
+                        await Product.findOneAndUpdate(
+                          {
+                            _id: product._id,
                           },
-                        }
-                      );
+                          {
+                            $set: {
+                              options: product.options,
+                            },
+                          }
+                        );
+                      } catch (e) {
+                        console.log("url ", product.basic.url);
+                        console.log("디비저장 1 ", e);
+                      }
                     }
 
                     console.log("product 상품명 ", product.product.korTitle);
@@ -3321,16 +3326,21 @@ const BrandPriceSync = async () => {
                       updateReponse.originProductNo.toString() ===
                         product.product.naver.originProductNo
                     ) {
-                      await Product.findOneAndUpdate(
-                        {
-                          _id: product._id,
-                        },
-                        {
-                          $set: {
-                            options: product.options,
+                      try {
+                        await Product.findOneAndUpdate(
+                          {
+                            _id: product._id,
                           },
-                        }
-                      );
+                          {
+                            $set: {
+                              options: product.options,
+                            },
+                          }
+                        );
+                      } catch (e) {
+                        console.log("url ", product.basic.url);
+                        console.log("디비저장 2 ", e);
+                      }
                     }
 
                     console.log("product.basic.url", product.basic.url);
