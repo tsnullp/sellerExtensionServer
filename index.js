@@ -3015,7 +3015,7 @@ const BrandPriceSync = async () => {
       ]);
       products.sort(() => Math.random() - 0.5);
       console.log("products", products.length);
-      for (const productArr of DimensionArray(products, 1)) {
+      for (const productArr of DimensionArray(products, 5)) {
         const promiseProduct = productArr.map((product) => {
           return new Promise(async (resolve, reject) => {
             try {
