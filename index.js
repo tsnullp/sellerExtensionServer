@@ -2940,7 +2940,7 @@ const BrandPriceSync = async () => {
           $match: {
             // userID: ObjectId("5f1947bd682563be2d22f008"),
             // "options.key": {$in: asinArr},
-
+            // _id: ObjectId("650896986e525625fab0381d"),
             isDelete: false,
             "product.naver.smartstoreChannelProductNo": { $ne: null },
             $or: [
@@ -3014,7 +3014,7 @@ const BrandPriceSync = async () => {
         },
       ]);
       products.sort(() => Math.random() - 0.5);
-
+      console.log("products", products.length);
       for (const productArr of DimensionArray(products, 5)) {
         const promiseProduct = productArr.map((product) => {
           return new Promise(async (resolve, reject) => {
@@ -3023,7 +3023,7 @@ const BrandPriceSync = async () => {
                 url: product.basic.url,
                 userID: product.userID,
               });
-
+              console.log("response", response);
               // if (product.basic.url.includes("crocs.co.jp")) {
               //   console.log("response --", response.options);
               // }

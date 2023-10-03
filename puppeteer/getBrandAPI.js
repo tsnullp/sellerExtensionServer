@@ -2153,7 +2153,10 @@ const getViviennewestwood = async ({ ObjItem, url }) => {
         propPath: `1:${key}`,
         value: size,
         korValue: korValueName,
-        price: ObjItem.salePrice,
+        price:
+          ObjItem.salePrice >= 27500
+            ? ObjItem.salePrice
+            : ObjItem.salePrice + 815,
         stock,
         disabled: false,
         active: true,
@@ -2266,7 +2269,7 @@ const getMiharayasuhiro = async ({ ObjItem, url }) => {
 
     let price = $("#detail_price > li > span").text();
 
-    ObjItem.price = Number(price.replace(/,/g, "")) || 0;
+    ObjItem.salePrice = Number(price.replace(/,/g, "")) || 0;
 
     let tempProp = [];
     let tempOptions = [];
@@ -3944,7 +3947,7 @@ const getWareHouse = async ({ ObjItem, url }) => {
       const findSizeObj = _.find(sizeValues, { vid: item.option1_value });
       const findColorObj = _.find(colorValues, { vid: item.option2_value });
 
-      if (!findSizeObj) {
+      if (!findSizeObj && item.option1_value && item.option1_value.length > 0) {
         sizeValues.push({
           vid: item.option1_value,
           name: item.option1_value,
@@ -3952,7 +3955,11 @@ const getWareHouse = async ({ ObjItem, url }) => {
         });
       }
 
-      if (!findColorObj) {
+      if (
+        !findColorObj &&
+        item.option2_value &&
+        item.option2_value.length > 0
+      ) {
         colorValues.push({
           vid: item.option2_value,
           name: item.option2_value,
