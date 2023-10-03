@@ -2944,66 +2944,66 @@ const BrandPriceSync = async () => {
             isDelete: false,
             "product.naver.smartstoreChannelProductNo": { $ne: null },
             $or: [
-              {
-                "basic.url": { $regex: `.*uniqlo.com/jp.*` },
-              },
-              {
-                "basic.url": { $regex: `.*charleskeith.jp.*` },
-              },
-              {
-                "basic.url": { $regex: `.*crocs.co.jp.*` },
-              },
-              {
-                "basic.url": { $regex: `.*barns.jp.*` },
-              },
-              {
-                "basic.url": { $regex: `.*asics.com/jp.*` },
-              },
-              {
-                "basic.url": { $regex: `.*jp.stussy.com.*` },
-              },
-              {
-                "basic.url": { $regex: `.*goldwin.co.jp.*` },
-              },
-              {
-                "basic.url": { $regex: `.*vans.co.jp.*` },
-              },
-              {
-                "basic.url": { $regex: `.*converse.co.jp.*` },
-              },
-              {
-                "basic.url": { $regex: `.*abc-mart.net/shop.*` },
-              },
-              {
-                "basic.url": { $regex: `.*viviennewestwood-tokyo.com.*` },
-              },
+              // {
+              //   "basic.url": { $regex: `.*uniqlo.com/jp.*` },
+              // },
+              // {
+              //   "basic.url": { $regex: `.*charleskeith.jp.*` },
+              // },
+              // {
+              //   "basic.url": { $regex: `.*crocs.co.jp.*` },
+              // },
+              // {
+              //   "basic.url": { $regex: `.*barns.jp.*` },
+              // },
+              // {
+              //   "basic.url": { $regex: `.*asics.com/jp.*` },
+              // },
+              // {
+              //   "basic.url": { $regex: `.*jp.stussy.com.*` },
+              // },
+              // {
+              //   "basic.url": { $regex: `.*goldwin.co.jp.*` },
+              // },
+              // {
+              //   "basic.url": { $regex: `.*vans.co.jp.*` },
+              // },
+              // {
+              //   "basic.url": { $regex: `.*converse.co.jp.*` },
+              // },
+              // {
+              //   "basic.url": { $regex: `.*abc-mart.net/shop.*` },
+              // },
+              // {
+              //   "basic.url": { $regex: `.*viviennewestwood-tokyo.com.*` },
+              // },
               {
                 "basic.url": { $regex: `.*miharayasuhiro.jp.*` },
               },
-              {
-                "basic.url": { $regex: `.*onlinestore.nepenthes.co.jp.*` },
-              },
-              {
-                "basic.url": { $regex: `.*doverstreetmarket.com.*` },
-              },
-              {
-                "basic.url": { $regex: `.*titleist.co.jp.*` },
-              },
-              {
-                "basic.url": { $regex: `.*amiacalva.shop-pro.jp.*` },
-              },
-              {
-                "basic.url": { $regex: `.*shop.ordinary-fits.online.*` },
-              },
-              {
-                "basic.url": { $regex: `.*fullcount-online.com.*` },
-              },
-              {
-                "basic.url": { $regex: `.*ware-house.co.jp.*` },
-              },
-              {
-                "basic.url": { $regex: `.*onitsukatiger.com.*` },
-              },
+              // {
+              //   "basic.url": { $regex: `.*onlinestore.nepenthes.co.jp.*` },
+              // },
+              // {
+              //   "basic.url": { $regex: `.*doverstreetmarket.com.*` },
+              // },
+              // {
+              //   "basic.url": { $regex: `.*titleist.co.jp.*` },
+              // },
+              // {
+              //   "basic.url": { $regex: `.*amiacalva.shop-pro.jp.*` },
+              // },
+              // {
+              //   "basic.url": { $regex: `.*shop.ordinary-fits.online.*` },
+              // },
+              // {
+              //   "basic.url": { $regex: `.*fullcount-online.com.*` },
+              // },
+              // {
+              //   "basic.url": { $regex: `.*ware-house.co.jp.*` },
+              // },
+              // {
+              //   "basic.url": { $regex: `.*onitsukatiger.com.*` },
+              // },
             ],
           },
         },
@@ -3015,7 +3015,7 @@ const BrandPriceSync = async () => {
       ]);
       products.sort(() => Math.random() - 0.5);
       console.log("products", products.length);
-      for (const productArr of DimensionArray(products, 5)) {
+      for (const productArr of DimensionArray(products, 1)) {
         const promiseProduct = productArr.map((product) => {
           return new Promise(async (resolve, reject) => {
             try {
@@ -3023,7 +3023,6 @@ const BrandPriceSync = async () => {
                 url: product.basic.url,
                 userID: product.userID,
               });
-              console.log("response", response);
               // if (product.basic.url.includes("crocs.co.jp")) {
               //   console.log("response --", response.options);
               // }
