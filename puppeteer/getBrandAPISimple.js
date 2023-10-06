@@ -93,6 +93,12 @@ const start = async ({ url }) => {
       case url.includes("onitsukatiger.com"):
         await getOnitsukatiger({ ObjItem, url });
         break;
+      case url.includes("store.toyo-enterprise.co.jp"):
+        await getToyoEnterprise({ ObjItem, url });
+        break;
+      case url.includes("supersports.com"):
+        await getSupersports({ ObjItem, url });
+        break;
       default:
         console.log("DEFAULT", url);
         break;
@@ -2617,6 +2623,314 @@ const getOnitsukatiger = async ({ ObjItem, url }) => {
     ObjItem.options = tempOptions;
   } catch (e) {
     // console.log("getOnitsukatiger - ", e);
+  }
+};
+
+const getToyoEnterprise = async ({ ObjItem, url }) => {
+  try {
+    const agent = new https.Agent({
+      rejectUnauthorized: false,
+    });
+    let content = await axios({
+      httpsAgent: agent,
+      url,
+      method: "GET",
+      headers: {
+        "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+        "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7,zh;q=0.6",
+      },
+      responseType: "arraybuffer",
+    });
+
+    content = iconv.decode(content.data, "EUC-JP");
+    const $ = cheerio.load(content);
+
+    let tempProp = [];
+    let tempOptions = [];
+    let i = 0;
+    let sizeValues = [];
+    let colorValues = [];
+    for (const item of $("table.stockList > tbody").children("tr")) {
+      let j = 1;
+      for (const subItem of $(item).children("th")) {
+        const value = $(subItem).text();
+        if (i === 0) {
+          if (value.length > 0) {
+            sizeValues.push({
+              vid: j.toString(),
+              name: value,
+              korValueName: value,
+            });
+          }
+        } else {
+          if (value.length > 0) {
+            colorValues.push({
+              vid: j.toString(),
+              name: value,
+              korValueName: value,
+            });
+          }
+        }
+        j++;
+      }
+      i++;
+    }
+
+    i = 1;
+    for (const size of sizeValues) {
+      j = 1;
+      for (const color of colorValues) {
+        const propPath = `1:${i.toString()};2:${j.toString()}`;
+        const value = `${size.name} ${color.name}`;
+        const korValue = `${size.korValueName} ${color.korValueName}`;
+
+        tempOptions.push({
+          key: `${i.toString()}:${j.toString()}`,
+          propPath,
+          value,
+          korValue,
+          active: true,
+          disabled: false,
+          attributes: [
+            {
+              attributeTypeName: "사이즈",
+              attributeValueName: size.korValueName,
+            },
+            {
+              attributeTypeName: "컬러",
+              attributeValueName: color.korValueName,
+            },
+          ],
+        });
+        j++;
+      }
+      i++;
+    }
+    i = 0;
+    for (const item of $("table.stockList > tbody").children("tr")) {
+      for (const subItem of $(item).children("td")) {
+        let stock = 0;
+        let price = 0;
+        const value = $(subItem).find("input").attr("value");
+        if (value === undefined) {
+          let temp = $(subItem).find("a").attr("href");
+          temp = temp.split("('")[1].split("')")[0];
+          tempOptions[i].key = temp;
+        } else {
+          tempOptions[i].key = value;
+        }
+
+        const uid = Number(ObjItem.good_id);
+        const option1_id = tempOptions[i].key.split("_")[0];
+        const option2_id = tempOptions[i].key.split("_")[1];
+
+        const form = new FormData();
+        form.append("uid", uid);
+        form.append("option1_id", option1_id);
+        form.append("option2_id", option2_id);
+
+        const response = await axios({
+          url: `https://store.toyo-enterprise.co.jp/shop/shopdetail_option.html`,
+          agent,
+          method: "POST",
+          enctype: "multipart/form-data",
+          headers: {
+            ...form.getHeaders(),
+          },
+          data: form,
+        });
+
+        if (response && response.data) {
+          price = response.data.price;
+          stock = response.data.quantity;
+        }
+
+        tempOptions[i].price = price;
+        tempOptions[i].stock = stock;
+        i++;
+
+        await sleep(500);
+      }
+    }
+    if (sizeValues.length > 0) {
+      tempProp.push({
+        pid: "1",
+        name: "sizes",
+        korTypeName: "사이즈",
+        values: sizeValues,
+      });
+    }
+    if (colorValues.length > 0) {
+      tempProp.push({
+        pid: "2",
+        name: "colors",
+        korTypeName: "컬러",
+        values: colorValues,
+      });
+    }
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+  } catch (e) {
+    console.log("getToyoEnterprise - ", e);
+  }
+};
+
+const getSupersports = async ({ ObjItem, url }) => {
+  try {
+    const agent = new https.Agent({
+      rejectUnauthorized: false,
+    });
+
+    let content = await axios({
+      httpsAgent: agent,
+      url,
+      method: "GET",
+      headers: {
+        // "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+      },
+      // responseEncoding: "binary",
+    });
+
+    content = content.data;
+    // console.log("content -- ", content);
+    const $ = cheerio.load(content);
+
+    const temp1 = content
+      .split('<script id="__NEXT_DATA__" type="application/json">')[1]
+      .split("</script>")[0];
+
+    let productJson = JSON.parse(temp1);
+    if (productJson) {
+      productJson = productJson.props.pageProps.product;
+    }
+
+    ObjItem.salePrice = productJson.price.taxInclusive + 500;
+
+    let tempProp = [];
+    let tempOptions = [];
+
+    for (const item of productJson.features) {
+      let korTypeName;
+      console.log("item.type", item.type);
+      switch (item.type) {
+        case "loftAndBounce":
+          korTypeName = "로프트x바운스";
+          break;
+        case "yarnCount":
+          korTypeName = "번호";
+          break;
+        case "shaft":
+          korTypeName = "샤프트";
+          break;
+        case "flex":
+          korTypeName = "플렉스";
+          break;
+        case "length":
+          korTypeName = "길이";
+          break;
+        default:
+          korTypeName = await papagoTranslate(item.type, "en", "ko");
+          break;
+      }
+
+      let propValues = [];
+      for (const alter of item.alternatives) {
+        let korValueName = alter.text.replace(/　/g, " ").trim();
+        if (item.type === "color") {
+          korValueName = await papagoTranslate(
+            alter.text.replace(/　/g, " ").replace(/．/g, ".").trim(),
+            "ja",
+            "ko"
+          );
+        }
+
+        propValues.push({
+          vid: alter.code,
+          name: alter.text.replace(/　/g, " ").replace(/．/g, ".").trim(),
+          korValueName,
+        });
+      }
+
+      tempProp.push({
+        pid: item.type,
+        name: item.type,
+        korTypeName,
+        values: propValues,
+      });
+    }
+
+    const alternatives =
+      productJson.features[productJson.features.length - 1].alternatives;
+    const generateCombinations = (
+      tempProp,
+      currentIndex,
+      currentCombination
+    ) => {
+      if (currentIndex === tempProp.length) {
+        const lastValues = tempProp[tempProp.length - 1].values;
+        const lastVid = lastValues.find(
+          (value) =>
+            value.korValueName ===
+            currentCombination[currentCombination.length - 1]
+        ).vid;
+
+        const attributes = tempProp.map((prop, index) => ({
+          attributeTypeName: prop.korTypeName,
+          attributeValueName: currentCombination[index],
+        }));
+
+        const propPath = currentCombination
+          .map(
+            (value, index) =>
+              `${tempProp[index].pid}:${
+                tempProp[index].values.find((v) => v.korValueName === value).vid
+              }`
+          )
+          .join(";");
+
+        const value = currentCombination.join(" ").trim();
+        let stock = 0;
+        const findOption = _.find(alternatives, { code: lastVid });
+        if (findOption) {
+          stock = findOption.stock;
+        }
+        tempOptions.push({
+          key: lastVid,
+          propPath,
+          value,
+          korValue: value,
+          price:
+            ObjItem.salePrice >= 3980
+              ? ObjItem.salePrice
+              : ObjItem.salePrice + 550,
+          stock,
+          weight: ObjItem.weight ? ObjItem.weight : 1,
+          active: true,
+          disabled: false,
+          attributes,
+        });
+        return;
+      }
+
+      const values = tempProp[currentIndex].values.map(
+        (value) => value.korValueName
+      );
+
+      for (const value of values) {
+        generateCombinations(tempProp, currentIndex + 1, [
+          ...currentCombination,
+          value,
+        ]);
+      }
+    };
+
+    generateCombinations(tempProp, 0, []);
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+  } catch (e) {
+    console.log("getSupersports - ", e);
   }
 };
 

@@ -97,6 +97,12 @@ const start = async ({ url, keyword }) => {
       case url.includes("onitsukatiger.com"):
         await getOnitsukatiger({ ObjItem, url });
         break;
+      case url.includes("store.toyo-enterprise.co.jp"):
+        await getToyoEnterprise({ ObjItem, url });
+        break;
+      case url.includes("supersports.com"):
+        await getSupersports({ ObjItem, url });
+        break;
       default:
         console.log("DEFAULT", url);
         break;
@@ -4183,6 +4189,549 @@ const getOnitsukatiger = async ({ ObjItem, url }) => {
     await translateHtml(ObjItem);
   } catch (e) {
     // console.log("getOnitsukatiger - ", e);
+  }
+};
+
+const getToyoEnterprise = async ({ ObjItem, url }) => {
+  try {
+    const agent = new https.Agent({
+      rejectUnauthorized: false,
+    });
+    let content = await axios({
+      httpsAgent: agent,
+      url,
+      method: "GET",
+      headers: {
+        "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+        "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7,zh;q=0.6",
+      },
+      responseType: "arraybuffer",
+    });
+
+    content = iconv.decode(content.data, "EUC-JP");
+    const $ = cheerio.load(content);
+
+    ObjItem.title = $(".item-detail > h2")
+      .text()
+      .split("/")
+      .filter((item) => {
+        if (item.includes("再入荷") || item.includes("入荷")) {
+          return false;
+        }
+        if ((item) => item.length > 0) {
+          return true;
+        }
+        return false;
+      })
+      .join(" ");
+    ObjItem.korTitle = await papagoTranslate(ObjItem.title, "auto", "ko");
+
+    let brand = $(".M_production").text().replace("製造元 : ", "").trim();
+
+    switch (brand) {
+      case "SUGAR CANE":
+        ObjItem.brand = "슈가케인";
+        break;
+      case "BUZZ RICKSON'S":
+        ObjItem.brand = "버즈릭슨";
+        break;
+      case "TAILOR TOYO":
+        ObjItem.brand = "테일러토요";
+        break;
+      default:
+        ObjItem.brand = await papagoTranslate(brand, "en", "ko");
+        break;
+    }
+
+    let modelName = $(".M_original-code")
+      .text()
+      .replace("商品コード : ", "")
+      .trim();
+    ObjItem.modelName = modelName;
+
+    ObjItem.korTitle = `${ObjItem.brand} ${ObjItem.korTitle}`.trim();
+    if (!ObjItem.korTitle.includes(ObjItem.modelName)) {
+      ObjItem.korTitle =
+        `${ObjItem.brand} ${ObjItem.korTitle} ${ObjItem.modelName}`.trim();
+    }
+    ObjItem.categoryID = await getCategory(ObjItem.korTitle);
+
+    for (const item of $(".M_imageThumbnail").children(
+      ".M_imageThumbnail-item"
+    )) {
+      let image = $(item).find("img").attr("src");
+      if (image) {
+        ObjItem.content.push(image.replace(/(\d+\/)s(.*)/, "$1$2"));
+      }
+    }
+
+    ObjItem.mainImages = [ObjItem.content[0]];
+
+    let tempProp = [];
+    let tempOptions = [];
+    let i = 0;
+    let sizeValues = [];
+    let colorValues = [];
+    for (const item of $("table.stockList > tbody").children("tr")) {
+      let j = 1;
+      for (const subItem of $(item).children("th")) {
+        const value = $(subItem).text();
+        if (i === 0) {
+          if (value.length > 0) {
+            sizeValues.push({
+              vid: j.toString(),
+              name: value,
+              korValueName: value,
+            });
+          }
+        } else {
+          if (value.length > 0) {
+            colorValues.push({
+              vid: j.toString(),
+              name: value,
+              korValueName: value,
+            });
+          }
+        }
+        j++;
+      }
+      i++;
+    }
+
+    i = 1;
+    for (const size of sizeValues) {
+      j = 1;
+      for (const color of colorValues) {
+        const propPath = `1:${i.toString()};2:${j.toString()}`;
+        const value = `${size.name} ${color.name}`;
+        const korValue = `${size.korValueName} ${color.korValueName}`;
+
+        tempOptions.push({
+          key: `${i.toString()}:${j.toString()}`,
+          propPath,
+          value,
+          korValue,
+          active: true,
+          disabled: false,
+          attributes: [
+            {
+              attributeTypeName: "사이즈",
+              attributeValueName: size.korValueName,
+            },
+            {
+              attributeTypeName: "컬러",
+              attributeValueName: color.korValueName,
+            },
+          ],
+        });
+        j++;
+      }
+      i++;
+    }
+    i = 0;
+    for (const item of $("table.stockList > tbody").children("tr")) {
+      for (const subItem of $(item).children("td")) {
+        let stock = 0;
+        let price = 0;
+        const value = $(subItem).find("input").attr("value");
+        if (value === undefined) {
+          let temp = $(subItem).find("a").attr("href");
+          temp = temp.split("('")[1].split("')")[0];
+          tempOptions[i].key = temp;
+        } else {
+          tempOptions[i].key = value;
+        }
+
+        const uid = Number(ObjItem.good_id);
+        const option1_id = tempOptions[i].key.split("_")[0];
+        const option2_id = tempOptions[i].key.split("_")[1];
+
+        const form = new FormData();
+        form.append("uid", uid);
+        form.append("option1_id", option1_id);
+        form.append("option2_id", option2_id);
+
+        const response = await axios({
+          url: `https://store.toyo-enterprise.co.jp/shop/shopdetail_option.html`,
+          agent,
+          method: "POST",
+          enctype: "multipart/form-data",
+          headers: {
+            ...form.getHeaders(),
+          },
+          data: form,
+        });
+
+        if (response && response.data) {
+          price = response.data.price;
+          stock = response.data.quantity;
+        }
+
+        tempOptions[i].price = price;
+        tempOptions[i].stock = stock;
+        i++;
+
+        await sleep(500);
+      }
+    }
+    if (sizeValues.length > 0) {
+      tempProp.push({
+        pid: "1",
+        name: "sizes",
+        korTypeName: "사이즈",
+        values: sizeValues,
+      });
+    }
+    if (colorValues.length > 0) {
+      tempProp.push({
+        pid: "2",
+        name: "colors",
+        korTypeName: "컬러",
+        values: colorValues,
+      });
+    }
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+
+    let tabAHtml = $(".item_panel.tab-A").html();
+    if (!tabAHtml || tabAHtml.length === 0) {
+      tabAHtml = $(".item-detail-text").html();
+    }
+
+    const sizeTable = $(".item_size_scroll > table").html();
+
+    if (tabAHtml && tabAHtml.length > 0) {
+      ObjItem.html += `<h2>이 상품에 관하여</h2>`;
+      ObjItem.html += tabAHtml
+        .replace(/<a\b[^>]*>(.*?)<\/a>/gi, "")
+        .replace(sizeTable, "")
+        .replace("サイズ詳細 （Size Chart）", "")
+        .replace(
+          "素材の特性や仕上げの方法によって、各所の寸法には若干の個体差が生じます。また、お使いの端末の設定や環境によって、商品の色が実際の色と多少異なる場合もございます。予めご了承ください。",
+          ""
+        );
+      ObjItem.html += `<br>`;
+    }
+
+    // const sizeTable = $(".item_size_scroll > table").html();
+    if (sizeTable && sizeTable.length > 0) {
+      ObjItem.html += `<h2>사이즈 상세</h2>`;
+      ObjItem.html += `<table border="1">${sizeTable}</table>`;
+      ObjItem.html += `<br>`;
+      ObjItem.html += `<p>소재의 특성이나 마무리 방법에 따라 각 곳의 치수에는 약간의 개체 차이가 생깁니다.</p>`;
+      ObjItem.html += `<p>또, 사용의 단말의 설정이나 환경에 의해, 상품의 색이 실제의 색과 다소 다른 경우도 있습니다.</p>`;
+      ObjItem.html += `<br>`;
+    }
+
+    await translateHtml(ObjItem);
+  } catch (e) {
+    console.log("getToyoEnterprise - ", e);
+  }
+};
+
+const getSupersports = async ({ ObjItem, url }) => {
+  try {
+    const agent = new https.Agent({
+      rejectUnauthorized: false,
+    });
+
+    let content = await axios({
+      httpsAgent: agent,
+      url,
+      method: "GET",
+      headers: {
+        // "Accept-Encoding": "gzip, deflate, br", // 원하는 압축 방식 명시
+      },
+      // responseEncoding: "binary",
+    });
+
+    content = content.data;
+    // console.log("content -- ", content);
+    const $ = cheerio.load(content);
+
+    const temp1 = content
+      .split('<script id="__NEXT_DATA__" type="application/json">')[1]
+      .split("</script>")[0];
+
+    let productJson = JSON.parse(temp1);
+    if (productJson) {
+      productJson = productJson.props.pageProps.product;
+    }
+
+    let brand = productJson.brand.text;
+    switch (brand) {
+      case "キャロウェイ":
+        ObjItem.brand = "캘러웨이";
+        break;
+      case "アディダス":
+        ObjItem.brand = "아디다스";
+        break;
+      case "ラルフ ローレン":
+        ObjItem.brand = "랄프로렌";
+        break;
+      case "スリクソン":
+        ObjItem.brand = "스릭슨";
+        break;
+      case "ナイキ":
+        ObjItem.brand = "나이키";
+        break;
+      case "ブリヂストンゴルフ":
+        ObjItem.brand = "브리지스톤";
+        break;
+      case "クリフメイヤー":
+        ObjItem.brand = "클리프 메이어";
+        break;
+      case "カンタベリー":
+        ObjItem.brand = "캔터베리";
+        break;
+      case "オノフ":
+        ObjItem.brand = "온오프";
+        break;
+      case "ノースフェイス":
+        ObjItem.brand = "노스페이스";
+        break;
+      case "ユニフレーム":
+        ObjItem.brand = "유니프레임";
+        break;
+      case "アクター":
+        ObjItem.brand = "AKTR";
+        break;
+      case "アシックス":
+        ObjItem.brand = "아식스";
+        break;
+      case "プーマ":
+        ObjItem.brand = "푸마";
+        break;
+      case "サロモン":
+        ObjItem.brand = "살로몬";
+        break;
+      case "ヨネックス":
+        ObjItem.brand = "요넥스";
+        break;
+      case "ルーカ":
+        ObjItem.brand = "RVCA";
+        break;
+      case "マーモット":
+        ObjItem.brand = "마모트";
+        break;
+      case "ニューバランス":
+        ObjItem.brand = "뉴발란스";
+        break;
+      case "オークリー":
+        ObjItem.brand = "오클리";
+        break;
+      case "エーグル":
+        ObjItem.brand = "에이글";
+        break;
+      case "ゴールデンベア":
+        ObjItem.brand = "골든베어";
+        break;
+      case "フットジョイ":
+        ObjItem.brand = "풋조이";
+        break;
+      case "ルコック スポルティフ":
+        ObjItem.brand = "르꼬끄스포르티브";
+        break;
+      case "テーラーメイド":
+        ObjItem.brand = "테일러메이드";
+        break;
+      default:
+        ObjItem.brand = await papagoTranslate(brand, "ja", "en");
+        break;
+    }
+
+    ObjItem.title = productJson.name
+      .replace(/\（/g, " ")
+      .replace(/\）/g, " ")
+      .replace(/\(/g, " ")
+      .replace(/\)/g, " ")
+      .replace(/、/g, "")
+      .replace(/,/g, "")
+      .replace(/\[/g, " ")
+      .replace(/\]/g, " ");
+
+    let titleArr = ObjItem.title.split(" ");
+    let korTitleArr = [];
+    for (const item of titleArr) {
+      if (item.length > 0) {
+        korTitleArr.push(await papagoTranslate(item, "ja", "ko"));
+      }
+    }
+    ObjItem.korTitle = korTitleArr.join(" ");
+
+    ObjItem.modelName = $(".maker-part-number")
+      .text()
+      .replace("メーカー品番：", "");
+    ObjItem.modelName = await papagoTranslate(ObjItem.modelName, "ja", "ko");
+    if (!ObjItem.title.includes(brand)) {
+      ObjItem.korTitle = `${ObjItem.brand} ${ObjItem.korTitle}`.trim();
+    }
+    if (!ObjItem.korTitle.includes(ObjItem.modelName)) {
+      ObjItem.korTitle = `${ObjItem.korTitle} ${ObjItem.modelName}`.trim();
+    }
+
+    ObjItem.korTitle = ObjItem.korTitle.replace(
+      ObjItem.brand,
+      `${ObjItem.brand} `
+    );
+
+    ObjItem.categoryID = await getCategory(ObjItem.korTitle);
+
+    ObjItem.mainImages = [productJson.imgUrl];
+    ObjItem.salePrice = productJson.price.taxInclusive + 500;
+
+    ObjItem.content = productJson.media.map((item) => item.imgUrl);
+
+    let descriptionHtml = $(".spec").html();
+    descriptionHtml = descriptionHtml
+      .replace(/<a\b[^>]*>(.*?)<\/a>/gi, "")
+      .replace(
+        "※掲載の価格・製品のパッケージ・デザイン・仕様について、予告なく変更することがあります。あらかじめご了承ください。",
+        ""
+      );
+
+    if (descriptionHtml && descriptionHtml.length > 0) {
+      ObjItem.html += `<br>`;
+      ObjItem.html += `<h2>상품 사양</h2>`;
+      ObjItem.html += `${descriptionHtml}`;
+      ObjItem.html += `<br>`;
+    }
+
+    const weight = extractWeight(descriptionHtml);
+
+    if (weight) {
+      ObjItem.weight = weight * 2;
+    }
+
+    await translateHtml(ObjItem);
+
+    ObjItem.html = ObjItem.html.replace(/●/g, "● ").replace(/●  /g, "● ");
+
+    let tempProp = [];
+    let tempOptions = [];
+
+    for (const item of productJson.features) {
+      let korTypeName;
+      console.log("item.type", item.type);
+      switch (item.type) {
+        case "loftAndBounce":
+          korTypeName = "로프트x바운스";
+          break;
+        case "yarnCount":
+          korTypeName = "번호";
+          break;
+        case "shaft":
+          korTypeName = "샤프트";
+          break;
+        case "flex":
+          korTypeName = "플렉스";
+          break;
+        case "length":
+          korTypeName = "길이";
+          break;
+        default:
+          korTypeName = await papagoTranslate(item.type, "en", "ko");
+          break;
+      }
+
+      let propValues = [];
+      for (const alter of item.alternatives) {
+        let korValueName = alter.text.replace(/　/g, " ").trim();
+        if (item.type === "color") {
+          korValueName = await papagoTranslate(
+            alter.text.replace(/　/g, " ").replace(/．/g, ".").trim(),
+            "ja",
+            "ko"
+          );
+        }
+
+        propValues.push({
+          vid: alter.code,
+          name: alter.text.replace(/　/g, " ").replace(/．/g, ".").trim(),
+          korValueName,
+        });
+      }
+
+      tempProp.push({
+        pid: item.type,
+        name: item.type,
+        korTypeName,
+        values: propValues,
+      });
+    }
+
+    const alternatives =
+      productJson.features[productJson.features.length - 1].alternatives;
+    const generateCombinations = (
+      tempProp,
+      currentIndex,
+      currentCombination
+    ) => {
+      if (currentIndex === tempProp.length) {
+        const lastValues = tempProp[tempProp.length - 1].values;
+        const lastVid = lastValues.find(
+          (value) =>
+            value.korValueName ===
+            currentCombination[currentCombination.length - 1]
+        ).vid;
+
+        const attributes = tempProp.map((prop, index) => ({
+          attributeTypeName: prop.korTypeName,
+          attributeValueName: currentCombination[index],
+        }));
+
+        const propPath = currentCombination
+          .map(
+            (value, index) =>
+              `${tempProp[index].pid}:${
+                tempProp[index].values.find((v) => v.korValueName === value).vid
+              }`
+          )
+          .join(";");
+
+        const value = currentCombination.join(" ").trim();
+        let stock = 0;
+        const findOption = _.find(alternatives, { code: lastVid });
+        if (findOption) {
+          stock = findOption.stock;
+        }
+        tempOptions.push({
+          key: lastVid,
+          propPath,
+          value,
+          korValue: value,
+          price:
+            ObjItem.salePrice >= 3980
+              ? ObjItem.salePrice
+              : ObjItem.salePrice + 550,
+          stock,
+          weight: ObjItem.weight ? ObjItem.weight : 1,
+          active: true,
+          disabled: false,
+          attributes,
+        });
+        return;
+      }
+
+      const values = tempProp[currentIndex].values.map(
+        (value) => value.korValueName
+      );
+
+      for (const value of values) {
+        generateCombinations(tempProp, currentIndex + 1, [
+          ...currentCombination,
+          value,
+        ]);
+      }
+    };
+
+    generateCombinations(tempProp, 0, []);
+
+    ObjItem.prop = tempProp;
+    ObjItem.options = tempOptions;
+  } catch (e) {
+    console.log("getSupersports - ", e);
   }
 };
 

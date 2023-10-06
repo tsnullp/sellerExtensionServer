@@ -365,7 +365,9 @@ app.post("/amazon/isRegister", async (req, res) => {
       detailUrl.includes("shop.ordinary-fits.online") ||
       detailUrl.includes("fullcount-online.com") ||
       detailUrl.includes("ware-house.co.jp") ||
-      detailUrl.includes("onitsukatiger.com")
+      detailUrl.includes("onitsukatiger.com") ||
+      detailUrl.includes("store.toyo-enterprise.co.jp") ||
+      detailUrl.includes("supersports.com")
     ) {
       product = await Product.findOne({
         userID: ObjectId(userInfo._id),
@@ -489,7 +491,9 @@ app.post("/amazon/isRegisters", async (req, res) => {
         items[0].includes("shop.ordinary-fits.online") ||
         items[0].includes("fullcount-online.com") ||
         items[0].includes("ware-house.co.jp") ||
-        items[0].includes("onitsukatiger.com")
+        items[0].includes("onitsukatiger.com") ||
+        items[0].includes("store.toyo-enterprise.co.jp") ||
+        items[0].includes("supersports.com")
       ) {
         product = await Product.aggregate([
           {
@@ -657,7 +661,9 @@ app.post("/amazon/isRegisters", async (req, res) => {
               items[0].includes("shop.ordinary-fits.online") ||
               items[0].includes("fullcount-online.com") ||
               items[0].includes("ware-house.co.jp") ||
-              items[0].includes("onitsukatiger.com")
+              items[0].includes("onitsukatiger.com") ||
+              items[0].includes("store.toyo-enterprise.co.jp") ||
+              items[0].includes("supersports.com")
             ) {
               return pItem.basic.good_id === asin;
             } else {
@@ -1806,7 +1812,9 @@ app.post("/amazon/collectionItems", async (req, res) => {
                   item.detailUrl.includes("shop.ordinary-fits.online") ||
                   item.detailUrl.includes("fullcount-online.com") ||
                   item.detailUrl.includes("ware-house.co.jp") ||
-                  item.detailUrl.includes("onitsukatiger.com")
+                  item.detailUrl.includes("onitsukatiger.com") ||
+                  item.detailUrl.includes("store.toyo-enterprise.co.jp") ||
+                  item.detailUrl.includes("supersports.com")
                 ) {
                   const asin = AmazonAsin(item.detailUrl);
                   if (!asin) {
@@ -2944,66 +2952,72 @@ const BrandPriceSync = async () => {
             isDelete: false,
             "product.naver.smartstoreChannelProductNo": { $ne: null },
             $or: [
-              // {
-              //   "basic.url": { $regex: `.*uniqlo.com/jp.*` },
-              // },
-              // {
-              //   "basic.url": { $regex: `.*charleskeith.jp.*` },
-              // },
-              // {
-              //   "basic.url": { $regex: `.*crocs.co.jp.*` },
-              // },
-              // {
-              //   "basic.url": { $regex: `.*barns.jp.*` },
-              // },
-              // {
-              //   "basic.url": { $regex: `.*asics.com/jp.*` },
-              // },
-              // {
-              //   "basic.url": { $regex: `.*jp.stussy.com.*` },
-              // },
-              // {
-              //   "basic.url": { $regex: `.*goldwin.co.jp.*` },
-              // },
-              // {
-              //   "basic.url": { $regex: `.*vans.co.jp.*` },
-              // },
-              // {
-              //   "basic.url": { $regex: `.*converse.co.jp.*` },
-              // },
-              // {
-              //   "basic.url": { $regex: `.*abc-mart.net/shop.*` },
-              // },
-              // {
-              //   "basic.url": { $regex: `.*viviennewestwood-tokyo.com.*` },
-              // },
+              {
+                "basic.url": { $regex: `.*uniqlo.com/jp.*` },
+              },
+              {
+                "basic.url": { $regex: `.*charleskeith.jp.*` },
+              },
+              {
+                "basic.url": { $regex: `.*crocs.co.jp.*` },
+              },
+              {
+                "basic.url": { $regex: `.*barns.jp.*` },
+              },
+              {
+                "basic.url": { $regex: `.*asics.com/jp.*` },
+              },
+              {
+                "basic.url": { $regex: `.*jp.stussy.com.*` },
+              },
+              {
+                "basic.url": { $regex: `.*goldwin.co.jp.*` },
+              },
+              {
+                "basic.url": { $regex: `.*vans.co.jp.*` },
+              },
+              {
+                "basic.url": { $regex: `.*converse.co.jp.*` },
+              },
+              {
+                "basic.url": { $regex: `.*abc-mart.net/shop.*` },
+              },
+              {
+                "basic.url": { $regex: `.*viviennewestwood-tokyo.com.*` },
+              },
               {
                 "basic.url": { $regex: `.*miharayasuhiro.jp.*` },
               },
-              // {
-              //   "basic.url": { $regex: `.*onlinestore.nepenthes.co.jp.*` },
-              // },
-              // {
-              //   "basic.url": { $regex: `.*doverstreetmarket.com.*` },
-              // },
-              // {
-              //   "basic.url": { $regex: `.*titleist.co.jp.*` },
-              // },
-              // {
-              //   "basic.url": { $regex: `.*amiacalva.shop-pro.jp.*` },
-              // },
-              // {
-              //   "basic.url": { $regex: `.*shop.ordinary-fits.online.*` },
-              // },
-              // {
-              //   "basic.url": { $regex: `.*fullcount-online.com.*` },
-              // },
-              // {
-              //   "basic.url": { $regex: `.*ware-house.co.jp.*` },
-              // },
-              // {
-              //   "basic.url": { $regex: `.*onitsukatiger.com.*` },
-              // },
+              {
+                "basic.url": { $regex: `.*onlinestore.nepenthes.co.jp.*` },
+              },
+              {
+                "basic.url": { $regex: `.*doverstreetmarket.com.*` },
+              },
+              {
+                "basic.url": { $regex: `.*titleist.co.jp.*` },
+              },
+              {
+                "basic.url": { $regex: `.*amiacalva.shop-pro.jp.*` },
+              },
+              {
+                "basic.url": { $regex: `.*shop.ordinary-fits.online.*` },
+              },
+              {
+                "basic.url": { $regex: `.*fullcount-online.com.*` },
+              },
+              {
+                "basic.url": { $regex: `.*ware-house.co.jp.*` },
+              },
+              {
+                "basic.url": { $regex: `.*onitsukatiger.com.*` },
+              },
+              {
+                "basic.url": { $regex: `.*store.toyo-enterprise.co.jp.*` },
+              },
+              {
+                "basic.url": { $regex: `.*supersports.com.*` },
+              },
             ],
           },
         },
@@ -3014,7 +3028,7 @@ const BrandPriceSync = async () => {
         },
       ]);
       products.sort(() => Math.random() - 0.5);
-      console.log("products", products.length);
+      // console.log("products", products.length);
       for (const productArr of DimensionArray(products, 5)) {
         const promiseProduct = productArr.map((product) => {
           return new Promise(async (resolve, reject) => {
