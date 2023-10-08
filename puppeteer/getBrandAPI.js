@@ -4536,8 +4536,166 @@ const getSupersports = async ({ ObjItem, url }) => {
       case "テーラーメイド":
         ObjItem.brand = "테일러메이드";
         break;
+      case "ピン":
+        ObjItem.brand = "핑";
+        break;
+      case "チャンピオン":
+        ObjItem.brand = "챔피온";
+        break;
+      case "チャンピオン-ヘリテイジ":
+        ObjItem.brand = "챔피온";
+        break;
+      case "ノースフェイス":
+        ObjItem.brand = "노스페이스";
+        break;
+      case "パールイズミ":
+        ObjItem.brand = "펄이즈미";
+        break;
+      case "マンシングウエア":
+        ObjItem.brand = "먼싱웨어";
+        break;
+      case "テバ":
+        ObjItem.brand = "테바";
+        break;
+      case "アンダーアーマー":
+        ObjItem.brand = "언더아머";
+        break;
+      case "イワタニ":
+        ObjItem.brand = "이와타니";
+        break;
+      case "オガワ":
+        ObjItem.brand = "오가와";
+        break;
+      case "ROSASEN":
+        ObjItem.brand = "로사센";
+        break;
+      case "パフォーマンスギア":
+        ObjItem.brand = "PGA";
+        break;
+      case "ミズノ":
+        ObjItem.brand = "미즈노";
+        break;
+      case "フィドラ":
+        ObjItem.brand = "FIDRA";
+        break;
+      case "デサント":
+        ObjItem.brand = "데상트";
+        break;
+      case "スタンレー":
+        ObjItem.brand = "스탠리";
+        break;
+      case "コロンビア":
+        ObjItem.brand = "콜롬비아";
+        break;
+      case "アシックス":
+        ObjItem.brand = "아식스";
+        break;
+      case "ウイルソン":
+        ObjItem.brand = "윌슨";
+        break;
+      case "アイスピーク":
+        ObjItem.brand = "ICEPEAK";
+        break;
+      case "ジョーダン":
+        ObjItem.brand = "JORDAN";
+        break;
+      case "ジャックウルフスキン":
+        ObjItem.brand = "잭울프스킨";
+        break;
+      case "エアボーン":
+        ObjItem.brand = "ARBN";
+        break;
+      case "ジローム":
+        ObjItem.brand = "GIRAUDM";
+        break;
+      case "クリーンカンティーン":
+        ObjItem.brand = "클린켄틴";
+        break;
+      case "アイヴォル":
+        ObjItem.brand = "EYEVOL";
+        break;
+      case "ソフソール":
+        ObjItem.brand = "소프솔";
+        break;
+      case "ホクシン":
+        ObjItem.brand = "Hokushin";
+        break;
+      case "スライド":
+        ObjItem.brand = "SLYDE";
+        break;
+      case "アンブロ":
+        ObjItem.brand = "엄브로";
+        break;
+      case "チャムス":
+        ObjItem.brand = "첨스";
+        break;
+      case "アースリング":
+        ObjItem.brand = "earthling";
+        break;
+      case "クー":
+        ObjItem.brand = "Coo.";
+        break;
+      case "トミー ジーンズ":
+        ObjItem.brand = "타미진스";
+        break;
+      case "カンペール":
+        ObjItem.brand = "캠퍼";
+        break;
+      case "ヴィクタス":
+        ObjItem.brand = "빅타스";
+        break;
+      case "ロイシュ":
+        ObjItem.brand = "로이쉬";
+        break;
+      case "本間ゴルフ":
+        ObjItem.brand = "혼마";
+        break;
+      case "スリクソン":
+        ObjItem.brand = "스릭슨";
+        break;
+      case "カンタベリー":
+        ObjItem.brand = "캔터베리";
+        break;
+      case "ニーモ":
+        ObjItem.brand = "니모";
+        break;
+      case "スノーピーク":
+        ObjItem.brand = "스노우피크";
+        break;
+      case "クイックシルバー":
+        ObjItem.brand = "퀵실버";
+        break;
+      case "ロキシー":
+        ObjItem.brand = "록시";
+        break;
+      case "オーシャンパシフィック":
+        ObjItem.brand = "오션퍼시픽";
+        break;
+      case "モルテン":
+        ObjItem.brand = "몰텐";
+        break;
+      case "サーモス":
+        ObjItem.brand = "써모스";
+        break;
+      case "ビバハート":
+        ObjItem.brand = "비바하트";
+        break;
+      case "コールマン":
+        ObjItem.brand = "콜맨";
+        break;
+      case "ニッタク":
+        ObjItem.brand = "닛타쿠";
+        break;
+      case "ハーレー":
+        ObjItem.brand = "헐리";
+        break;
+
       default:
-        ObjItem.brand = await papagoTranslate(brand, "ja", "en");
+        try {
+          ObjItem.brand = productJson.name.split("（")[1].split("）")[0].trim();
+        } catch (e) {
+          ObjItem.brand = await papagoTranslate(brand, "ja", "en");
+        }
         break;
     }
 
@@ -4562,7 +4720,9 @@ const getSupersports = async ({ ObjItem, url }) => {
 
     ObjItem.modelName = $(".maker-part-number")
       .text()
-      .replace("メーカー品番：", "");
+      .replace("メーカー品番：", "")
+      .split(" ")[0]
+      .split(":")[0];
     ObjItem.modelName = await papagoTranslate(ObjItem.modelName, "ja", "ko");
     if (!ObjItem.title.includes(brand)) {
       ObjItem.korTitle = `${ObjItem.brand} ${ObjItem.korTitle}`.trim();
@@ -4571,12 +4731,18 @@ const getSupersports = async ({ ObjItem, url }) => {
       ObjItem.korTitle = `${ObjItem.korTitle} ${ObjItem.modelName}`.trim();
     }
 
-    ObjItem.korTitle = ObjItem.korTitle.replace(
-      ObjItem.brand,
-      `${ObjItem.brand} `
-    );
-
     ObjItem.categoryID = await getCategory(ObjItem.korTitle);
+
+    ObjItem.korTitle = ObjItem.korTitle
+      .replace(ObjItem.brand, `${ObjItem.brand} `)
+      .replace(/남성/g, "")
+      .replace(/여성/g, "")
+      .replace(/키즈/g, "")
+      .replace(/맨즈/g, "")
+      .replace(/레이디스/g, "")
+      .split(" ")
+      .filter((item) => item.length > 0)
+      .join(" ");
 
     ObjItem.mainImages = [productJson.imgUrl];
     ObjItem.salePrice = productJson.price.taxInclusive + 500;
@@ -4613,7 +4779,7 @@ const getSupersports = async ({ ObjItem, url }) => {
 
     for (const item of productJson.features) {
       let korTypeName;
-      console.log("item.type", item.type);
+
       switch (item.type) {
         case "loftAndBounce":
           korTypeName = "로프트x바운스";
@@ -4637,7 +4803,10 @@ const getSupersports = async ({ ObjItem, url }) => {
 
       let propValues = [];
       for (const alter of item.alternatives) {
-        let korValueName = alter.text.replace(/　/g, " ").trim();
+        let korValueName = alter.text
+          .replace(/　/g, " ")
+          .replace(/．/g, ".")
+          .trim();
         if (item.type === "color") {
           korValueName = await papagoTranslate(
             alter.text.replace(/　/g, " ").replace(/．/g, ".").trim(),
@@ -4690,11 +4859,20 @@ const getSupersports = async ({ ObjItem, url }) => {
           )
           .join(";");
 
-        const value = currentCombination.join(" ").trim();
+        const value = currentCombination
+          .join(" ")
+          .replace(/　/g, " ")
+          .replace(/．/g, ".")
+          .trim();
+        console.log("value", value);
         let stock = 0;
         const findOption = _.find(alternatives, { code: lastVid });
         if (findOption) {
-          stock = findOption.stock;
+          if (findOption.stock) {
+            stock = findOption.stock;
+          } else {
+            stock = productJson.stock;
+          }
         }
         tempOptions.push({
           key: lastVid,

@@ -2893,7 +2893,11 @@ const getSupersports = async ({ ObjItem, url }) => {
         let stock = 0;
         const findOption = _.find(alternatives, { code: lastVid });
         if (findOption) {
-          stock = findOption.stock;
+          if (findOption.stock) {
+            stock = findOption.stock;
+          } else {
+            stock = productJson.stock;
+          }
         }
         tempOptions.push({
           key: lastVid,
