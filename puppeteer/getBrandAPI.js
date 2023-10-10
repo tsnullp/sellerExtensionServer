@@ -4579,6 +4579,7 @@ const getSupersports = async ({ ObjItem, url }) => {
         ObjItem.brand = "FIDRA";
         break;
       case "デサント":
+      case "デサントゴルフ":
         ObjItem.brand = "데상트";
         break;
       case "スタンレー":
@@ -4755,6 +4756,10 @@ const getSupersports = async ({ ObjItem, url }) => {
       .replace(
         "※掲載の価格・製品のパッケージ・デザイン・仕様について、予告なく変更することがあります。あらかじめご了承ください。",
         ""
+      )
+      .replace(
+        "[配送について:こちらの商品を複数点購入時や、別の商品と同時購入いただいた場合分割配送になります]",
+        ""
       );
 
     if (descriptionHtml && descriptionHtml.length > 0) {
@@ -4764,10 +4769,27 @@ const getSupersports = async ({ ObjItem, url }) => {
       ObjItem.html += `<br>`;
     }
 
-    const weight = extractWeight(descriptionHtml);
+    if (descriptionHtml.includes("重量")) {
+      const inputString = descriptionHtml.split("重量")[1].split("●")[0];
+      const numbersOnly = inputString.match(/\d+(\.\d+)?/);
 
-    if (weight) {
-      ObjItem.weight = weight * 2;
+      if (numbersOnly) {
+        let extractedNumber = parseFloat(numbersOnly[0]);
+
+        if (inputString.toUpperCase().includes("KG")) {
+          extractedNumber = extractedNumber + 0.2;
+        } else {
+          extractedNumber = extractedNumber / 1000 + 0.2;
+        }
+
+        ObjItem.weight = extractedNumber;
+      }
+    } else {
+      const weight = extractWeight(descriptionHtml);
+
+      if (weight) {
+        ObjItem.weight = weight;
+      }
     }
 
     await translateHtml(ObjItem);
