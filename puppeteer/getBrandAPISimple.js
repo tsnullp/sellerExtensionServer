@@ -2812,7 +2812,7 @@ const getSupersports = async ({ ObjItem, url }) => {
 
     for (const item of productJson.features) {
       let korTypeName;
-      console.log("item.type", item.type);
+
       switch (item.type) {
         case "loftAndBounce":
           korTypeName = "로프트x바운스";

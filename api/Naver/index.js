@@ -318,6 +318,56 @@ exports.NaverTagRestrict = async (tags) => {
   }
 };
 
+exports.NaverProdectOrderId = async ({ userID, orderId }) => {
+  const token = await getToken({ userID });
+  if (!token) {
+    return null;
+  }
+
+  console.log("userID, orderId, ", userID, orderId);
+  try {
+    const response = await axios({
+      url: `https://api.commerce.naver.com/external/v1/pay-order/seller/orders/${orderId}/product-order-ids`,
+      method: "GET",
+      headers: {
+        Authorization: `${token.token_type} ${token.access_token}`,
+        "content-type": "application/json",
+      },
+    });
+
+    console.log("response.data", response.data);
+    if (response && response.data && response.data.data.length > 0) {
+      return response.data.data[0];
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+};
+exports.NaverProductOrderDispatch = async ({ userID, orderArray }) => {
+  const token = await getToken({ userID });
+  if (!token) {
+    return null;
+  }
+  console.log(" userID, orderArray", userID, orderArray);
+  try {
+    const response = await axios({
+      url: `https://api.commerce.naver.com/external/v1/pay-order/seller/product-orders/dispatch`,
+      method: "POST",
+      headers: {
+        Authorization: `${token.token_type} ${token.access_token}`,
+        "Content-Type": "application/json",
+      },
+      data: JSON.stringify(orderArray),
+    });
+
+    console.log("response", response.data);
+    return response.data;
+  } catch (e) {
+    console.log("NaverProductOrderDispatch e", e);
+    // console.log("originProductNo", JSON.stringify(product));
+  }
+};
 const getToken = async ({ userID }) => {
   try {
     if (!userID) {
@@ -338,7 +388,7 @@ const getToken = async ({ userID }) => {
       !market.naver.clientID ||
       !market.naver.clientSecret
     ) {
-      console.log("네이버 커머스 API 등록 안됨");
+      // console.log("네이버 커머스 API 등록 안됨");
       return null;
     }
     clientId = market.naver.clientID;

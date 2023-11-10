@@ -12,6 +12,7 @@ const DeliveryInfo = require("./models/DeliveryInfo");
 const AmazonCollection = require("./models/AmazonCollection");
 const TempProduct = require("./models/TempProduct");
 const ShippingPrice = require("./models/ShippingPrice");
+const SellerPickDeliveryFee = require("./models/SellerPickDeliveryFee");
 const Product = require("./models/Product");
 const Cookie = require("./models/Cookie");
 const TaobaoOrder = require("./models/TaobaoOrder");
@@ -65,6 +66,8 @@ const {
   NaverOriginProducts,
   NaverModifyOption,
   NaverTagRestrict,
+  NaverProdectOrderId,
+  NaverProductOrderDispatch,
 } = require("./api/Naver");
 
 const cron = require("node-cron");
@@ -2199,7 +2202,6 @@ app.post("/bdg/orderList", async (req, res) => {
 
       if (response && response.result && response.result.list.length > 0) {
         for (const item of response.result.list) {
-          // console.log("item-->", item)
           const promiseArr = userGroups.map((user) => {
             return new Promise(async (resolve, reject) => {
               try {
@@ -2319,15 +2321,15 @@ app.post("/bdg/orderList", async (req, res) => {
 
                 if (deliveryTemp && deliveryTemp.orderItems) {
                   try {
-                    const tempOrderItmes = _.uniqBy(
+                    const tempOrderItems = _.uniqBy(
                       deliveryTemp.orderItems,
                       "오픈마켓주문번호"
                     );
 
-                    for (const orderItem of tempOrderItmes) {
+                    for (const orderItem of tempOrderItems) {
                       const tempCafe24Order = cafe24OrderResponse.filter(
                         (fItem) =>
-                          fItem.market_order_info.toString() ===
+                          fItem.market_order_no.toString() ===
                           orderItem.오픈마켓주문번호.toString()
                       );
 
@@ -2356,7 +2358,7 @@ app.post("/bdg/orderList", async (req, res) => {
                               });
                               console.log("resonse-->", response);
 
-                              await sleep(500);
+                              await sleep(1000);
                               const response1 = await Cafe24UpdateShipments({
                                 mallID: market.cafe24.mallID,
                                 input: [
@@ -2368,7 +2370,7 @@ app.post("/bdg/orderList", async (req, res) => {
                                 ],
                               });
                               console.log("resonse1-->", response1);
-                              await sleep(500);
+                              await sleep(1000);
                             } catch (e) {
                               console.log("에러", e);
                             }
@@ -2405,6 +2407,351 @@ app.post("/bdg/orderList", async (req, res) => {
   }
 });
 
+app.post("/bdg/sellerPickorderList", async (req, res) => {
+  try {
+    const { user, orderList } = req.body;
+
+    const userInfo = await User.findOne({
+      email: user,
+    }).lean();
+
+    if (!userInfo) {
+      res.json({
+        message: false,
+      });
+      return;
+    }
+
+    if (userInfo.group) {
+      const userGroups = await User.find({
+        group: userInfo.group,
+      });
+
+      const startDate = moment().subtract(2, "month").format("YYYY-MM-DD");
+      const endDate = moment().format("YYYY-MM-DD");
+
+      let productOrderList = [];
+      let totalOrderItems = [];
+
+      if (orderList && Array.isArray(orderList)) {
+        for (const item of orderList) {
+          if (item.상태 !== "취소상품") {
+            totalOrderItems.push(...item.orderItems);
+          }
+        }
+        for (const item of orderList) {
+          const fees = SellerPickDeliveryFee(item.무게);
+          // console.log("fees", item.무게, fees);
+
+          // console.log("배송비", fees[item.area]);
+          const number = fees[item.area] * item.exchange;
+          const remainder = number % 100; // 일의 자리와 십의 자리 이하의 숫자를 가져옵니다
+          if (remainder > 0) {
+            item.배송비용 = number + (100 - remainder); // 일의 자리를 올린 후 다시 십의 자리로 변환
+          } else {
+            item.배송비용 = number;
+          }
+
+          item.purchaseAmount = item.purchaseAmount * item.exchange;
+          item.shippingFee = item.shippingFee * item.exchange;
+
+          if (item.purchaseAmount % 100 > 0) {
+            item.purchaseAmount =
+              item.purchaseAmount + (100 - (item.purchaseAmount % 100));
+          }
+          if (item.shippingFee % 100 > 0) {
+            item.shippingFee =
+              item.shippingFee + (100 - (item.shippingFee % 100));
+          }
+          // 상태: 통관중, 한국배송중, 배송완료
+          // 상태: 취소상품
+
+          const promiseArr = userGroups.map((user) => {
+            return new Promise(async (resolve, reject) => {
+              try {
+                const market = await Market.findOne({
+                  userID: ObjectId(user._id),
+                });
+                const cafe24OrderResponse = await Cafe24ListOrders({
+                  mallID: market.cafe24.mallID,
+                  orderState: "상품준비",
+                  startDate,
+                  endDate,
+                });
+
+                const temp = await DeliveryInfo.findOne({
+                  userID: ObjectId(user._id),
+                  orderNo: item.orderNo, // 주문번호
+                });
+
+                let orderItems = item.orderItems;
+                if (temp && temp.orderItems.length <= item.orderItems.length) {
+                  // 디비 내용을 따라 가야함
+                  orderItems = temp.orderItems;
+                  for (const orderItem of orderItems) {
+                    if (orderItem.오픈마켓주문번호) {
+                      if (!orderItem.taobaoTrackingNo) {
+                        // console.log("item.orderItems", item.);
+                        const findOrder = _.find(item.orderItems, {
+                          오픈마켓주문번호: orderItem.오픈마켓주문번호,
+                        });
+
+                        if (findOrder) {
+                          orderItem.taobaoTrackingNo =
+                            findOrder.taobaoTrackingNo;
+                        }
+                      }
+                      if (!orderItem.taobaoOrderNo) {
+                        const findOrder = _.find(item.orderItems, {
+                          오픈마켓주문번호: orderItem.오픈마켓주문번호,
+                        });
+
+                        if (findOrder) {
+                          orderItem.taobaoOrderNo = findOrder.taobaoOrderNo;
+                        }
+                      }
+                    }
+                  }
+                }
+                if (orderItems[0].taobaoOrderNo) {
+                  for (const orderItem of item.orderItems) {
+                    const tempArr = totalOrderItems.filter(
+                      (fItem) => fItem.taobaoOrderNo === orderItem.taobaoOrderNo
+                    );
+
+                    if (orderItem.taobaoOrderNo) {
+                      await TaobaoOrder.findOneAndUpdate(
+                        {
+                          orderNumber: orderItem.taobaoOrderNo,
+                          userID: ObjectId(user._id),
+                        },
+                        {
+                          $set: {
+                            orderNumber: orderItem.taobaoOrderNo,
+                            userID: ObjectId(user._id),
+                            orderDate: item.orderDate,
+                            orderTime: item.orderTime,
+                            orders: [
+                              {
+                                productName: item.productName,
+                                detail: item.detail,
+                                originalPrice:
+                                  item.purchaseAmount / tempArr.length,
+                                realPrice: item.purchaseAmount / tempArr.length,
+                                quantity: tempArr.length,
+                              },
+                            ],
+                            purchaseAmount: item.purchaseAmount,
+                            shippingFee: item.shippingFee,
+                          },
+                        },
+                        { upsert: true }
+                      );
+                    }
+                  }
+
+                  // 주문일,
+                  if (item.orderNo) {
+                    const deliveySave = await DeliveryInfo.findOneAndUpdate(
+                      {
+                        userID: ObjectId(user._id),
+                        orderNo: item.orderNo, // 주문번호
+                      },
+                      {
+                        $set: {
+                          userID: ObjectId(user._id),
+                          orderSeq: item.orderNo,
+                          orderNo: item.orderNo, // 주문번호
+                          상태: item.상태,
+                          수취인주소: item.수취인주소,
+                          수취인우편번호: item.수취인우편번호,
+                          수취인이름: item.수취인이름,
+                          수취인연락처: item.수취인연락처,
+                          개인통관부호: item.개인통관부호,
+                          orderItems,
+                          무게: Number(item.무게),
+                          배송비용: Number(item.배송비용),
+                          shippingNumber: item.shippingNumber,
+                          // customs,
+                          // deliveryTracking,
+                          isDelete:
+                            item.od_status === "취소상품" ||
+                            item.od_status === "반품 지시서 처리중"
+                              ? true
+                              : false,
+                        },
+                      },
+                      { upsert: true, new: true }
+                    );
+
+                    const deliveryTemp = await DeliveryInfo.findOne({
+                      userID: ObjectId(user._id),
+                      orderNo: item.orderNo,
+                    });
+
+                    if (deliveryTemp && deliveryTemp.orderItems) {
+                      try {
+                        const tempOrderItems = _.uniqBy(
+                          deliveryTemp.orderItems,
+                          "오픈마켓주문번호"
+                        );
+
+                        for (const orderItem of tempOrderItems) {
+                          const tempCafe24Order = cafe24OrderResponse.filter(
+                            (fItem) =>
+                              fItem.market_order_no.toString() ===
+                              orderItem.오픈마켓주문번호.toString()
+                          );
+
+                          if (!deliveryTemp.isDelete) {
+                            for (const item of tempCafe24Order) {
+                              try {
+                                const response = await Cafe24RegisterShipments({
+                                  mallID: market.cafe24.mallID,
+                                  order_id: item.order_id,
+                                  tracking_no: deliveySave.shippingNumber,
+                                  shipping_company_code: "0006",
+                                  order_item_code: item.items.map(
+                                    (item) => item.order_item_code
+                                  ),
+                                  shipping_code:
+                                    item.receivers[0].shipping_code,
+                                });
+                                console.log("resonse-->", response);
+
+                                await sleep(1000);
+                                const response1 = await Cafe24UpdateShipments({
+                                  mallID: market.cafe24.mallID,
+                                  input: [
+                                    {
+                                      shipping_code:
+                                        item.receivers[0].shipping_code,
+                                      order_id: item.order_id,
+                                    },
+                                  ],
+                                });
+                                console.log("resonse1-->", response1);
+                                await sleep(1000);
+                              } catch (e) {
+                                console.log("에러", e);
+                              }
+                            }
+                          }
+                        }
+                      } catch (e) {}
+                    }
+                  }
+                }
+
+                // const productOrders = orderList.filter((fItem) =>
+                //   ["통관중", "한국배송중", "배송완료"].includes(fItem.상태)
+                // );
+
+                // for (const product of productOrders) {
+                //   for (const orderItem of product.orderItems) {
+                //     productOrderList.push({
+                //       주문번호: orderItem["오픈마켓주문번호"],
+                //       deliveryMethod: "DELIVERY",
+                //       deliveryCompanyCode: "CJGLS",
+                //       trackingNumber: product.shippingNumber,
+                //     });
+                //   }
+                // }
+
+                // await NaverProductOrderDispatch();
+                resolve();
+              } catch (e) {
+                reject(e);
+              }
+            });
+          });
+
+          await Promise.all(promiseArr);
+        }
+
+        /*
+        productOrderList = _.uniqBy(productOrderList, "주문번호");
+        console.log("productOrderList", productOrderList.length);
+
+        for (const item of productOrderList) {
+          console.log("item=--.> ", item);
+          for (const user of userGroups) {
+            const productOrderId = await NaverProdectOrderId({
+              userID: user._id,
+              orderId: item["주문번호"],
+            });
+
+            console.log("productOrderId", productOrderId);
+            if (productOrderId) {
+              item.productOrderId = productOrderId;
+              item.userID = user._id;
+              await sleep(500);
+              break;
+            }
+
+            await sleep(500);
+          }
+        }
+
+        productOrderList = productOrderList.filter(
+          (item) => item.productOrderId
+        );
+
+        console.log("productOrderList", productOrderList);
+
+        if (productOrderList.length > 0) {
+          for (const item of productOrderList) {
+            const date = new Date(); // 현재 날짜와 시간을 가져옵니다.
+            const timeZoneOffset = -9 * 60; // UTC 시간에서 원하는 타임존 오프셋 (이 예에서는 한국 시간, UTC+9)을 분 단위로 계산합니다.
+
+            // 날짜를 문자열로 변환하고 타임존 오프셋을 적용합니다.
+            const dateString = "2023-10-26T12:17:35+09:00";
+
+            console.log("dateString", dateString);
+
+            await NaverProductOrderDispatch({
+              userID: item.userID,
+              orderArray: [
+                {
+                  productOrderId: item.productOrderId,
+                  deliveryMethod: item.deliveryMethod,
+                  deliveryCompanyCode: item.deliveryCompanyCode,
+                  trackingNumber: item.trackingNumber,
+                  dispatchDate: dateString,
+                },
+              ],
+            });
+
+            await sleep(10000);
+          }
+        }
+*/
+        // const productOrders = orderList
+        //   .filter((fItem) =>
+        //     ["통관중", "한국배송중", "배송완료"].includes(fItem.상태)
+        //   )
+        //   .map((mItem) => {
+        //     return {
+        //       productOrderId,
+        //       deliveryMethod: "DELIVERY",
+        //       deliveryCompanyCode: "CJGLS",
+        //       trackingNumber: mItem.shippingNumber,
+        //     };
+        //   });
+        // console.log("productOrders  - ", productOrders);
+      }
+    }
+
+    res.json({
+      message: true,
+    });
+  } catch (e) {
+    console.log("/bdg/sellerPickorderList", e);
+    res.json({
+      message: false,
+    });
+  }
+});
 app.post("/taobao/orders", async (req, res) => {
   try {
     const { user, orders } = req.body;
@@ -2889,7 +3236,7 @@ const RakutenPriceSync = async () => {
   SyncFun();
 };
 
-const BrandPriceSync = async () => {
+const UniqlodPriceSync = async () => {
   let prohibit = [
     "심플리티",
     "여성",
@@ -2955,6 +3302,431 @@ const BrandPriceSync = async () => {
               {
                 "basic.url": { $regex: `.*uniqlo.com/jp.*` },
               },
+            ],
+          },
+        },
+        {
+          $sort: {
+            _id: -1,
+          },
+        },
+      ]);
+      products.sort(() => Math.random() - 0.5);
+      // console.log("products", products.length);
+      for (const productArr of DimensionArray(products, 5)) {
+        const promiseProduct = productArr.map((product) => {
+          return new Promise(async (resolve, reject) => {
+            try {
+              const response = await getBrandSimple({
+                url: product.basic.url,
+                userID: product.userID,
+              });
+              // if (product.basic.url.includes("crocs.co.jp")) {
+              //   console.log("response --", response.options);
+              // }
+              if (
+                response &&
+                response.options &&
+                Array.isArray(response.options) &&
+                response.options.length > 0
+              ) {
+                let changePrice = false;
+                let changeStock = false;
+                for (const option of response.options) {
+                  try {
+                    const findOption = _.find(product.options, {
+                      key: option.key.toString(),
+                    });
+                    if (!findOption) {
+                      continue;
+                    }
+
+                    let salePrice =
+                      Math.ceil(
+                        ((option.price * exchange +
+                          Number(findOption.weightPrice)) /
+                          ((100 - findOption.margin) / 100)) *
+                          0.1
+                      ) *
+                        10 -
+                      product.product.deliveryFee;
+
+                    // console.log("salePrice", salePrice);
+
+                    if (findOption.price !== option.price) {
+                      changePrice = true;
+
+                      findOption.price = option.price;
+                      findOption.salePrice = salePrice;
+                    }
+
+                    if (findOption.stock !== option.stock) {
+                      changeStock = true;
+                      findOption.stock = option.stock;
+                    }
+                    // await sleep(1000);
+                  } catch (e) {
+                    console.log("url --- ", product.basic.url);
+                    console.log("---", e);
+                    console.log("response == ", response);
+                  }
+                }
+
+                if (changePrice || changeStock) {
+                  const minOption = _.minBy(
+                    product.options.filter((item) => item.salePrice > 0),
+                    "salePrice"
+                  );
+                  const maxOption = _.maxBy(
+                    product.options.filter((item) => item.salePrice > 0),
+                    "salePrice"
+                  );
+
+                  const salePrice =
+                    Math.ceil(
+                      (minOption.salePrice + maxOption.salePrice) * 0.7 * 0.1
+                    ) * 10; // 판매가
+                  const discountPrice = salePrice - minOption.salePrice; // 판매가 - 최저가
+
+                  const optionValue = product.options.filter(
+                    (item) => item.active && !item.disabled
+                  );
+
+                  let optionCombinationGroupNames = {};
+                  let optionCombinations = [];
+
+                  if (
+                    (!optionValue[0].korKey ||
+                      (optionValue[0].korKey &&
+                        optionValue[0].korKey.length === 0)) &&
+                    product.prop &&
+                    Array.isArray(product.prop) &&
+                    product.prop.length > 0 &&
+                    optionValue.length > 0 &&
+                    optionValue[0].propPath !== null
+                  ) {
+                    for (let i = 0; i < product.prop.length; i++) {
+                      optionCombinationGroupNames[`optionGroupName${i + 1}`] =
+                        product.prop[i].korTypeName;
+                    }
+                    for (const item of optionValue) {
+                      let combinationValue = {};
+
+                      const propPathes = item.propPath
+                        .split(";")
+                        .filter((fItem) => fItem.trim().length > 0);
+                      for (let p = 0; p < propPathes.length; p++) {
+                        const propKeyArr = propPathes[p].split(":");
+                        if (propKeyArr.length === 2) {
+                          const propObj = _.find(product.prop, {
+                            pid: propKeyArr[0],
+                          });
+                          if (propObj) {
+                            const propValue = _.find(propObj.values, {
+                              vid: propKeyArr[1],
+                            });
+                            if (propValue) {
+                              combinationValue[`optionName${p + 1}`] =
+                                propValue.korValueName
+                                  .replace(/\*/gi, "x")
+                                  .replace(/\?/gi, " ")
+                                  .replace(/\"/gi, " ")
+                                  .replace(/\</gi, " ")
+                                  .replace(/\>/gi, " ");
+                            }
+                          }
+                        }
+                      }
+                      if (Object.keys(combinationValue).length > 0) {
+                        combinationValue.stockQuantity = item.stock; //재고
+                        combinationValue.price =
+                          item.salePrice - minOption.salePrice;
+                        optionCombinations.push(combinationValue);
+                      }
+                    }
+                  } else {
+                    optionCombinationGroupNames.optionGroupName1 = "종류";
+                    optionCombinations = optionValue.map((item) => {
+                      return {
+                        optionName1:
+                          item.korKey && item.korKey.length > 0
+                            ? item.korKey
+                            : item.korValue
+                                .replace(/\*/gi, "x")
+                                .replace(/\?/gi, " ")
+                                .replace(/\"/gi, " ")
+                                .replace(/\</gi, " ")
+                                .replace(/\>/gi, " "),
+                        stockQuantity: item.stock,
+                        price: item.salePrice - minOption.salePrice,
+                      };
+                    });
+                  }
+
+                  // console.log(
+                  //   "optionCombinationGroupNames",
+                  //   optionCombinationGroupNames
+                  // );
+                  // console.log("optionCombinations", optionCombinations);
+
+                  const naverProduct = await NaverOriginProducts({
+                    userID: product.userID,
+                    originProductNo: product.product.naver.originProductNo,
+                  });
+
+                  if (naverProduct) {
+                    if (
+                      naverProduct.originProduct.detailAttribute
+                        .naverShoppingSearchInfo
+                    ) {
+                      let brand =
+                        naverProduct.originProduct.detailAttribute
+                          .naverShoppingSearchInfo.brandName;
+                      let modelName =
+                        naverProduct.originProduct.detailAttribute
+                          .naverShoppingSearchInfo.modelName;
+                      if (brand && modelName) {
+                        naverProduct.originProduct.detailAttribute.seoInfo.pageTitle = `${brand} ${modelName}`;
+                      } else if (brand) {
+                        naverProduct.originProduct.detailAttribute.seoInfo.pageTitle =
+                          brand;
+                      }
+                    }
+
+                    delete naverProduct.originProduct.detailContent;
+                    naverProduct.originProduct.statusType = "SALE";
+                    naverProduct.originProduct.salePrice = salePrice;
+                    naverProduct.originProduct.stockQuantity =
+                      optionValue[0].stock;
+                    naverProduct.originProduct.detailAttribute.optionInfo = {
+                      optionCombinationSortType: "CREATE",
+                      optionCombinationGroupNames,
+                      optionCombinations,
+                    };
+                    naverProduct.originProduct.customerBenefit = {
+                      immediateDiscountPolicy: {
+                        discountMethod: {
+                          value: discountPrice,
+                          unitType: "WON",
+                        },
+                        mobileDiscountMethod: {
+                          value: discountPrice,
+                          unitType: "WON",
+                        },
+                      },
+                    };
+
+                    naverProduct.originProduct.detailAttribute.seoInfo.sellerTags =
+                      naverProduct.originProduct.detailAttribute.seoInfo.sellerTags.filter(
+                        (item) => {
+                          if (prohibit.includes(item.text)) {
+                            return false;
+                          }
+                          return true;
+                        }
+                      );
+                    // console.log("naverProduct", naverProduct.originProduct);
+
+                    const updateReponse = await NaverModifyOption({
+                      userID: product.userID,
+                      originProductNo: product.product.naver.originProductNo,
+                      product: naverProduct,
+                    });
+
+                    if (
+                      updateReponse &&
+                      updateReponse.originProductNo &&
+                      updateReponse.originProductNo.toString() ===
+                        product.product.naver.originProductNo
+                    ) {
+                      try {
+                        await Product.findOneAndUpdate(
+                          {
+                            _id: product._id,
+                          },
+                          {
+                            $set: {
+                              options: product.options,
+                            },
+                          }
+                        );
+                      } catch (e) {
+                        console.log("url ", product.basic.url);
+                        console.log("디비저장 1 ", e);
+                      }
+                    }
+
+                    console.log("product 상품명 ", product.product.korTitle);
+                    if (changePrice) {
+                      console.log("가격 변동");
+                    }
+                    if (changeStock) {
+                      console.log("재고 변동");
+                    }
+                    console.log("updateReponse", updateReponse);
+                    console.log(
+                      "======================================================================================"
+                    );
+
+                    if (!updateReponse) {
+                      console.log("실패 -- ", product.basic.url);
+                      console.log("실패 --- ", response.options);
+                    }
+                    await sleep(2000);
+                  }
+                }
+              } else {
+                if (
+                  product.basic.url.includes("crocs.co.jp") &&
+                  response &&
+                  response === 429
+                ) {
+                  console.log("크록스 실패", response);
+                } else {
+                  const naverProduct = await NaverOriginProducts({
+                    userID: product.userID,
+                    originProductNo: product.product.naver.originProductNo,
+                  });
+
+                  if (naverProduct) {
+                    for (const option of product.options) {
+                      option.stock = 0;
+                    }
+
+                    naverProduct.originProduct.stockQuantity = 0;
+                    naverProduct.originProduct.statusType = "SUSPENSION";
+
+                    for (const optionItem of naverProduct.originProduct
+                      .detailAttribute.optionInfo.optionCombinations) {
+                      optionItem.stockQuantity = 0;
+                    }
+                    // console.log("naverProduct", naverProduct);
+                    naverProduct.originProduct.detailAttribute.seoInfo.sellerTags =
+                      naverProduct.originProduct.detailAttribute.seoInfo.sellerTags.filter(
+                        (item) => {
+                          if (prohibit.includes(item.text)) {
+                            return false;
+                          }
+                          return true;
+                        }
+                      );
+
+                    const updateReponse = await NaverModifyOption({
+                      userID: product.userID,
+                      originProductNo: product.product.naver.originProductNo,
+                      product: naverProduct,
+                    });
+
+                    if (
+                      updateReponse &&
+                      updateReponse.originProductNo &&
+                      updateReponse.originProductNo.toString() ===
+                        product.product.naver.originProductNo
+                    ) {
+                      try {
+                        await Product.findOneAndUpdate(
+                          {
+                            _id: product._id,
+                          },
+                          {
+                            $set: {
+                              options: product.options,
+                            },
+                          }
+                        );
+                      } catch (e) {
+                        console.log("url ", product.basic.url);
+                        console.log("디비저장 2 ", e);
+                      }
+                    }
+
+                    console.log("product.basic.url", product.basic.url);
+                    console.log("deleteReponse", updateReponse);
+                  }
+                }
+              }
+
+              resolve();
+            } catch (e) {
+              reject(e);
+            }
+          });
+        });
+
+        await Promise.all(promiseProduct);
+        await sleep(5000);
+      }
+
+      console.log("---- 끝 ----");
+    }
+  };
+
+  SyncFun();
+};
+
+const BrandPriceSync = async () => {
+  let prohibit = [
+    "심플리티",
+    "여성",
+    "폭신폭신",
+    "사계절",
+    "즐거움",
+    "무난",
+    "행복한주방",
+    "은은한",
+    "커피그라인더",
+    "유니크",
+    "멋진",
+    "쿨러백",
+    "캠핑용",
+    "훈훈한",
+    "쿨러가방",
+    "모던",
+    "민물낚시대",
+    "커플룩",
+    "케렌시아",
+    "신혼여행",
+    "일상룩",
+    "데일리스타일",
+    "머스트해브",
+    "멋진",
+    "고퀄리티",
+    "댄디",
+  ];
+  const SyncFun = async () => {
+    let isFirst = true;
+    while (isFirst) {
+      // isFirst = false;
+      const excahgeRate = await ExchangeRate.aggregate([
+        {
+          $match: {
+            JPY_송금보내실때: { $ne: null },
+          },
+        },
+        {
+          $sort: {
+            날짜: -1,
+          },
+        },
+        {
+          $limit: 1,
+        },
+      ]);
+
+      let exchange =
+        Number(excahgeRate[0].JPY_송금보내실때.replace(/,/gi, "") || 1000) + 10;
+
+      exchange = exchange / 100;
+
+      let products = await Product.aggregate([
+        {
+          $match: {
+            // userID: ObjectId("5f1947bd682563be2d22f008"),
+            // "options.key": {$in: asinArr},
+            // _id: ObjectId("650896986e525625fab0381d"),
+            isDelete: false,
+            "product.naver.smartstoreChannelProductNo": { $ne: null },
+            $or: [
               {
                 "basic.url": { $regex: `.*charleskeith.jp.*` },
               },
@@ -3649,6 +4421,7 @@ const getPermutations = function (arr, selectNumber) {
 };
 
 RakutenPriceSync();
+UniqlodPriceSync();
 BrandPriceSync();
 
 const getVVICItems = async () => {
