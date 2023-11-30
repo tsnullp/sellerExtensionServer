@@ -3568,10 +3568,10 @@ const UniqlodPriceSync = async () => {
                       "======================================================================================"
                     );
 
-                    if (!updateReponse) {
-                      console.log("실패 -- ", product.basic.url);
-                      console.log("실패 --- ", response.options);
-                    }
+                    // if (!updateReponse) {
+                    //   console.log("실패 -- ", product.basic.url);
+                    //   console.log("실패 --- ", response.options);
+                    // }
                     await sleep(2000);
                   }
                 }
