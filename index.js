@@ -2452,7 +2452,8 @@ app.post("/bdg/sellerPickorderList", async (req, res) => {
             item.배송비용 = number;
           }
 
-          item.purchaseAmount = item.purchaseAmount * item.exchange;
+          item.purchaseAmount =
+            item.purchaseAmount * item.purchaseCount * item.exchange;
           item.shippingFee = item.shippingFee * item.exchange;
 
           if (item.purchaseAmount % 100 > 0) {
