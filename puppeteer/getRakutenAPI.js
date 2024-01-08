@@ -33,6 +33,7 @@ const start = async ({ url, userID, keyword }) => {
       url,
       method: "GET",
       responseEncoding: "binary",
+      timeout: 20000,
     });
 
     const promiseArr = [
