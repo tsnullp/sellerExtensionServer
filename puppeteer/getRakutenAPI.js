@@ -69,7 +69,8 @@ const start = async ({ url, userID, keyword }) => {
               purchaseInfo.purchaseBySellType.normalPurchase.preTaxPrice;
           }
 
-          ObjItem.title = iconv.decode(title, "EUC-JP");
+          let tempTitles = iconv.decode(title, "EUC-JP").split("<br>");
+          ObjItem.title = tempTitles[tempTitles.length - 1];
           ObjItem.korTitle = await papagoTranslate(ObjItem.title, "auto", "ko");
           // console.log("korTItle---", ObjItem.korTitle);
           ObjItem.korTitle = ObjItem.korTitle
@@ -536,50 +537,50 @@ const start = async ({ url, userID, keyword }) => {
               ObjItem.weight = weight;
             }
 
-            const itemDesc = removeTagsAndConvertNewlines($item_desc);
+            // const itemDesc = removeTagsAndConvertNewlines($item_desc);
 
-            ObjItem.html += itemDesc;
+            // ObjItem.html += itemDesc;
           } catch (e) {}
 
-          let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
-            (item) => item.trim().length > 0
-          );
+          // let htmlTextArr = extractTextFromHTML(ObjItem.html).filter(
+          //   (item) => item.trim().length > 0
+          // );
 
-          let htmlKorObj = [];
-          const promiseArray = htmlTextArr.map((item) => {
-            return new Promise(async (resolve, reject) => {
-              try {
-                const korText = await papagoTranslate(item, "ja", "ko");
+          // let htmlKorObj = [];
+          // const promiseArray = htmlTextArr.map((item) => {
+          //   return new Promise(async (resolve, reject) => {
+          //     try {
+          //       const korText = await papagoTranslate(item, "ja", "ko");
 
-                htmlKorObj.push({
-                  key: item,
-                  value: korText,
-                });
+          //       htmlKorObj.push({
+          //         key: item,
+          //         value: korText,
+          //       });
 
-                resolve();
-              } catch (e) {
-                reject();
-              }
-            });
-          });
-          await Promise.all(promiseArray);
+          //       resolve();
+          //     } catch (e) {
+          //       reject();
+          //     }
+          //   });
+          // });
+          // await Promise.all(promiseArray);
 
-          htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
+          // htmlKorObj = htmlKorObj.sort((a, b) => b.key.length - a.key.length);
 
-          for (const item of htmlKorObj) {
-            const regex = new RegExp(
-              item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-              "g"
-            );
+          // for (const item of htmlKorObj) {
+          //   const regex = new RegExp(
+          //     item.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+          //     "g"
+          //   );
 
-            ObjItem.html = ObjItem.html.replace(regex, (match) => {
-              if (match.toLowerCase() === item.key.toLowerCase()) {
-                return item.value;
-              } else {
-                return match;
-              }
-            });
-          }
+          //   ObjItem.html = ObjItem.html.replace(regex, (match) => {
+          //     if (match.toLowerCase() === item.key.toLowerCase()) {
+          //       return item.value;
+          //     } else {
+          //       return match;
+          //     }
+          //   });
+          // }
 
           resolve();
         } catch (e) {
