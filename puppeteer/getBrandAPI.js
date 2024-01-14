@@ -4746,7 +4746,7 @@ const getSupersports = async ({ ObjItem, url }) => {
       .join(" ");
 
     ObjItem.mainImages = [productJson.imgUrl];
-    ObjItem.salePrice = productJson.price.taxInclusive + 500;
+    ObjItem.salePrice = productJson.price.taxInclusive;
 
     ObjItem.content = productJson.media.map((item) => item.imgUrl);
 
@@ -4943,7 +4943,7 @@ const getSupersports = async ({ ObjItem, url }) => {
           if (findOption.stock) {
             stock = findOption.stock;
           } else {
-            stock = productJson.stock;
+            // stock = productJson.stock;
           }
         }
         tempOptions.push({
@@ -4952,9 +4952,9 @@ const getSupersports = async ({ ObjItem, url }) => {
           value,
           korValue: value,
           price:
-            ObjItem.salePrice >= 3980
+            (ObjItem.salePrice >= 3980
               ? ObjItem.salePrice
-              : ObjItem.salePrice + 550,
+              : ObjItem.salePrice + 550) + 500,
           stock,
           weight: ObjItem.weight ? ObjItem.weight : 1,
           active: true,
