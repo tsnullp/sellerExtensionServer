@@ -70,6 +70,8 @@ const {
   NaverProductOrderDispatch,
 } = require("./api/Naver");
 
+const Qoo10 = require("./puppeteer/qoo10");
+
 const cron = require("node-cron");
 const _ = require("lodash");
 
@@ -217,6 +219,36 @@ app.post("/smartstore/cookie", async (req, res) => {
     });
   } catch (e) {
     console.log("/taobao/cookie", e);
+    res.json({
+      message: "fail",
+    });
+  }
+});
+
+app.post("/qoo10/cookie", async (req, res) => {
+  try {
+    const { cookie } = req.body;
+
+    await Cookie.findOneAndUpdate(
+      {
+        name: "qoo10",
+      },
+      {
+        $set: {
+          name: "qoo10",
+          cookie,
+          lastUpdate: moment().toDate(),
+        },
+      },
+      {
+        upsert: true,
+      }
+    );
+    res.json({
+      message: "success",
+    });
+  } catch (e) {
+    console.log("/qoo10/cookie", e);
     res.json({
       message: "fail",
     });
@@ -3865,207 +3897,209 @@ const BrandPriceSync = async () => {
                 }
 
                 if (changePrice || changeStock) {
-                  const minOption = _.minBy(
-                    product.options.filter((item) => item.salePrice > 0),
-                    "salePrice"
-                  );
-                  const maxOption = _.maxBy(
-                    product.options.filter((item) => item.salePrice > 0),
-                    "salePrice"
-                  );
+                  try {
+                    const minOption = _.minBy(
+                      product.options.filter((item) => item.salePrice > 0),
+                      "salePrice"
+                    );
+                    const maxOption = _.maxBy(
+                      product.options.filter((item) => item.salePrice > 0),
+                      "salePrice"
+                    );
 
-                  const salePrice =
-                    Math.ceil(
-                      (minOption.salePrice + maxOption.salePrice) * 0.7 * 0.1
-                    ) * 10; // 판매가
-                  const discountPrice = salePrice - minOption.salePrice; // 판매가 - 최저가
+                    const salePrice =
+                      Math.ceil(
+                        (minOption.salePrice + maxOption.salePrice) * 0.7 * 0.1
+                      ) * 10; // 판매가
+                    const discountPrice = salePrice - minOption.salePrice; // 판매가 - 최저가
 
-                  const optionValue = product.options.filter(
-                    (item) => item.active && !item.disabled
-                  );
+                    const optionValue = product.options.filter(
+                      (item) => item.active && !item.disabled
+                    );
 
-                  let optionCombinationGroupNames = {};
-                  let optionCombinations = [];
+                    let optionCombinationGroupNames = {};
+                    let optionCombinations = [];
 
-                  if (
-                    (!optionValue[0].korKey ||
-                      (optionValue[0].korKey &&
-                        optionValue[0].korKey.length === 0)) &&
-                    product.prop &&
-                    Array.isArray(product.prop) &&
-                    product.prop.length > 0 &&
-                    optionValue.length > 0 &&
-                    optionValue[0].propPath !== null
-                  ) {
-                    for (let i = 0; i < product.prop.length; i++) {
-                      optionCombinationGroupNames[`optionGroupName${i + 1}`] =
-                        product.prop[i].korTypeName;
-                    }
-                    for (const item of optionValue) {
-                      let combinationValue = {};
+                    if (
+                      (!optionValue[0].korKey ||
+                        (optionValue[0].korKey &&
+                          optionValue[0].korKey.length === 0)) &&
+                      product.prop &&
+                      Array.isArray(product.prop) &&
+                      product.prop.length > 0 &&
+                      optionValue.length > 0 &&
+                      optionValue[0].propPath !== null
+                    ) {
+                      for (let i = 0; i < product.prop.length; i++) {
+                        optionCombinationGroupNames[`optionGroupName${i + 1}`] =
+                          product.prop[i].korTypeName;
+                      }
+                      for (const item of optionValue) {
+                        let combinationValue = {};
 
-                      const propPathes = item.propPath
-                        .split(";")
-                        .filter((fItem) => fItem.trim().length > 0);
-                      for (let p = 0; p < propPathes.length; p++) {
-                        const propKeyArr = propPathes[p].split(":");
-                        if (propKeyArr.length === 2) {
-                          const propObj = _.find(product.prop, {
-                            pid: propKeyArr[0],
-                          });
-                          if (propObj) {
-                            const propValue = _.find(propObj.values, {
-                              vid: propKeyArr[1],
+                        const propPathes = item.propPath
+                          .split(";")
+                          .filter((fItem) => fItem.trim().length > 0);
+                        for (let p = 0; p < propPathes.length; p++) {
+                          const propKeyArr = propPathes[p].split(":");
+                          if (propKeyArr.length === 2) {
+                            const propObj = _.find(product.prop, {
+                              pid: propKeyArr[0],
                             });
-                            if (propValue) {
-                              combinationValue[`optionName${p + 1}`] =
-                                propValue.korValueName
+                            if (propObj) {
+                              const propValue = _.find(propObj.values, {
+                                vid: propKeyArr[1],
+                              });
+                              if (propValue) {
+                                combinationValue[`optionName${p + 1}`] =
+                                  propValue.korValueName
+                                    .replace(/\*/gi, "x")
+                                    .replace(/\?/gi, " ")
+                                    .replace(/\"/gi, " ")
+                                    .replace(/\</gi, " ")
+                                    .replace(/\>/gi, " ");
+                              }
+                            }
+                          }
+                        }
+                        if (Object.keys(combinationValue).length > 0) {
+                          combinationValue.stockQuantity = item.stock; //재고
+                          combinationValue.price =
+                            item.salePrice - minOption.salePrice;
+                          optionCombinations.push(combinationValue);
+                        }
+                      }
+                    } else {
+                      optionCombinationGroupNames.optionGroupName1 = "종류";
+                      optionCombinations = optionValue.map((item) => {
+                        return {
+                          optionName1:
+                            item.korKey && item.korKey.length > 0
+                              ? item.korKey
+                              : item.korValue
                                   .replace(/\*/gi, "x")
                                   .replace(/\?/gi, " ")
                                   .replace(/\"/gi, " ")
                                   .replace(/\</gi, " ")
-                                  .replace(/\>/gi, " ");
-                            }
-                          }
-                        }
-                      }
-                      if (Object.keys(combinationValue).length > 0) {
-                        combinationValue.stockQuantity = item.stock; //재고
-                        combinationValue.price =
-                          item.salePrice - minOption.salePrice;
-                        optionCombinations.push(combinationValue);
-                      }
-                    }
-                  } else {
-                    optionCombinationGroupNames.optionGroupName1 = "종류";
-                    optionCombinations = optionValue.map((item) => {
-                      return {
-                        optionName1:
-                          item.korKey && item.korKey.length > 0
-                            ? item.korKey
-                            : item.korValue
-                                .replace(/\*/gi, "x")
-                                .replace(/\?/gi, " ")
-                                .replace(/\"/gi, " ")
-                                .replace(/\</gi, " ")
-                                .replace(/\>/gi, " "),
-                        stockQuantity: item.stock,
-                        price: item.salePrice - minOption.salePrice,
-                      };
-                    });
-                  }
-
-                  // console.log(
-                  //   "optionCombinationGroupNames",
-                  //   optionCombinationGroupNames
-                  // );
-                  // console.log("optionCombinations", optionCombinations);
-
-                  const naverProduct = await NaverOriginProducts({
-                    userID: product.userID,
-                    originProductNo: product.product.naver.originProductNo,
-                  });
-
-                  if (naverProduct) {
-                    if (
-                      naverProduct.originProduct.detailAttribute
-                        .naverShoppingSearchInfo
-                    ) {
-                      let brand =
-                        naverProduct.originProduct.detailAttribute
-                          .naverShoppingSearchInfo.brandName;
-                      let modelName =
-                        naverProduct.originProduct.detailAttribute
-                          .naverShoppingSearchInfo.modelName;
-                      if (brand && modelName) {
-                        naverProduct.originProduct.detailAttribute.seoInfo.pageTitle = `${brand} ${modelName}`;
-                      } else if (brand) {
-                        naverProduct.originProduct.detailAttribute.seoInfo.pageTitle =
-                          brand;
-                      }
+                                  .replace(/\>/gi, " "),
+                          stockQuantity: item.stock,
+                          price: item.salePrice - minOption.salePrice,
+                        };
+                      });
                     }
 
-                    delete naverProduct.originProduct.detailContent;
-                    naverProduct.originProduct.statusType = "SALE";
-                    naverProduct.originProduct.salePrice = salePrice;
-                    naverProduct.originProduct.stockQuantity =
-                      optionValue[0].stock;
-                    naverProduct.originProduct.detailAttribute.optionInfo = {
-                      optionCombinationSortType: "CREATE",
-                      optionCombinationGroupNames,
-                      optionCombinations,
-                    };
-                    naverProduct.originProduct.customerBenefit = {
-                      immediateDiscountPolicy: {
-                        discountMethod: {
-                          value: discountPrice,
-                          unitType: "WON",
-                        },
-                        mobileDiscountMethod: {
-                          value: discountPrice,
-                          unitType: "WON",
-                        },
-                      },
-                    };
+                    // console.log(
+                    //   "optionCombinationGroupNames",
+                    //   optionCombinationGroupNames
+                    // );
+                    // console.log("optionCombinations", optionCombinations);
 
-                    naverProduct.originProduct.detailAttribute.seoInfo.sellerTags =
-                      naverProduct.originProduct.detailAttribute.seoInfo.sellerTags.filter(
-                        (item) => {
-                          if (prohibit.includes(item.text)) {
-                            return false;
-                          }
-                          return true;
-                        }
-                      );
-                    // console.log("naverProduct", naverProduct.originProduct);
-
-                    const updateReponse = await NaverModifyOption({
+                    const naverProduct = await NaverOriginProducts({
                       userID: product.userID,
                       originProductNo: product.product.naver.originProductNo,
-                      product: naverProduct,
                     });
 
-                    if (
-                      updateReponse &&
-                      updateReponse.originProductNo &&
-                      updateReponse.originProductNo.toString() ===
-                        product.product.naver.originProductNo
-                    ) {
-                      try {
-                        await Product.findOneAndUpdate(
-                          {
-                            _id: product._id,
+                    if (naverProduct) {
+                      if (
+                        naverProduct.originProduct.detailAttribute
+                          .naverShoppingSearchInfo
+                      ) {
+                        let brand =
+                          naverProduct.originProduct.detailAttribute
+                            .naverShoppingSearchInfo.brandName;
+                        let modelName =
+                          naverProduct.originProduct.detailAttribute
+                            .naverShoppingSearchInfo.modelName;
+                        if (brand && modelName) {
+                          naverProduct.originProduct.detailAttribute.seoInfo.pageTitle = `${brand} ${modelName}`;
+                        } else if (brand) {
+                          naverProduct.originProduct.detailAttribute.seoInfo.pageTitle =
+                            brand;
+                        }
+                      }
+
+                      delete naverProduct.originProduct.detailContent;
+                      naverProduct.originProduct.statusType = "SALE";
+                      naverProduct.originProduct.salePrice = salePrice;
+                      naverProduct.originProduct.stockQuantity =
+                        optionValue[0].stock;
+                      naverProduct.originProduct.detailAttribute.optionInfo = {
+                        optionCombinationSortType: "CREATE",
+                        optionCombinationGroupNames,
+                        optionCombinations,
+                      };
+                      naverProduct.originProduct.customerBenefit = {
+                        immediateDiscountPolicy: {
+                          discountMethod: {
+                            value: discountPrice,
+                            unitType: "WON",
                           },
-                          {
-                            $set: {
-                              options: product.options,
-                            },
+                          mobileDiscountMethod: {
+                            value: discountPrice,
+                            unitType: "WON",
+                          },
+                        },
+                      };
+
+                      naverProduct.originProduct.detailAttribute.seoInfo.sellerTags =
+                        naverProduct.originProduct.detailAttribute.seoInfo.sellerTags.filter(
+                          (item) => {
+                            if (prohibit.includes(item.text)) {
+                              return false;
+                            }
+                            return true;
                           }
                         );
-                      } catch (e) {
-                        console.log("url ", product.basic.url);
-                        console.log("디비저장 1 ", e);
+                      // console.log("naverProduct", naverProduct.originProduct);
+
+                      const updateReponse = await NaverModifyOption({
+                        userID: product.userID,
+                        originProductNo: product.product.naver.originProductNo,
+                        product: naverProduct,
+                      });
+
+                      if (
+                        updateReponse &&
+                        updateReponse.originProductNo &&
+                        updateReponse.originProductNo.toString() ===
+                          product.product.naver.originProductNo
+                      ) {
+                        try {
+                          await Product.findOneAndUpdate(
+                            {
+                              _id: product._id,
+                            },
+                            {
+                              $set: {
+                                options: product.options,
+                              },
+                            }
+                          );
+                        } catch (e) {
+                          console.log("url ", product.basic.url);
+                          console.log("디비저장 1 ", e);
+                        }
                       }
-                    }
 
-                    console.log("product 상품명 ", product.product.korTitle);
-                    if (changePrice) {
-                      console.log("가격 변동");
-                    }
-                    if (changeStock) {
-                      console.log("재고 변동");
-                    }
-                    console.log("updateReponse", updateReponse);
-                    console.log(
-                      "======================================================================================"
-                    );
+                      console.log("product 상품명 ", product.product.korTitle);
+                      if (changePrice) {
+                        console.log("가격 변동");
+                      }
+                      if (changeStock) {
+                        console.log("재고 변동");
+                      }
+                      console.log("updateReponse", updateReponse);
+                      console.log(
+                        "======================================================================================"
+                      );
 
-                    if (!updateReponse) {
-                      console.log("실패 -- ", product.basic.url);
-                      console.log("실패 --- ", response.options);
+                      if (!updateReponse) {
+                        console.log("실패 -- ", product.basic.url);
+                        console.log("실패 --- ", response.options);
+                      }
+                      await sleep(2000);
                     }
-                    await sleep(2000);
-                  }
+                  } catch (e) {}
                 }
               } else {
                 if (
@@ -4424,9 +4458,19 @@ const getPermutations = function (arr, selectNumber) {
   return results; // 결과 담긴 results return
 };
 
+const Qoo10Sync = async () => {
+  const SyncFun = async () => {
+    while (true) {
+      await Qoo10();
+    }
+  };
+  SyncFun();
+};
+
 RakutenPriceSync();
 UniqlodPriceSync();
 BrandPriceSync();
+Qoo10();
 
 const getVVICItems = async () => {
   try {

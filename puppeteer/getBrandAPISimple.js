@@ -2934,7 +2934,7 @@ const getSupersports = async ({ ObjItem, url }) => {
     ObjItem.prop = tempProp;
     ObjItem.options = tempOptions;
   } catch (e) {
-    console.log("getSupersports - ", e);
+    console.log("getSupersports - ", e, url);
   }
 };
 
