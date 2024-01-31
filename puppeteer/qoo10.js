@@ -271,6 +271,7 @@ const getStoreInfo = async () => {
     }).sort({
       _id: -1,
     });
+    console.log("stores", stores.length);
     let ii = 1;
     for (const store of stores) {
       try {
@@ -323,7 +324,7 @@ const getStoreInfo = async () => {
         let sell_cust_no = $("#sell_coupon_cust_no").attr("value");
         console.log("sell_cust_no", sell_cust_no);
         if (!sell_cust_no) {
-          break;
+          continue;
         }
         await Qoo10Store.findOneAndUpdate(
           {
