@@ -87,9 +87,9 @@ const start = async () => {
       }
     }
   };
-  // SyncFun();
+  SyncFun();
   // await searchCategoryList();
-  await getStoreInfo();
+  // await getStoreInfo();
 };
 
 const searchCategoryList = async () => {
@@ -268,9 +268,10 @@ const getStoreInfo = async () => {
       // {
       //   $ne: true,
       // },
-    }).sort({
-      _id: -1,
     });
+    // .sort({
+    //   _id: -1,
+    // });
     console.log("stores", stores.length);
     let ii = 1;
     for (const store of stores) {
