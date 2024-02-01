@@ -90,8 +90,41 @@ const start = async () => {
   SyncFun();
   // await searchCategoryList();
   // await getStoreInfo();
+  await productImages();
 };
 
+const productImages = async () => {
+  try {
+    const products = await Qoo10Product.find();
+
+    for (const product of products) {
+      const content = await axios({
+        method: "GET",
+        url: `${product.detailUrl}`,
+      });
+
+      const $ = cheerio.load(content.data);
+
+      let image = $("#GoodsImage").attr("content");
+
+      // console.log("image-- ", image);
+
+      await Qoo10Product.findOneAndUpdate(
+        {
+          _id: product._id,
+        },
+        {
+          $set: {
+            thumb: image,
+          },
+        }
+      );
+      await sleep(1000);
+    }
+  } catch (e) {
+    console.log("productImages", e);
+  }
+};
 const searchCategoryList = async () => {
   let categoryes = [
     "120000012/220000159",
