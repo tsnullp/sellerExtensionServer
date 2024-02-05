@@ -1,6 +1,6 @@
 const axios = require("axios");
 const Cookie = require("../models/Cookie");
-const { sleep } = require("../lib/userFunc");
+const { sleep, getSbth } = require("../lib/userFunc");
 const cheerio = require("cheerio");
 const Qoo10Keyword = require("../models/Qoo10Keyword");
 const Qoo10Brand = require("../models/Qoo10Brand");
@@ -87,12 +87,198 @@ const start = async () => {
       }
     }
   };
-  SyncFun();
+  // SyncFun();
   // await searchCategoryList();
   // await getStoreInfo();
-  await productImages();
+  // await productImages();
+  await shoppingLeng();
 };
 
+const shoppingLeng = async () => {
+  try {
+    const products = await Qoo10Product.find().sort({ sold: -1 });
+
+    for (const product of products) {
+      const content = await axios.get(
+        `https://msearch.shopping.naver.com/search/image?iu=${encodeURI(
+          product.thumb
+        )}`,
+        {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Linux; Android 8.0.0; SM-G955U Build/R16NW) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Mobile Safari/537.36",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "cors",
+            "Accept-Encoding": "gzip, deflate, br",
+            Connection: "keep-alive",
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            Expires: "0",
+            referer: `https://msearch.shopping.naver.com/search/image`,
+          },
+        }
+      );
+      const data = content.data
+        .split(`<script id="__NEXT_DATA__" type="application/json">`)[1]
+        .split(`</script></body></html>`)[0];
+      const jsonObj = JSON.parse(data.replace(/\\"/), `"`);
+      // console.log("jsonObj", jsonObj)
+      const initialState = JSON.parse(
+        jsonObj.props.pageProps.initialState.replace("undefined", `"undefined`)
+      );
+      // console.log("initialState", initialState.imageSearch.searchResult);
+      await sleep(1000);
+      const id = initialState.imageSearch.searchResult.id;
+      const contentCrop = await axios.get(
+        `https://msearch.shopping.naver.com/api/search/image/crop?from=shoppinglensurl&height=${initialState.imageSearch.searchResult.size.h}&id=${id}&width=${initialState.imageSearch.searchResult.size.w}&x=9&y=18`,
+        {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Linux; Android 8.0.0; SM-G955U Build/R16NW) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Mobile Safari/537.36",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "cors",
+            "Accept-Encoding": "gzip, deflate, br",
+            Connection: "keep-alive",
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            Expires: "0",
+            referer: `https://msearch.shopping.naver.com/search/image`,
+            sbth: getSbth(),
+          },
+        }
+      );
+
+      if (
+        contentCrop.data.searchResponse &&
+        contentCrop.data.searchResponse.similarImages &&
+        Array.isArray(contentCrop.data.searchResponse.similarImages)
+      ) {
+        // const products = contentCrop.data.searchResponse.similarImages
+        //   .filter((item) => item.score >= 0.94)
+        //   .map((item) =>
+        //     item.productTitle.split("{")[0].replace(/,/, "").trim()
+        //   );
+
+        if (
+          contentCrop.data.searchResponse.card &&
+          contentCrop.data.searchResponse.card.entryName
+        ) {
+          // console.log("카드 -- ", contentCrop.data.searchResponse.card.shoppingItem);
+          let deliverFee = product.deliverFee;
+          let price = 0;
+          if (product.dcPrice) {
+            price = product.dcPrice;
+          } else {
+            price = product.price;
+          }
+          let janpanPrice = Math.ceil((price + deliverFee) * 9.02);
+
+          const {
+            title,
+            lowPrice,
+            deliveryFeeContent,
+            src,
+            link,
+            brand,
+            imgSgnt,
+          } = contentCrop.data.searchResponse.card.shoppingItem;
+          console.log("*** CARD ****");
+          console.log("brand ", brand);
+          console.log("title ", title);
+          console.log("일본 판매가 ", janpanPrice);
+          console.log("일본 주소 ", product.detailUrl);
+          console.log("lowPrice ", lowPrice);
+          console.log("deliveryFeeContent ", deliveryFeeContent);
+          console.log(
+            "차액 --> ",
+            janpanPrice - Number(lowPrice) + Number(deliveryFeeContent)
+          );
+          console.log("src ", src);
+          console.log("link ", link);
+          console.log("imgSgnt ", imgSgnt);
+          await Qoo10Product.findOneAndUpdate(
+            {
+              _id: product._id,
+            },
+            {
+              $set: {
+                korBrand: brand,
+                korTitle: title,
+                korPrice: Number(lowPrice),
+                korDeliveryFee: Number(deliveryFeeContent),
+                difference:
+                  janpanPrice - Number(lowPrice) + Number(deliveryFeeContent),
+                korSrc: src,
+                korLink: link,
+                korImgSgng: imgSgnt,
+              },
+            }
+          );
+          // searchKeyword.push(
+          //   ...contentCrop.data.searchResponse.card.entryName.split(" ")
+          // );
+        } else {
+          const {
+            title,
+            lowPrice,
+            deliveryFeeContent,
+            src,
+            link,
+            brand,
+            imgSgnt,
+          } = contentCrop.data.searchResponse.similarImages[0];
+          console.log("*** similarImages ****");
+          let deliverFee = product.deliverFee;
+          let price = 0;
+          if (product.dcPrice) {
+            price = product.dcPrice;
+          } else {
+            price = product.price;
+          }
+          let janpanPrice = Math.ceil((price + deliverFee) * 9.02);
+          console.log("brand ", brand);
+          console.log("title ", title);
+          console.log("일본 판매가 ", janpanPrice);
+          console.log("일본 주소 ", product.detailUrl);
+          console.log("lowPrice ", lowPrice);
+          console.log("deliveryFeeContent ", deliveryFeeContent);
+          console.log(
+            "차액 --> ",
+            janpanPrice - Number(lowPrice) + Number(deliveryFeeContent)
+          );
+          console.log("src ", src);
+          console.log("link ", link);
+          console.log("imgSgnt ", imgSgnt);
+
+          await Qoo10Product.findOneAndUpdate(
+            {
+              _id: product._id,
+            },
+            {
+              $set: {
+                korBrand: brand,
+                korTitle: title,
+                korPrice: Number(lowPrice),
+                korDeliveryFee: Number(deliveryFeeContent),
+                difference:
+                  janpanPrice - Number(lowPrice) + Number(deliveryFeeContent),
+                korSrc: src,
+                korLink: link,
+                korImgSgng: imgSgnt,
+              },
+            }
+          );
+        }
+      } else {
+        console.log("contentCrop.data", contentCrop.data);
+      }
+
+      await sleep(1000);
+    }
+  } catch (e) {
+    console.log("shoppoingLeng", e);
+  }
+};
 const productImages = async () => {
   try {
     const products = await Qoo10Product.find();
@@ -444,7 +630,7 @@ const getStoreInfo = async () => {
             console.log("sold", sold);
             console.log("review", review);
             if (sold > 0 || review > 0) {
-              let image = detail$("#GoodsImage").attr("src");
+              let image = detail$("#GoodsImage").attr("content");
               console.log("image", image);
               let brand = detail$(".text_title > a").text();
               let title = detail$(".text_title")
@@ -498,7 +684,7 @@ const getStoreInfo = async () => {
                   $set: {
                     storeName: store.storeName,
                     detailUrl: href,
-                    // thumb: image,
+                    thumb: image,
                     brand,
                     title,
                     sold,
