@@ -87,11 +87,11 @@ const start = async () => {
       }
     }
   };
-  // SyncFun();
+  SyncFun();
   // await searchCategoryList();
   // await getStoreInfo();
-  // await productImages();
-  await shoppingLeng();
+  productImages();
+  shoppingLeng();
 };
 
 const shoppingLeng = async () => {
@@ -210,7 +210,8 @@ const shoppingLeng = async () => {
                   janpanPrice - Number(lowPrice) + Number(deliveryFeeContent),
                 korSrc: src,
                 korLink: link,
-                korImgSgng: imgSgnt,
+                korImgSgnt: imgSgnt,
+                lengID: id,
               },
             }
           );
@@ -264,7 +265,8 @@ const shoppingLeng = async () => {
                   janpanPrice - Number(lowPrice) + Number(deliveryFeeContent),
                 korSrc: src,
                 korLink: link,
-                korImgSgng: imgSgnt,
+                korImgSgnt: imgSgnt,
+                lengID: id,
               },
             }
           );
@@ -292,8 +294,12 @@ const productImages = async () => {
       const $ = cheerio.load(content.data);
 
       let image = $("#GoodsImage").attr("content");
-
+      let group_code = $("#group_code").attr("value");
+      let gdlc_cd = $("#gdlc_cd").attr("value");
+      let gdmc_cd = $("#gdmc_cd").attr("value");
+      let gdsc_cd = $("#gdsc_cd").attr("value");
       // console.log("image-- ", image);
+      console.log("group_code-- ", group_code, gdlc_cd, gdmc_cd, gdsc_cd);
 
       await Qoo10Product.findOneAndUpdate(
         {
@@ -302,11 +308,16 @@ const productImages = async () => {
         {
           $set: {
             thumb: image,
+            group_code,
+            gdlc_cd,
+            gdmc_cd,
+            gdsc_cd,
           },
         }
       );
       await sleep(1000);
     }
+    console.log("*************** 끝 *************");
   } catch (e) {
     console.log("productImages", e);
   }

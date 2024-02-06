@@ -6,6 +6,11 @@ const Qoo10Productschema = mongoose.Schema({
   thumb: String,
   brand: String,
   title: String,
+  group_code: String,
+  gdlc_cd: String,
+  gdmc_cd: String,
+  gdsc_cd: String,
+  // category: String,
   sold: Number,
   review: Number,
   deliverFee: Number,
@@ -19,6 +24,7 @@ const Qoo10Productschema = mongoose.Schema({
   korLink: String,
   korImgSgnt: String,
   difference: Number,
+  lengID: String,
 });
 
 module.exports = mongoose.model("Qoo10Product", Qoo10Productschema);
