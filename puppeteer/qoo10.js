@@ -187,12 +187,25 @@ const shoppingLeng = async () => {
           console.log("title ", title);
           console.log("일본 판매가 ", janpanPrice);
           console.log("일본 주소 ", product.detailUrl);
-          console.log("lowPrice ", lowPrice);
-          console.log("deliveryFeeContent ", deliveryFeeContent);
+          console.log("lowPrice ", lowPrice, Number(lowPrice));
+          console.log(
+            "deliveryFeeContent ",
+            deliveryFeeContent,
+            Number(deliveryFeeContent)
+          );
+
           console.log(
             "차액 --> ",
-            janpanPrice - Number(lowPrice) + Number(deliveryFeeContent)
+            janpanPrice - (Number(lowPrice) + Number(deliveryFeeContent))
           );
+
+          let 정산금액 = janpanPrice - janpanPrice * 0.1 - 5000;
+          let 마진 = 정산금액 - (Number(lowPrice) + Number(deliveryFeeContent));
+          let 마진율 = (마진 / 정산금액) * 100;
+          console.log("정산금액", 정산금액);
+          console.log("마진", 마진);
+          console.log("마진율", 마진율);
+
           console.log("src ", src);
           console.log("link ", link);
           console.log("imgSgnt ", imgSgnt);
@@ -207,7 +220,10 @@ const shoppingLeng = async () => {
                 korPrice: Number(lowPrice),
                 korDeliveryFee: Number(deliveryFeeContent),
                 difference:
-                  janpanPrice - Number(lowPrice) + Number(deliveryFeeContent),
+                  janpanPrice - (Number(lowPrice) + Number(deliveryFeeContent)),
+                amountPrice: 정산금액,
+                margin: 마진,
+                marginRate: 마진율,
                 korSrc: src,
                 korLink: link,
                 korImgSgnt: imgSgnt,
@@ -245,8 +261,14 @@ const shoppingLeng = async () => {
           console.log("deliveryFeeContent ", deliveryFeeContent);
           console.log(
             "차액 --> ",
-            janpanPrice - Number(lowPrice) + Number(deliveryFeeContent)
+            janpanPrice - (Number(lowPrice) + Number(deliveryFeeContent))
           );
+          let 정산금액 = janpanPrice - janpanPrice * 0.1 - 5000;
+          let 마진 = 정산금액 - (Number(lowPrice) + Number(deliveryFeeContent));
+          let 마진율 = (마진 / 정산금액) * 100;
+          console.log("정산금액", 정산금액);
+          console.log("마진", 마진);
+          console.log("마진율", 마진율);
           console.log("src ", src);
           console.log("link ", link);
           console.log("imgSgnt ", imgSgnt);
@@ -262,7 +284,10 @@ const shoppingLeng = async () => {
                 korPrice: Number(lowPrice),
                 korDeliveryFee: Number(deliveryFeeContent),
                 difference:
-                  janpanPrice - Number(lowPrice) + Number(deliveryFeeContent),
+                  janpanPrice - (Number(lowPrice) + Number(deliveryFeeContent)),
+                amountPrice: 정산금액,
+                margin: 마진,
+                marginRate: 마진율,
                 korSrc: src,
                 korLink: link,
                 korImgSgnt: imgSgnt,
