@@ -96,208 +96,221 @@ const start = async () => {
 
 const shoppingLeng = async () => {
   try {
-    const products = await Qoo10Product.find().sort({ sold: -1 });
+    const products = await Qoo10Product.find({
+      marginRate: null,
+    }).sort({ sold: 1 });
 
     for (const product of products) {
-      const content = await axios.get(
-        `https://msearch.shopping.naver.com/search/image?iu=${encodeURI(
-          product.thumb
-        )}`,
-        {
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Linux; Android 8.0.0; SM-G955U Build/R16NW) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Mobile Safari/537.36",
-            "sec-fetch-site": "same-origin",
-            "sec-fetch-mode": "cors",
-            "Accept-Encoding": "gzip, deflate, br",
-            Connection: "keep-alive",
-            "Cache-Control": "no-cache",
-            Pragma: "no-cache",
-            Expires: "0",
-            referer: `https://msearch.shopping.naver.com/search/image`,
-          },
-        }
-      );
-      const data = content.data
-        .split(`<script id="__NEXT_DATA__" type="application/json">`)[1]
-        .split(`</script></body></html>`)[0];
-      const jsonObj = JSON.parse(data.replace(/\\"/), `"`);
-      // console.log("jsonObj", jsonObj)
-      const initialState = JSON.parse(
-        jsonObj.props.pageProps.initialState.replace("undefined", `"undefined`)
-      );
-      // console.log("initialState", initialState.imageSearch.searchResult);
-      await sleep(1000);
-      const id = initialState.imageSearch.searchResult.id;
-      const contentCrop = await axios.get(
-        `https://msearch.shopping.naver.com/api/search/image/crop?from=shoppinglensurl&height=${initialState.imageSearch.searchResult.size.h}&id=${id}&width=${initialState.imageSearch.searchResult.size.w}&x=9&y=18`,
-        {
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Linux; Android 8.0.0; SM-G955U Build/R16NW) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Mobile Safari/537.36",
-            "sec-fetch-site": "same-origin",
-            "sec-fetch-mode": "cors",
-            "Accept-Encoding": "gzip, deflate, br",
-            Connection: "keep-alive",
-            "Cache-Control": "no-cache",
-            Pragma: "no-cache",
-            Expires: "0",
-            referer: `https://msearch.shopping.naver.com/search/image`,
-            sbth: getSbth(),
-          },
-        }
-      );
-
-      if (
-        contentCrop.data.searchResponse &&
-        contentCrop.data.searchResponse.similarImages &&
-        Array.isArray(contentCrop.data.searchResponse.similarImages)
-      ) {
-        // const products = contentCrop.data.searchResponse.similarImages
-        //   .filter((item) => item.score >= 0.94)
-        //   .map((item) =>
-        //     item.productTitle.split("{")[0].replace(/,/, "").trim()
-        //   );
+      try {
+        const content = await axios.get(
+          `https://msearch.shopping.naver.com/search/image?iu=${encodeURI(
+            product.thumb
+          )}`,
+          {
+            headers: {
+              "User-Agent":
+                "Mozilla/5.0 (Linux; Android 8.0.0; SM-G955U Build/R16NW) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Mobile Safari/537.36",
+              "sec-fetch-site": "same-origin",
+              "sec-fetch-mode": "cors",
+              "Accept-Encoding": "gzip, deflate, br",
+              Connection: "keep-alive",
+              "Cache-Control": "no-cache",
+              Pragma: "no-cache",
+              Expires: "0",
+              referer: `https://msearch.shopping.naver.com/search/image`,
+            },
+          }
+        );
+        const data = content.data
+          .split(`<script id="__NEXT_DATA__" type="application/json">`)[1]
+          .split(`</script></body></html>`)[0];
+        const jsonObj = JSON.parse(data.replace(/\\"/), `"`);
+        // console.log("jsonObj", jsonObj)
+        const initialState = JSON.parse(
+          jsonObj.props.pageProps.initialState.replace(
+            "undefined",
+            `"undefined`
+          )
+        );
+        // console.log("initialState", initialState.imageSearch.searchResult);
+        await sleep(1000);
+        const id = initialState.imageSearch.searchResult.id;
+        const contentCrop = await axios.get(
+          `https://msearch.shopping.naver.com/api/search/image/crop?from=shoppinglensurl&height=${initialState.imageSearch.searchResult.size.h}&id=${id}&width=${initialState.imageSearch.searchResult.size.w}&x=9&y=18`,
+          {
+            headers: {
+              "User-Agent":
+                "Mozilla/5.0 (Linux; Android 8.0.0; SM-G955U Build/R16NW) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Mobile Safari/537.36",
+              "sec-fetch-site": "same-origin",
+              "sec-fetch-mode": "cors",
+              "Accept-Encoding": "gzip, deflate, br",
+              Connection: "keep-alive",
+              "Cache-Control": "no-cache",
+              Pragma: "no-cache",
+              Expires: "0",
+              referer: `https://msearch.shopping.naver.com/search/image`,
+              sbth: getSbth(),
+            },
+          }
+        );
 
         if (
-          contentCrop.data.searchResponse.card &&
-          contentCrop.data.searchResponse.card.entryName
+          contentCrop.data.searchResponse &&
+          contentCrop.data.searchResponse.similarImages &&
+          Array.isArray(contentCrop.data.searchResponse.similarImages)
         ) {
-          // console.log("카드 -- ", contentCrop.data.searchResponse.card.shoppingItem);
-          let deliverFee = product.deliverFee;
-          let price = 0;
-          if (product.dcPrice) {
-            price = product.dcPrice;
-          } else {
-            price = product.price;
-          }
-          let janpanPrice = Math.ceil((price + deliverFee) * 9.02);
+          // const products = contentCrop.data.searchResponse.similarImages
+          //   .filter((item) => item.score >= 0.94)
+          //   .map((item) =>
+          //     item.productTitle.split("{")[0].replace(/,/, "").trim()
+          //   );
 
-          const {
-            title,
-            lowPrice,
-            deliveryFeeContent,
-            src,
-            link,
-            brand,
-            imgSgnt,
-          } = contentCrop.data.searchResponse.card.shoppingItem;
-          console.log("*** CARD ****");
-          console.log("brand ", brand);
-          console.log("title ", title);
-          console.log("일본 판매가 ", janpanPrice);
-          console.log("일본 주소 ", product.detailUrl);
-          console.log("lowPrice ", lowPrice, Number(lowPrice));
-          console.log(
-            "deliveryFeeContent ",
-            deliveryFeeContent,
-            Number(deliveryFeeContent)
-          );
-
-          console.log(
-            "차액 --> ",
-            janpanPrice - (Number(lowPrice) + Number(deliveryFeeContent))
-          );
-
-          let 정산금액 = janpanPrice - janpanPrice * 0.1 - 5000;
-          let 마진 = 정산금액 - (Number(lowPrice) + Number(deliveryFeeContent));
-          let 마진율 = (마진 / 정산금액) * 100;
-          console.log("정산금액", 정산금액);
-          console.log("마진", 마진);
-          console.log("마진율", 마진율);
-
-          console.log("src ", src);
-          console.log("link ", link);
-          console.log("imgSgnt ", imgSgnt);
-          await Qoo10Product.findOneAndUpdate(
-            {
-              _id: product._id,
-            },
-            {
-              $set: {
-                korBrand: brand,
-                korTitle: title,
-                korPrice: Number(lowPrice),
-                korDeliveryFee: Number(deliveryFeeContent),
-                difference:
-                  janpanPrice - (Number(lowPrice) + Number(deliveryFeeContent)),
-                amountPrice: 정산금액,
-                margin: 마진,
-                marginRate: 마진율,
-                korSrc: src,
-                korLink: link,
-                korImgSgnt: imgSgnt,
-                lengID: id,
-              },
+          if (
+            contentCrop.data.searchResponse.card &&
+            contentCrop.data.searchResponse.card.entryName
+          ) {
+            // console.log("카드 -- ", contentCrop.data.searchResponse.card.shoppingItem);
+            let deliverFee = product.deliverFee;
+            let price = 0;
+            if (product.dcPrice) {
+              price = product.dcPrice;
+            } else {
+              price = product.price;
             }
-          );
-          // searchKeyword.push(
-          //   ...contentCrop.data.searchResponse.card.entryName.split(" ")
-          // );
+            let janpanPrice = Math.ceil((price + deliverFee) * 9.02);
+
+            const {
+              title,
+              lowPrice,
+              deliveryFeeContent,
+              src,
+              link,
+              brand,
+              imgSgnt,
+            } = contentCrop.data.searchResponse.card.shoppingItem;
+            console.log("*** CARD ****");
+            console.log("brand ", brand);
+            console.log("title ", title);
+            console.log("일본 판매가 ", janpanPrice);
+            console.log("일본 주소 ", product.detailUrl);
+            console.log("lowPrice ", lowPrice, Number(lowPrice));
+            console.log(
+              "deliveryFeeContent ",
+              deliveryFeeContent,
+              Number(deliveryFeeContent)
+            );
+
+            console.log(
+              "차액 --> ",
+              janpanPrice - (Number(lowPrice) + Number(deliveryFeeContent))
+            );
+
+            let 정산금액 = janpanPrice - janpanPrice * 0.1 - 5000;
+            let 마진 =
+              정산금액 - (Number(lowPrice) + Number(deliveryFeeContent));
+            let 마진율 = (마진 / 정산금액) * 100;
+            console.log("정산금액", 정산금액);
+            console.log("마진", 마진);
+            console.log("마진율", 마진율);
+
+            console.log("src ", src);
+            console.log("link ", link);
+            console.log("imgSgnt ", imgSgnt);
+            await Qoo10Product.findOneAndUpdate(
+              {
+                _id: product._id,
+              },
+              {
+                $set: {
+                  korBrand: brand,
+                  korTitle: title,
+                  korPrice: Number(lowPrice),
+                  korDeliveryFee: Number(deliveryFeeContent),
+                  difference:
+                    janpanPrice -
+                    (Number(lowPrice) + Number(deliveryFeeContent)),
+                  amountPrice: 정산금액,
+                  margin: 마진,
+                  marginRate: 마진율,
+                  korSrc: src,
+                  korLink: link,
+                  korImgSgnt: imgSgnt,
+                  lengID: id,
+                },
+              }
+            );
+            // searchKeyword.push(
+            //   ...contentCrop.data.searchResponse.card.entryName.split(" ")
+            // );
+          } else {
+            const {
+              title,
+              lowPrice,
+              deliveryFeeContent,
+              src,
+              link,
+              brand,
+              imgSgnt,
+            } = contentCrop.data.searchResponse.similarImages[0];
+            console.log("*** similarImages ****");
+            let deliverFee = product.deliverFee;
+            let price = 0;
+            if (product.dcPrice) {
+              price = product.dcPrice;
+            } else {
+              price = product.price;
+            }
+            let janpanPrice = Math.ceil((price + deliverFee) * 9.02);
+            console.log("brand ", brand);
+            console.log("title ", title);
+            console.log("일본 판매가 ", janpanPrice);
+            console.log("일본 주소 ", product.detailUrl);
+            console.log("lowPrice ", lowPrice);
+            console.log("deliveryFeeContent ", deliveryFeeContent);
+            console.log(
+              "차액 --> ",
+              janpanPrice - (Number(lowPrice) + Number(deliveryFeeContent))
+            );
+            let 정산금액 = janpanPrice - janpanPrice * 0.1 - 5000;
+            let 마진 =
+              정산금액 - (Number(lowPrice) + Number(deliveryFeeContent));
+            let 마진율 = (마진 / 정산금액) * 100;
+            console.log("정산금액", 정산금액);
+            console.log("마진", 마진);
+            console.log("마진율", 마진율);
+            console.log("src ", src);
+            console.log("link ", link);
+            console.log("imgSgnt ", imgSgnt);
+
+            await Qoo10Product.findOneAndUpdate(
+              {
+                _id: product._id,
+              },
+              {
+                $set: {
+                  korBrand: brand,
+                  korTitle: title,
+                  korPrice: Number(lowPrice),
+                  korDeliveryFee: Number(deliveryFeeContent),
+                  difference:
+                    janpanPrice -
+                    (Number(lowPrice) + Number(deliveryFeeContent)),
+                  amountPrice: 정산금액,
+                  margin: 마진,
+                  marginRate: 마진율,
+                  korSrc: src,
+                  korLink: link,
+                  korImgSgnt: imgSgnt,
+                  lengID: id,
+                },
+              }
+            );
+          }
         } else {
-          const {
-            title,
-            lowPrice,
-            deliveryFeeContent,
-            src,
-            link,
-            brand,
-            imgSgnt,
-          } = contentCrop.data.searchResponse.similarImages[0];
-          console.log("*** similarImages ****");
-          let deliverFee = product.deliverFee;
-          let price = 0;
-          if (product.dcPrice) {
-            price = product.dcPrice;
-          } else {
-            price = product.price;
-          }
-          let janpanPrice = Math.ceil((price + deliverFee) * 9.02);
-          console.log("brand ", brand);
-          console.log("title ", title);
-          console.log("일본 판매가 ", janpanPrice);
-          console.log("일본 주소 ", product.detailUrl);
-          console.log("lowPrice ", lowPrice);
-          console.log("deliveryFeeContent ", deliveryFeeContent);
-          console.log(
-            "차액 --> ",
-            janpanPrice - (Number(lowPrice) + Number(deliveryFeeContent))
-          );
-          let 정산금액 = janpanPrice - janpanPrice * 0.1 - 5000;
-          let 마진 = 정산금액 - (Number(lowPrice) + Number(deliveryFeeContent));
-          let 마진율 = (마진 / 정산금액) * 100;
-          console.log("정산금액", 정산금액);
-          console.log("마진", 마진);
-          console.log("마진율", 마진율);
-          console.log("src ", src);
-          console.log("link ", link);
-          console.log("imgSgnt ", imgSgnt);
-
-          await Qoo10Product.findOneAndUpdate(
-            {
-              _id: product._id,
-            },
-            {
-              $set: {
-                korBrand: brand,
-                korTitle: title,
-                korPrice: Number(lowPrice),
-                korDeliveryFee: Number(deliveryFeeContent),
-                difference:
-                  janpanPrice - (Number(lowPrice) + Number(deliveryFeeContent)),
-                amountPrice: 정산금액,
-                margin: 마진,
-                marginRate: 마진율,
-                korSrc: src,
-                korLink: link,
-                korImgSgnt: imgSgnt,
-                lengID: id,
-              },
-            }
-          );
+          console.log("contentCrop.data", contentCrop.data);
         }
-      } else {
-        console.log("contentCrop.data", contentCrop.data);
+      } catch (e) {
+        console.log("--- ", e);
       }
 
       await sleep(1000);
@@ -308,7 +321,7 @@ const shoppingLeng = async () => {
 };
 const productImages = async () => {
   try {
-    const products = await Qoo10Product.find();
+    const products = await Qoo10Product.find().sort({ _id: 1 });
 
     for (const product of products) {
       const content = await axios({
