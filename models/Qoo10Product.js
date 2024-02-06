@@ -14,6 +14,10 @@ const Qoo10Productschema = mongoose.Schema({
   sold: Number,
   review: Number,
   deliverFee: Number,
+  amountPrice: Number, // 정산금액
+  margin: Number, // 정산금액
+  marginRate: Number, // 정산금액
+
   dcPrice: Number,
   price: Number,
   korBrand: String,
