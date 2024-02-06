@@ -321,7 +321,9 @@ const shoppingLeng = async () => {
 };
 const productImages = async () => {
   try {
-    const products = await Qoo10Product.find().sort({ _id: 1 });
+    const products = await Qoo10Product.find({
+      group_code: null,
+    }).sort({ _id: 1 });
 
     for (const product of products) {
       const content = await axios({
