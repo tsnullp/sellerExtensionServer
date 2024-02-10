@@ -29,6 +29,9 @@ const Qoo10Productschema = mongoose.Schema({
   korImgSgnt: String,
   difference: Number,
   lengID: String,
+
+  code: String,
+  tags: [String],
 });
 
 module.exports = mongoose.model("Qoo10Product", Qoo10Productschema);

@@ -7,6 +7,7 @@ const Qoo10Brand = require("../models/Qoo10Brand");
 const Qoo10Store = require("../models/Qoo10Store");
 const Qoo10Product = require("../models/Qoo10Product");
 const { papagoTranslate } = require("./translate");
+const _ = require("lodash");
 
 const start = async () => {
   const SyncFun = async () => {
@@ -87,18 +88,18 @@ const start = async () => {
       }
     }
   };
-  SyncFun();
+  // SyncFun();
   // await searchCategoryList();
   // await getStoreInfo();
   productImages();
-  shoppingLeng();
+  // shoppingLeng();
 };
 
 const shoppingLeng = async () => {
   try {
     const products = await Qoo10Product.find({
       marginRate: null,
-    }).sort({ sold: 1 });
+    }).sort({ sold: -1 });
 
     for (const product of products) {
       try {
@@ -311,6 +312,8 @@ const shoppingLeng = async () => {
         }
       } catch (e) {
         console.log("--- ", e);
+
+        break;
       }
 
       await sleep(1000);
@@ -321,9 +324,8 @@ const shoppingLeng = async () => {
 };
 const productImages = async () => {
   try {
-    const products = await Qoo10Product.find({
-      group_code: null,
-    }).sort({ _id: 1 });
+    const products = await Qoo10Product.find();
+    // .sort({ _id: -1 });
 
     for (const product of products) {
       const content = await axios({
@@ -338,9 +340,43 @@ const productImages = async () => {
       let gdlc_cd = $("#gdlc_cd").attr("value");
       let gdmc_cd = $("#gdmc_cd").attr("value");
       let gdsc_cd = $("#gdsc_cd").attr("value");
-      // console.log("image-- ", image);
+      let code = $("div.code")
+        .text()
+        .split("商品番号 : ")[1]
+        .split(" ")[0]
+        .trim();
+      console.log("code -- ", code);
+      console.log("product.detailUrl-- ", product.detailUrl);
       console.log("group_code-- ", group_code, gdlc_cd, gdmc_cd, gdsc_cd);
 
+      const ProductInfo = await axios({
+        method: "POST",
+        url: "https://www.qoo10.jp/gmkt.inc/swe_MyAjaxService.asmx/GetValidationItemList",
+        headers: {
+          Referer: product.detailUrl,
+          "Content-Type": "application/json",
+        },
+        data: JSON.stringify({
+          gd_nos: code,
+        }),
+      });
+
+      let tags = [];
+      if (
+        ProductInfo &&
+        ProductInfo.data &&
+        ProductInfo.data.d &&
+        ProductInfo.data.d.length > 0
+      ) {
+        tags = _.uniq(
+          ProductInfo.data.d[0].SEARCH_TAG_DETAIL_LIST.split("!@#").filter(
+            (item) => item.length > 0
+          )
+        );
+        console.log("tags - ", tags);
+      } else {
+        console.log("정보 없음");
+      }
       await Qoo10Product.findOneAndUpdate(
         {
           _id: product._id,
@@ -352,6 +388,8 @@ const productImages = async () => {
             gdlc_cd,
             gdmc_cd,
             gdsc_cd,
+            code,
+            tags,
           },
         }
       );
