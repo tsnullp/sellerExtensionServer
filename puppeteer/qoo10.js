@@ -330,78 +330,83 @@ const productImages = async () => {
     const brands = await Qoo10Brand.find();
     const brandNames = brands.map((item) => item.brandName.toUpperCase());
     for (const product of products) {
-      const content = await axios({
-        method: "GET",
-        url: `${product.detailUrl}`,
-      });
-
-      const $ = cheerio.load(content.data);
-
-      let image = $("#GoodsImage").attr("content");
-      let group_code = $("#group_code").attr("value");
-      let gdlc_cd = $("#gdlc_cd").attr("value");
-      let gdmc_cd = $("#gdmc_cd").attr("value");
-      let gdsc_cd = $("#gdsc_cd").attr("value");
-      let code = $("div.code")
-        .text()
-        .split("商品番号 : ")[1]
-        .split(" ")[0]
-        .trim();
-      console.log("code -- ", code);
-      console.log("product.detailUrl-- ", product.detailUrl);
-      console.log("group_code-- ", group_code, gdlc_cd, gdmc_cd, gdsc_cd);
-
-      const ProductInfo = await axios({
-        method: "POST",
-        url: "https://www.qoo10.jp/gmkt.inc/swe_MyAjaxService.asmx/GetValidationItemList",
-        headers: {
-          Referer: product.detailUrl,
-          "Content-Type": "application/json",
-        },
-        data: JSON.stringify({
-          gd_nos: code,
-        }),
-      });
-
-      let tags = [];
-      if (
-        ProductInfo &&
-        ProductInfo.data &&
-        ProductInfo.data.d &&
-        ProductInfo.data.d.length > 0
-      ) {
-        tags = _.uniq(
-          ProductInfo.data.d[0].SEARCH_TAG_DETAIL_LIST.split("!@#").filter(
-            (item) => item.length > 0
-          )
-        );
-        tags = tags.filter((item) => {
-          if (brandNames.includes(item.toUpperCase())) {
-            console.log("브랜드임");
-            return false;
-          }
-          return true;
+      try {
+        const content = await axios({
+          method: "GET",
+          url: `${product.detailUrl}`,
         });
-        console.log("tags - ", tags);
-      } else {
-        console.log("정보 없음");
-      }
-      await Qoo10Product.findOneAndUpdate(
-        {
-          _id: product._id,
-        },
-        {
-          $set: {
-            thumb: image,
-            group_code,
-            gdlc_cd,
-            gdmc_cd,
-            gdsc_cd,
-            code,
-            tags,
+
+        const $ = cheerio.load(content.data);
+
+        let image = $("#GoodsImage").attr("content");
+        let group_code = $("#group_code").attr("value");
+        let gdlc_cd = $("#gdlc_cd").attr("value");
+        let gdmc_cd = $("#gdmc_cd").attr("value");
+        let gdsc_cd = $("#gdsc_cd").attr("value");
+        let code = $("div.code")
+          .text()
+          .split("商品番号 : ")[1]
+          .split(" ")[0]
+          .trim();
+        console.log("code -- ", code);
+        console.log("product.detailUrl-- ", product.detailUrl);
+        console.log("group_code-- ", group_code, gdlc_cd, gdmc_cd, gdsc_cd);
+
+        const ProductInfo = await axios({
+          method: "POST",
+          url: "https://www.qoo10.jp/gmkt.inc/swe_MyAjaxService.asmx/GetValidationItemList",
+          headers: {
+            Referer: product.detailUrl,
+            "Content-Type": "application/json",
           },
+          data: JSON.stringify({
+            gd_nos: code,
+          }),
+        });
+
+        let tags = [];
+        if (
+          ProductInfo &&
+          ProductInfo.data &&
+          ProductInfo.data.d &&
+          ProductInfo.data.d.length > 0
+        ) {
+          tags = _.uniq(
+            ProductInfo.data.d[0].SEARCH_TAG_DETAIL_LIST.split("!@#").filter(
+              (item) => item.length > 0
+            )
+          );
+          tags = tags.filter((item) => {
+            if (brandNames.includes(item.toUpperCase())) {
+              console.log("브랜드임");
+              return false;
+            }
+            return true;
+          });
+          console.log("tags - ", tags);
+        } else {
+          console.log("정보 없음");
         }
-      );
+        await Qoo10Product.findOneAndUpdate(
+          {
+            _id: product._id,
+          },
+          {
+            $set: {
+              thumb: image,
+              group_code,
+              gdlc_cd,
+              gdmc_cd,
+              gdsc_cd,
+              code,
+              tags,
+            },
+          }
+        );
+      } catch (e) {
+        console.log("무슨?", e);
+        console.log("product.detailUrl", product.detailUrl);
+      }
       await sleep(1000);
     }
     console.log("*************** 끝 *************");
