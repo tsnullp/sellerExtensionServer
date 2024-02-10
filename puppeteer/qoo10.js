@@ -327,6 +327,8 @@ const productImages = async () => {
     const products = await Qoo10Product.find();
     // .sort({ _id: -1 });
 
+    const brands = await Qoo10Brand.find();
+    const brandNames = brands.map((item) => item.brandName.toUpperCase());
     for (const product of products) {
       const content = await axios({
         method: "GET",
@@ -373,6 +375,13 @@ const productImages = async () => {
             (item) => item.length > 0
           )
         );
+        tags = tags.filter((item) => {
+          if (brandNames.includes(item.toUpperCase())) {
+            console.log("브랜드임");
+            return false;
+          }
+          return true;
+        });
         console.log("tags - ", tags);
       } else {
         console.log("정보 없음");
