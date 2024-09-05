@@ -15,6 +15,8 @@ const ShippingPrice = require("./models/ShippingPrice");
 const SellerPickDeliveryFee = require("./models/SellerPickDeliveryFee");
 const Product = require("./models/Product");
 const Cookie = require("./models/Cookie");
+const ScoutCategoryID = require("./models/ScoutCategoryID");
+const SeasonKeywordNew = require("./models/SeasonKeywordNew");
 const TaobaoOrder = require("./models/TaobaoOrder");
 const { iHerbCode } = require("./api/iHerb");
 const axios = require("axios");
@@ -40,6 +42,7 @@ const {
   Cafe24RegisterShipments,
   Cafe24UpdateShipments,
 } = require("./api/Market");
+const { GetCategory, GetKeyword, GetBrand } = require("./api/ItemScout");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const {
@@ -74,6 +77,7 @@ const Qoo10 = require("./puppeteer/qoo10");
 
 const cron = require("node-cron");
 const _ = require("lodash");
+const { KeyObject } = require("crypto");
 
 // jtsjna@gmail.com
 
@@ -4467,11 +4471,312 @@ const Qoo10Sync = async () => {
   SyncFun();
 };
 
-RakutenPriceSync();
-UniqlodPriceSync();
-BrandPriceSync();
-Qoo10();
+// RakutenPriceSync();
+// UniqlodPriceSync();
+// BrandPriceSync();
+// Qoo10();
 
+const searchKeywordCategory = async () => {
+  const categoryes = [
+    {
+      id: 1,
+      name: "패션의류",
+    },
+    {
+      id: 2,
+      name: "패션잡화",
+    },
+    {
+      id: 5,
+      name: "가구/인테리어",
+    },
+    {
+      id: 6,
+      name: "출산/육아",
+    },
+    {
+      id: 8,
+      name: "스포츠/레저",
+    },
+    {
+      id: 9,
+      name: "생활/건강",
+    },
+  ];
+
+  for (const categoryObj of categoryes) {
+    const response = await GetCategory({ id: categoryObj.id });
+    for (const level2 of response.data) {
+      const response2 = await GetCategory({ id: level2.id });
+      for (const level3 of response2.data) {
+        try {
+          if (level3.is_leaf === 1) {
+            await ScoutCategoryID.findOneAndUpdate(
+              {
+                id: level3.id,
+              },
+              {
+                $set: {
+                  name1: categoryObj.name,
+                  name2: level2.name,
+                  name3: level3.name,
+                  id: level3.id,
+                  category_id: level3.category_id,
+                },
+              },
+              {
+                upsert: true,
+              }
+            );
+          } else {
+            const response3 = await GetCategory({ id: level3.id });
+            for (const level4 of response3.data) {
+              await ScoutCategoryID.findOneAndUpdate(
+                {
+                  id: level3.id,
+                },
+                {
+                  $set: {
+                    name1: categoryObj.name,
+                    name2: level2.name,
+                    name3: level3.name,
+                    name4: level4.name,
+                    id: level4.id,
+                    category_id: level4.category_id,
+                  },
+                },
+                {
+                  upsert: true,
+                }
+              );
+              console.log("---", {
+                name1: categoryObj.name,
+                name2: level2.name,
+                name3: level3.name,
+                name4: level4.name,
+                id: level4.id,
+              });
+            }
+          }
+        } catch (e) {
+          console.log("??// ", e);
+        }
+      }
+      await sleep(4000);
+    }
+
+    await sleep(2000);
+  }
+  console.log("----끝----");
+};
+
+const searchSeasonKeyword = async () => {
+  const min = 3;
+  const max = 15;
+  let randomNumber = 5;
+  let i = 0;
+  const categoryes = await ScoutCategoryID.find();
+  for (const category of categoryes) {
+    i++;
+
+    try {
+      const existKeyword = await SeasonKeywordNew.find({
+        category_id: category.id,
+      });
+
+      if (existKeyword && existKeyword.length > 0) {
+        console.log("카테고리 존재", category.id);
+        continue;
+      }
+      console.log(`******** ${i} / ${categoryes.length} *********`);
+      console.log("카테고리 ", category);
+      const brandResponse = await GetBrand({ id: category.id });
+
+      // await sleep(100000);
+      const monthes = [
+        "01",
+        "02",
+        "03",
+        "04",
+        "05",
+        "06",
+        "07",
+        "08",
+        "09",
+        "10",
+        "11",
+        "12",
+      ];
+      const keywordObj = {};
+      for (const month of monthes) {
+        try {
+          const response = await GetKeyword({
+            id: category.id,
+            month: `2023-${month}`,
+          });
+
+          for (const key of Object.keys(response.data.data)) {
+            try {
+              const keywordInfo = response.data.data[key];
+
+              if (
+                keywordInfo.fitPredict &&
+                keywordInfo.fitPredict.shopping >= 0.5 &&
+                keywordInfo.firstCategory === category.id
+              ) {
+                const total = keywordInfo.monthly
+                  ? keywordInfo.monthly.total
+                  : 20;
+                const brand =
+                  brandResponse.data.filter(
+                    (item) => keywordInfo.keyword === item
+                  ).length > 0;
+
+                if (!keywordObj[key]) {
+                  keywordObj[key] = {};
+                }
+
+                keywordObj[key].key = key;
+                keywordObj[key][month] = total;
+                keywordObj[key].keyword = keywordInfo.keyword;
+                keywordObj[key].category = category;
+                keywordObj[key].isBrand = brand;
+                keywordObj[key].shoppingRate = response.data.data[key]
+                  .fitPredict
+                  ? Number(
+                      response.data.data[key].fitPredict.shopping.toFixed(2) *
+                        100
+                    )
+                  : 0;
+              }
+            } catch (e) {
+              console.log("adsf ", e);
+            }
+          }
+          randomNumber = Math.floor(Math.random() * (max - min + 1)) + min;
+          await sleep(randomNumber * 1000);
+        } catch (e) {
+          console.log("adfasdf ", e);
+        }
+      }
+
+      for (const key of Object.keys(keywordObj)) {
+        try {
+          const monthArray = [];
+          if (!keywordObj[key]["01"]) {
+            keywordObj[key]["01"] = 0;
+          }
+          if (!keywordObj[key]["02"]) {
+            keywordObj[key]["02"] = 0;
+          }
+          if (!keywordObj[key]["03"]) {
+            keywordObj[key]["03"] = 0;
+          }
+          if (!keywordObj[key]["04"]) {
+            keywordObj[key]["04"] = 0;
+          }
+          if (!keywordObj[key]["05"]) {
+            keywordObj[key]["05"] = 0;
+          }
+          if (!keywordObj[key]["06"]) {
+            keywordObj[key]["06"] = 0;
+          }
+          if (!keywordObj[key]["07"]) {
+            keywordObj[key]["07"] = 0;
+          }
+          if (!keywordObj[key]["08"]) {
+            keywordObj[key]["08"] = 0;
+          }
+          if (!keywordObj[key]["09"]) {
+            keywordObj[key]["09"] = 0;
+          }
+          if (!keywordObj[key]["10"]) {
+            keywordObj[key]["10"] = 0;
+          }
+          if (!keywordObj[key]["11"]) {
+            keywordObj[key]["11"] = 0;
+          }
+          if (!keywordObj[key]["12"]) {
+            keywordObj[key]["12"] = 0;
+          }
+          monthArray.push(keywordObj[key]["01"]);
+          monthArray.push(keywordObj[key]["02"]);
+          monthArray.push(keywordObj[key]["03"]);
+          monthArray.push(keywordObj[key]["04"]);
+          monthArray.push(keywordObj[key]["05"]);
+          monthArray.push(keywordObj[key]["06"]);
+          monthArray.push(keywordObj[key]["07"]);
+          monthArray.push(keywordObj[key]["08"]);
+          monthArray.push(keywordObj[key]["09"]);
+          monthArray.push(keywordObj[key]["10"]);
+          monthArray.push(keywordObj[key]["11"]);
+          monthArray.push(keywordObj[key]["12"]);
+          // console.log("monthArray", Math.max.apply(null, monthArray));
+
+          const average =
+            monthArray.reduce(
+              (accumulator, currentValue) => accumulator + currentValue,
+              0
+            ) / monthArray.length;
+
+          keywordObj[key].maxCount = Math.max.apply(null, monthArray);
+          keywordObj[key].avgCount = Math.round(average);
+          keywordObj[key].maxMonth =
+            monthArray.indexOf(keywordObj[key].maxCount) + 1;
+
+          await SeasonKeywordNew.findOneAndUpdate(
+            {
+              keywordID: key,
+              category_id: keywordObj[key].category.id,
+            },
+            {
+              $set: {
+                keywordID: key,
+                name1: keywordObj[key].category.name1,
+                name2: keywordObj[key].category.name2,
+                name3: keywordObj[key].category.name3,
+                category_id: keywordObj[key].category.id,
+                category_code: keywordObj[key].category.category_id,
+                keyword: keywordObj[key].keyword,
+                "01": keywordObj[key]["01"],
+                "02": keywordObj[key]["02"],
+                "03": keywordObj[key]["03"],
+                "04": keywordObj[key]["04"],
+                "05": keywordObj[key]["05"],
+                "06": keywordObj[key]["06"],
+                "07": keywordObj[key]["07"],
+                "08": keywordObj[key]["08"],
+                "09": keywordObj[key]["09"],
+                10: keywordObj[key]["10"],
+                11: keywordObj[key]["11"],
+                12: keywordObj[key]["12"],
+                isBrand: keywordObj[key].isBrand,
+                maxCount: keywordObj[key].maxCount,
+                maxMonth: keywordObj[key].maxMonth,
+                avgCount: keywordObj[key].avgCount,
+                shoppingRate: keywordObj[key].shoppingRate,
+              },
+            },
+            {
+              upsert: true,
+            }
+          );
+        } catch (e) {
+          console.log("00asf ", e);
+        }
+      }
+    } catch (e) {
+      console.log("asdfasdfa ", e);
+    }
+
+    // console.log("keywordObj -- ", keywordObj);
+    // randomNumber = Math.floor(Math.random() * (max - min + 1)) + min;
+    await sleep(1000);
+  }
+};
+
+// searchKeywordCategory();
+searchSeasonKeyword();
 const getVVICItems = async () => {
   try {
     await getVVIC({
